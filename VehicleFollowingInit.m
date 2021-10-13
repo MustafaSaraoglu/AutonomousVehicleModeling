@@ -2,6 +2,10 @@
 
 %% Road
 w_lane = 3.7; % lane width
+roadTrajectory =    [0      0   0;
+                     1000   0   0;
+                     0      0   0;
+                     0      0   0];
 
 %% Constraints
 s_min = 0;
@@ -18,6 +22,7 @@ sDDot_min = -3;
 sDDot_max = 2;
 
 theta_max = pi/4; % maximum steering angle
+
 %% V1 - Lead
 % Vehicle properties
 V1_dim = [6; 2];  % length and width
