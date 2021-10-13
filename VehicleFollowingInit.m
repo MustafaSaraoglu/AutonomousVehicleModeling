@@ -1,12 +1,5 @@
 % Initialisation of VehicleFollowing.slx model
 
-%% Road
-w_lane = 3.7; % lane width
-roadTrajectory =    [0      0   0;
-                     1000   0   0;
-                     0      0   0;
-                     0      0   0];
-
 %% Constraints
 s_min = 0;
 s_max = 1000;
@@ -22,6 +15,14 @@ sDDot_min = -3;
 sDDot_max = 2;
 
 theta_max = pi/4; % maximum steering angle
+
+%% Road
+w_lane = 3.7; % lane width
+roadTrajectory =    [s_min  0   0;
+                     s_max  0   0;
+                     0      0   0;
+                     0      0   0];
+
 
 %% V1 - Lead
 % Vehicle properties
@@ -52,3 +53,6 @@ V2_0 = 15;
 % Time for lane changing and overtaking
 deltaT_LC = 5;
 deltaT_OT = 5;
+
+% Look ahead distance for pure pursuit
+d_lookAhead = 6;
