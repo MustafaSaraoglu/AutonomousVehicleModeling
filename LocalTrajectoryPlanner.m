@@ -55,7 +55,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             % trajectory
             obj.y_f = y_f;
             obj.calculateLaneChangingTrajectoryCoefficients(y_ego, y_f, deltaManeuver);
-            obj.currentManeuver = maneuver;
+            obj.currentManeuver = maneuver; % Set maneuver to indicate lane change
             obj.t_start = clock;
         end
         

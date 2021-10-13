@@ -1,14 +1,15 @@
 classdef Decision  < matlab.System
-    % Select Driving Mode and if to execute lane changing maneuver
+    % Select driving mode and decide if to execute lane changing maneuver
     %
     % Driving Mode
     %   1 = FreeDrive
     %   2 = VehicleFollowing
     %   3 = EmergencyBrake
     % Change Lane
-    %   0 = Command to stay in the same lane
+    %   0 = Command to follow current trajectory (straight/lane change)
     %   1 = Command to change to left lane
     %  -1 = Command to change to right lane
+    %   2 = Command to stop lane changing maneuver
     
     properties(Nontunable)
         LaneWidth = 3.7;
@@ -52,9 +53,10 @@ classdef Decision  < matlab.System
             obj.currentLane = 0; % Right lane
         end
 
-        function [changeLane, currentLane, drivingMode] = stepImpl(obj, y_ego, relativeDistance, vLead, vEgo)
-            % Implement algorithm. Calculate y as a function of input u and
-            % discrete states.
+        function [changeLane, currentLane, drivingMode] = stepImpl(obj, poseEgo, relativeDistance, vLead, vEgo)
+            % Implement algorithm. 
+            y_ego = poseEgo(2);
+            
             changeLane = 0;
             
             %% Lane changing maneuver
@@ -69,6 +71,7 @@ classdef Decision  < matlab.System
                 case 0.5
                     if y_ego >= obj.LaneWidth
                         obj.currentLane = 1;
+                        changeLane = 2;
                     end
                 % Left lane
                 case 1
@@ -80,6 +83,7 @@ classdef Decision  < matlab.System
                 case -0.5
                     if y_ego <= 0
                         obj.currentLane = 0;
+                        changeLane = 2;
                     end
             end
             

@@ -39,19 +39,15 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % Initialisation maneuver to left lane
             elseif changeLane == -1
                 obj.initialiseManeuver(d, 0, changeLane, obj.deltaT_OT, clock);
+            elseif changeLane == 2
+                obj.currentManeuver = 0;
             end
             % Check if ego vehicle should execute maneuver
             if obj.currentManeuver % Add <delta d>
-                % End maneuver if lateral destionation is reached
-                if (obj.currentManeuver > 0 && d >= obj.y_f) || (obj.currentManeuver < 0 && d <= obj.y_f)
-                    obj.currentManeuver = 0;
-                end
                 % Calculate reference lateral position according to reference
                 % trajectory
                 t = clock - obj.t_start;
-                if obj.currentManeuver
-                    d = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5; 
-                end
+                d = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5; 
             end
             s = s + 0.01; % Add <delta s>
             % Generate Reference Pose for Stanley

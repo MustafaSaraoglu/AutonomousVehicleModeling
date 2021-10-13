@@ -39,15 +39,11 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
             % Initialisation maneuver to left lane
             elseif changeLane == -1
                 obj.initialiseManeuver(d, 0, changeLane, obj.deltaT_OT, clock);
+            elseif changeLane == 2
+                obj.currentManeuver = 0;
             end
             % Check if ego vehicle should execute maneuver
             if obj.currentManeuver
-                % End maneuver if lateral destionation is reached
-                if (obj.currentManeuver > 0 && d >= obj.y_f) || (obj.currentManeuver < 0 && d <= obj.y_f)
-                    obj.currentManeuver = 0;
-                    SteerCmd = 0;
-                    return
-                end
                 % Calculate reference lateral speed according to reference
                 % trajectory
                 t = clock - obj.t_start;
