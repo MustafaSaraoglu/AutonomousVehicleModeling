@@ -8,10 +8,7 @@ classdef CoordinateTransformations < matlab.System & handle & matlab.system.mixi
     
     properties(Nontunable)
         LaneWidth = evalin('base', 'w_lane');
-        CurrentTrajectory = [0      0   0;
-                             1000   0   0;
-                             0      0   0;
-                             0      0   0];
+        CurrentTrajectory = evalin('base', 'roadTrajectory');
     end
 
     properties(DiscreteState)

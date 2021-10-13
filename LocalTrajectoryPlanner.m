@@ -6,8 +6,8 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
     end
     
     properties(Nontunable)
-        deltaT_LC = 5;
-        deltaT_OT = 5;
+        deltaT_LC = evalin('base', 'deltaT_LC');
+        deltaT_OT = evalin('base', 'deltaT_OT');
     end
     
     % Pre-computed constants

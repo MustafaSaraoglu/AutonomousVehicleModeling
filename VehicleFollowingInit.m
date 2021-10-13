@@ -47,3 +47,8 @@ Y2_0 = 0;
 Yaw2_0 = 0;
 
 V2_0 = 15;
+
+%% Lane Changing maneuver
+% Time for lane changing and overtaking
+deltaT_LC = 5;
+deltaT_OT = 5;

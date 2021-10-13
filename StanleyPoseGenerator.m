@@ -42,6 +42,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
                 d = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5; 
             end
             
+            % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
             s = s + 0.01; % Add <delta s>
             
             % Generate reference pose for Stanley
