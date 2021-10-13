@@ -1,4 +1,4 @@
-classdef Decision  < matlab.System
+classdef Decision  < CoordinateTransformations
     % Select driving mode and decide if to execute lane changing maneuver
     %
     % Driving Mode
@@ -12,7 +12,7 @@ classdef Decision  < matlab.System
     %   2 = Command to stop lane changing maneuver
     
     properties(Nontunable)
-        LaneWidth = 3.7;
+        
     end
     
     % Public, tunable properties
@@ -55,8 +55,11 @@ classdef Decision  < matlab.System
 
         function [changeLane, currentLane, drivingMode] = stepImpl(obj, poseEgo, relativeDistance, vLead, vEgo)
             % Implement algorithm. 
-            y_ego = poseEgo(2);
-            
+
+            % Cartesian to Frenet coordinate transformation
+            [~, dEgo] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]); % Determine current <s,d>
+
+            % By default follow current trajectory
             changeLane = 0;
             
             %% Lane changing maneuver
@@ -69,7 +72,7 @@ classdef Decision  < matlab.System
                     end
                 % To left lane
                 case 0.5
-                    if y_ego >= obj.LaneWidth
+                    if dEgo >= obj.LaneWidth
                         obj.currentLane = 1;
                         changeLane = 2;
                     end
@@ -81,7 +84,7 @@ classdef Decision  < matlab.System
                     end
                 % To right lane
                 case -0.5
-                    if y_ego <= 0
+                    if dEgo <= 0
                         obj.currentLane = 0;
                         changeLane = 2;
                     end
