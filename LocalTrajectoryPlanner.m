@@ -8,6 +8,12 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
     
     properties(Nontunable)
         LaneWidth = evalin('base', 'w_lane');
+        CurrentTrajectory = [0      0   0;
+                             1000   0   0;
+                             0      0   0;
+                             0      0   0];
+        deltaT_LC = 5;
+        deltaT_OT = 5;
     end
     
     % Pre-computed constants

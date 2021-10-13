@@ -7,12 +7,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
     end
     
     properties(Nontunable)
-        CurrentTrajectory = [0      0   0;
-                             1000   0   0;
-                             0      0   0;
-                             0      0   0];
-        deltaT_LC = 5;
-        deltaT_OT = 5;
+        
     end
 
     properties(DiscreteState)
