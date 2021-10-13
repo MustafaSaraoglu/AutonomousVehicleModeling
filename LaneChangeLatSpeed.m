@@ -27,21 +27,13 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
 
         function SteerCmd = stepImpl(obj, pose, clock, changeLane, velocity)
             % Implement algorithm.
-            currentTrajectory = obj.CurrentTrajectory;
-            Vpos_C = [pose(1) pose(2)];
-            
-            % Cartesian to Frenet Coordinate Transformation
-            [~, d] = obj.Cartesian2Frenet(currentTrajectory, Vpos_C); % Determine current <s,d>
 
-            % Initialisation maneuver to right lane
-            if changeLane == 1
-                obj.initialiseManeuver(d, obj.LaneWidth, changeLane, obj.deltaT_LC, clock);
-            % Initialisation maneuver to left lane
-            elseif changeLane == -1
-                obj.initialiseManeuver(d, 0, changeLane, obj.deltaT_OT, clock);
-            elseif changeLane == 2
-                obj.currentManeuver = 0;
-            end
+            % Cartesian to Frenet coordinate transformation
+            [~, d] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
+            
+            % Check whether to start or stop lane changing maneuver
+            obj.checkForLaneChangingManeuver(changeLane, d, clock);
+            
             % Check if ego vehicle should execute maneuver
             if obj.currentManeuver
                 % Calculate reference lateral speed according to reference

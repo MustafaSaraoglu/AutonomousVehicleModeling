@@ -30,8 +30,6 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
         %   1 = Change to left lane
         %  -1 = Change to right lane
         currentManeuver
-        % Lateral destionation after executing maneuver
-        y_f
         % Time to start maneuver
         t_start
     end
@@ -50,33 +48,47 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             obj.currentManeuver = 0; % Initially do not execute any maneuver
         end
         
-        function initialiseManeuver(obj, y_ego, y_f, maneuver, deltaManeuver, clock)
-            % Initialise lane changing maneuver and calculate reference
-            % trajectory
-            obj.y_f = y_f;
-            obj.calculateLaneChangingTrajectoryCoefficients(y_ego, y_f, deltaManeuver);
-            obj.currentManeuver = maneuver; % Set maneuver to indicate lane change
-            obj.t_start = clock;
+        function checkForLaneChangingManeuver(obj, changeLaneInfo, d, clock)
+            % Check whether to start or stop a lane changing maneuver
+            
+            % Initialisation maneuver to right lane
+            if changeLaneInfo == 1
+                obj.initialiseManeuver(d, obj.LaneWidth, changeLaneInfo, obj.deltaT_LC, clock);
+            % Initialisation maneuver to left lane
+            elseif changeLaneInfo == -1
+                obj.initialiseManeuver(d, 0, changeLaneInfo, obj.deltaT_OT, clock);
+            % Stop maneuver
+            elseif changeLaneInfo == 2
+                obj.currentManeuver = 0;
+            end
         end
         
-        function calculateLaneChangingTrajectoryCoefficients(obj, y_ego, y_f, deltaManeuver)
+        function initialiseManeuver(obj, d_currnet, d_destination, maneuver, deltaManeuver, clock)
+            % Initialise lane changing maneuver and calculate reference
+            % trajectory
+            obj.calculateLaneChangingTrajectoryCoefficients(d_currnet, d_destination, deltaManeuver);
+            obj.currentManeuver = maneuver; % Set maneuver to indicate lane change
+            obj.t_start = clock; % Store global time when starting the maneuver
+        end
+        
+        function calculateLaneChangingTrajectoryCoefficients(obj, d_currnet, d_destination, deltaManeuver)
             % Calculate coefficients for minimum jerk trajectory
             t_i = 0; % Start at 0 (relative time frame)
                     
-            d_i =         [1  t_i   t_i^2   t_i^3    t_i^4      t_i^5]; % y_i before lane change
+            d_i =         [1  t_i   t_i^2   t_i^3    t_i^4      t_i^5]; % d_initial = d_current before lane change
             d_dot_i =     [0  1     2*t_i   3*t_i^2  4*t_i^3    5*t_i^4]; %  0
             d_ddot_i =    [0  0     2       6*t_i    12*t_i^2   20*t_i^3]; %  0
 
 
             t_f = deltaManeuver; % deltaT: time to finish maneuver
 
-            d_f =         [1  t_f   t_f^2   t_f^3    t_f^4      t_f^5]; % y_f
+            d_f =         [1  t_f   t_f^2   t_f^3    t_f^4      t_f^5]; % d_destination
             d_dot_f =     [0  1     2*t_f   3*t_f^2  4*t_f^3    5*t_f^4]; % 0
             d_ddot_f =    [0  0     2       6*t_f    12*t_f^2   20*t_f^3]; % 0
 
             A = [d_i; d_dot_i; d_ddot_i; d_f; d_dot_f; d_ddot_f];
 
-            B = [y_ego; 0; 0; y_f; 0; 0];
+            B = [d_currnet; 0; 0; d_destination; 0; 0];
 
             X = linsolve(A,B);
 

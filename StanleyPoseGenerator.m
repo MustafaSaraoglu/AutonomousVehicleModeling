@@ -26,22 +26,14 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
 
         function [referencePose, poseOut] = stepImpl(obj, pose, changeLane, clock)
             % Implement algorithm. 
-            currentTrajectory = obj.CurrentTrajectory;
-            Vpos_C = [pose(1) pose(2)];
             pose(3) = rad2deg(pose(3)); % Conversion necessary fpr MATLAB Staneley Lateral Controller
             
             % Cartesian to Frenet Coordinate Transformation
-            [s, d] = obj.Cartesian2Frenet(currentTrajectory, Vpos_C); % Determine current <s,d>
+            [s, d] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
             
-            % Initialisation maneuver to right lane
-            if changeLane == 1
-                obj.initialiseManeuver(d, obj.LaneWidth, changeLane, obj.deltaT_LC, clock);
-            % Initialisation maneuver to left lane
-            elseif changeLane == -1
-                obj.initialiseManeuver(d, 0, changeLane, obj.deltaT_OT, clock);
-            elseif changeLane == 2
-                obj.currentManeuver = 0;
-            end
+            % Check whether to start or stop lane changing maneuver
+            obj.checkForLaneChangingManeuver(changeLane, d, clock);
+
             % Check if ego vehicle should execute maneuver
             if obj.currentManeuver % Add <delta d>
                 % Calculate reference lateral position according to reference
@@ -49,9 +41,11 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
                 t = clock - obj.t_start;
                 d = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5; 
             end
+            
             s = s + 0.01; % Add <delta s>
-            % Generate Reference Pose for Stanley
-            [refPos, refOrientation] = obj.Frenet2Cartesian(s, [s, d], currentTrajectory); % Coordinate Conversion function
+            
+            % Generate reference pose for Stanley
+            [refPos, refOrientation] = obj.Frenet2Cartesian(s, [s, d], obj.CurrentTrajectory); % Coordinate conversion function
             
             poseOut = pose';
             referencePose = [refPos(1); refPos(2); refOrientation]';
