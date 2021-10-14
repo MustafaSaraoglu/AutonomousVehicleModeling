@@ -92,7 +92,26 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             obj.a3 = X(4);
             obj.a4 = X(5);
             obj.a5 = X(6);
-        end        
+        end   
+        
+        function d_ref = getReferenceLateralPosition(obj, d, t)
+            % Get the reference lateral position for maneuver
+            
+            d_ref = d;
+            % Check whether t exceeds deltaT planned for the maneuver
+            switch obj.currentManeuver
+                % To the left (lane changing)
+                case 1
+                    if t >= obj.deltaT_LC
+                        d_ref = obj.LaneWidth;
+                    end
+                % To the right (overtaking)
+                case -1
+                    if t >= obj.deltaT_OT
+                        d_ref = 0;
+                    end
+            end
+        end
     end
 end
 

@@ -25,11 +25,12 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
             obj.currentManeuver = 0; % Initially do not execute any maneuver
         end
 
-        function SteerCmd = stepImpl(obj, pose, clock, changeLane, velocity)
+        function [d_ref, SteerCmd] = stepImpl(obj, pose, clock, changeLane, velocity)
             % Implement algorithm.
 
             % Cartesian to Frenet coordinate transformation
             [~, d] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
+            d_ref = d;
             
             % Check whether to start or stop lane changing maneuver
             obj.checkForLaneChangingManeuver(changeLane, d, clock);
@@ -39,7 +40,11 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
                 % Calculate reference lateral speed according to reference
                 % trajectory
                 t = clock - obj.t_start;
-                latSpeed = obj.a1 + 2*obj.a2*t + 3*obj.a3*t.^2 + 4*obj.a4*t.^3 + 5*obj.a5*t.^4;   
+                latSpeed = obj.a1 + 2*obj.a2*t + 3*obj.a3*t.^2 + 4*obj.a4*t.^3 + 5*obj.a5*t.^4; 
+                
+                % Calculate reference lateral position
+                d = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5;
+                d_ref = obj.getReferenceLateralPosition(d, t);
             else
                 latSpeed = 0;
             end
@@ -50,33 +55,37 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
             % Initialize / reset discrete-state properties
         end
 
-        function out = getOutputSizeImpl(obj)
+        function [out1, out2] = getOutputSizeImpl(obj)
             % Return size for each output port
-            out = [1 1];
+            out1 = [1 1];
+            out2 = [1 1];
 
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);
         end
 
-        function out = getOutputDataTypeImpl(obj)
+        function [out1, out2] = getOutputDataTypeImpl(obj)
             % Return data type for each output port
-            out = "double";
+            out1 = "double";
+            out2 = "double";
 
             % Example: inherit data type from first input port
             % out = propagatedInputDataType(obj,1);
         end
 
-        function out = isOutputComplexImpl(obj)
+        function [out1, out2] = isOutputComplexImpl(obj)
             % Return true for each output port with complex data
-            out = false;
+            out1 = false;
+            out2 = false;
 
             % Example: inherit complexity from first input port
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function out = isOutputFixedSizeImpl(obj)
+        function [out1, out2] = isOutputFixedSizeImpl(obj)
             % Return true for each output port with fixed size
-            out = true;
+            out1 = true;
+            out2 = true;
 
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);

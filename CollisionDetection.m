@@ -34,7 +34,7 @@ classdef CollisionDetection < matlab.System
             % Check if circles around vehicles intersect
             intersectionPoints = circcirc(poseEgo(1), poseEgo(2), obj.rEgo, poseLead(1), poseLead(2), obj.rLead);
             
-            % Only heck for collison if circles intersect
+            % Only check for collison if circles intersect
             if ~isnan(intersectionPoints(1))
                 HitboxEgo = obj.getHitbox(poseEgo, obj.dimEgo);
                 HitboxLead = obj.getHitbox(poseLead, obj.dimLead);
