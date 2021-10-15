@@ -7,8 +7,8 @@ classdef Decision  < CoordinateTransformations
     %   3 = EmergencyBrake
     % Change Lane
     %   0 = Command to follow current trajectory (straight/lane change)
-    %   1 = Command to change to left lane
-    %  -1 = Command to change to right lane
+    %   1 = Command to start changing to left lane
+    %  -1 = Command to start changing to right lane
     %   2 = Command to stop lane changing maneuver
     
     properties(Nontunable)
@@ -29,10 +29,10 @@ classdef Decision  < CoordinateTransformations
         currentDrivingMode % Driving mode
         
         % Transition distances
-        d_toEmergeny
-        d_toFreeDrive
-        d_EmergencyToFollow
-        d_FreeDriveToFollow
+        toEmergeny
+        toFreeDrive
+        EmergencyToFollow
+        FreeDriveToFollow
         
         s_threshold % Relative distance threshold to start lane changing maneuver
         
@@ -44,17 +44,17 @@ classdef Decision  < CoordinateTransformations
             % Perform one-time calculations, such as computing constants
             obj.currentDrivingMode = 1;
 
-            obj.d_toEmergeny = 10;
-            obj.d_toFreeDrive = 50;
-            obj.d_EmergencyToFollow = 15;
-            obj.d_FreeDriveToFollow = 39;
+            obj.toEmergeny = 10;
+            obj.toFreeDrive = 50;
+            obj.EmergencyToFollow = 15;
+            obj.FreeDriveToFollow = 39;
             
             obj.s_threshold = 40; % Constant threshold
             
             obj.currentLane = 0; % Right lane
         end
 
-        function [changeLane, currentLane, drivingMode] = stepImpl(obj, poseEgo, relativeDistance, vLead, vEgo)
+        function [changeLane, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
             % Return command whether to change lane, the current lane state 
             % (left, right, left to right, right to left) the and the 
             % current driving mode (see system description)
@@ -69,7 +69,7 @@ classdef Decision  < CoordinateTransformations
             switch obj.currentLane
                 % Right lane
                 case 0
-                    if vEgo > vLead && relativeDistance < obj.s_threshold && relativeDistance > 0
+                    if vEgo > vLead && deltaS < obj.s_threshold && deltaS > 0
                         obj.currentLane = 0.5;
                         changeLane = 1;
                     end
@@ -81,7 +81,7 @@ classdef Decision  < CoordinateTransformations
                     end
                 % Left lane
                 case 1
-                    if vEgo > vLead && relativeDistance < -obj.s_threshold/2
+                    if vEgo > vLead && deltaS < -obj.s_threshold/2
                         obj.currentLane = -0.5;
                         changeLane = -1;
                     end
@@ -99,7 +99,7 @@ classdef Decision  < CoordinateTransformations
             
             % FreeDrive while lane changing maneuver or if leading vehicle
             % was overtaken
-            if obj.currentLane ~= 0 || relativeDistance < 0
+            if obj.currentLane ~= 0 || deltaS < 0
                 obj.currentDrivingMode = 1;
                 drivingMode = obj.currentDrivingMode;
                 return
@@ -108,8 +108,8 @@ classdef Decision  < CoordinateTransformations
             switch obj.currentDrivingMode
                 % FreeDrive
                 case 1
-                    if relativeDistance <= obj.d_FreeDriveToFollow
-                        if relativeDistance <= obj.d_toEmergeny
+                    if deltaS <= obj.FreeDriveToFollow
+                        if deltaS <= obj.toEmergeny
                             obj.currentDrivingMode = 3;
                         else
                             obj.currentDrivingMode = 2;
@@ -117,14 +117,14 @@ classdef Decision  < CoordinateTransformations
                     end
                 % VehicleFollowing
                 case 2
-                    if relativeDistance > obj.d_toFreeDrive
+                    if deltaS > obj.toFreeDrive
                         obj.currentDrivingMode = 1;
-                    elseif relativeDistance <= obj.d_toEmergeny
+                    elseif deltaS <= obj.toEmergeny
                         obj.currentDrivingMode = 3;
                     end
                 % EmergencyBrake
                 case 3
-                    if relativeDistance > obj.d_EmergencyToFollow
+                    if deltaS > obj.EmergencyToFollow
                         obj.currentDrivingMode = 2;
                     end   
             end
