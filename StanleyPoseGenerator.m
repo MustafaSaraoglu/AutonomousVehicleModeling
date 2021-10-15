@@ -25,7 +25,9 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
         end
 
         function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLane, clock, velocity)
-            % Implement algorithm. 
+            % Return the reference lateral position, the reference pose and 
+            % the current pose 
+            
             pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Staneley Lateral Controller
             
             % Cartesian to Frenet Coordinate Transformation

@@ -21,7 +21,8 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
         end
 
         function [nextWPs, d_ref] = stepImpl(obj, pose, changeLane, clock)
-            % Implement algorithm. 
+            % Return the reference waypoints necessary for Pure Pursuit and
+            % the reference lateral positon
 
             % Cartesian to Frenet coordinate transformation
             [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>

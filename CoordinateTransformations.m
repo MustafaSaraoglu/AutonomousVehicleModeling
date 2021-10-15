@@ -7,8 +7,8 @@ classdef CoordinateTransformations < matlab.System & handle & matlab.system.mixi
     end
     
     properties(Nontunable)
-        LaneWidth = evalin('base', 'w_lane');
-        CurrentTrajectory = evalin('base', 'roadTrajectory');
+        LaneWidth = evalin('base', 'w_lane'); % Width of road lane
+        CurrentTrajectory = evalin('base', 'roadTrajectory'); % Road trajectory according to MOBATSim map format
     end
 
     properties(DiscreteState)

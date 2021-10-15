@@ -26,7 +26,8 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
         end
 
         function [SteerCmd, d_ref] = stepImpl(obj, pose, changeLane, clock, velocity)
-            % Implement algorithm.
+            % Calculate steering command and the reference lateral postion
+            % by using the lateral speed
 
             % Cartesian to Frenet coordinate transformation
             [~, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>

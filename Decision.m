@@ -26,16 +26,17 @@ classdef Decision  < CoordinateTransformations
 
     % Pre-computed constants
     properties(Access = private)
-        currentDrivingMode 
+        currentDrivingMode % Driving mode
+        
         % Transition distances
         d_toEmergeny
         d_toFreeDrive
         d_EmergencyToFollow
         d_FreeDriveToFollow
-        % Relative distance threshold to start lane changing maneuver
-        s_threshold
-        % Current lane state
-        currentLane
+        
+        s_threshold % Relative distance threshold to start lane changing maneuver
+        
+        currentLane % Current lane state
     end
 
     methods(Access = protected)
@@ -48,13 +49,15 @@ classdef Decision  < CoordinateTransformations
             obj.d_EmergencyToFollow = 15;
             obj.d_FreeDriveToFollow = 39;
             
-            obj.s_threshold = 40;
+            obj.s_threshold = 40; % Constant threshold
             
             obj.currentLane = 0; % Right lane
         end
 
         function [changeLane, currentLane, drivingMode] = stepImpl(obj, poseEgo, relativeDistance, vLead, vEgo)
-            % Implement algorithm. 
+            % Return command whether to change lane, the current lane state 
+            % (left, right, left to right, right to left) the and the 
+            % current driving mode (see system description)
 
             % Cartesian to Frenet coordinate transformation
             [~, dEgo] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]); % Determine current <s,d>

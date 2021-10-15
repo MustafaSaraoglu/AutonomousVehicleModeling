@@ -7,10 +7,10 @@ classdef CollisionDetection < matlab.System
     end
     
     properties(Nontunable)
-        rEgo = evalin('base', 'R2');
-        rLead = evalin('base', 'R1');
-        dimEgo = evalin('base', 'V2_dim');
-        dimLead = evalin('base', 'V1_dim');
+        rEgo = evalin('base', 'R2'); % Radius around ego vehicle rectangle representation
+        rLead = evalin('base', 'R1'); % Radius around lead vehicle rectangle representation
+        dimEgo = evalin('base', 'V2_dim'); % Dimensions (length, width) ego vehicle
+        dimLead = evalin('base', 'V1_dim') ; % Dimensions (length, width) lead vehicle
     end
     
     properties(DiscreteState)
@@ -28,7 +28,8 @@ classdef CollisionDetection < matlab.System
         end
 
         function collisionDetected = stepImpl(obj, poseLead, poseEgo)
-            % Implement algorithm.           
+            % Check whether a collision between two vehicles is detected
+            
             collisionDetected = false; 
             
             % Check if vehicles are close enough: d_euclidian <= (rEgo + rLead)
@@ -47,7 +48,8 @@ classdef CollisionDetection < matlab.System
         end
         
         function Hitbox = getHitbox(~, pose, dim)
-            % Vehicle representation as rectangle
+            % Get vehicle hitbox (representation as rectangle)
+            
             % Vehicle pose
             x = pose(1);
             y = pose(2);

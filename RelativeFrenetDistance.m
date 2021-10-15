@@ -21,7 +21,7 @@ classdef RelativeFrenetDistance < CoordinateTransformations
         end
 
         function deltaS = stepImpl(obj, poseLead, poseEgo)
-            % Implement algorithm. 
+            % Return relative distance using Frenet coordinate system 
             
             % Cartesian to Frenet coordinate transformation
             [sEgo, ~] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]); % Determine current <s,d>

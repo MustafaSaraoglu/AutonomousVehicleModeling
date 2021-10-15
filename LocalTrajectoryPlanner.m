@@ -1,13 +1,14 @@
 classdef LocalTrajectoryPlanner < CoordinateTransformations
-    %LocalTrajectoryPlanner Superclass for generating necessary inputs for the lateral controllers.
+    % LocalTrajectoryPlanner Superclass for generating necessary inputs for 
+    % the lateral controllers.
     
     properties
         
     end
     
     properties(Nontunable)
-        deltaT_LC = evalin('base', 'deltaT_LC');
-        deltaT_OT = evalin('base', 'deltaT_OT');
+        deltaT_LC = evalin('base', 'deltaT_LC'); % Time for lane changing
+        deltaT_OT = evalin('base', 'deltaT_OT'); % Time for overtaking
     end
     
     % Pre-computed constants
@@ -19,13 +20,14 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         a3
         a4
         a5
+        
         % State if any maneuver should be executed
         %   0 = Stay in same lane
         %   1 = Change to left lane
         %  -1 = Change to right lane
         currentManeuver
-        % Time to start maneuver
-        t_start
+        
+        t_start % Time to start maneuver
     end
     
     methods
@@ -60,6 +62,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         function initialiseManeuver(obj, d_currnet, d_destination, maneuver, deltaManeuver, clock)
             % Initialise lane changing maneuver and calculate reference
             % trajectory
+            
             obj.calculateLaneChangingTrajectoryCoefficients(d_currnet, d_destination, deltaManeuver);
             obj.currentManeuver = maneuver; % Set maneuver to indicate lane change
             obj.t_start = clock; % Store global time when starting the maneuver
@@ -67,6 +70,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         
         function calculateLaneChangingTrajectoryCoefficients(obj, d_currnet, d_destination, deltaManeuver)
             % Calculate coefficients for minimum jerk trajectory
+            
             t_i = 0; % Start at 0 (relative time frame)
                     
             d_i =         [1  t_i   t_i^2   t_i^3    t_i^4      t_i^5]; % d_initial = d_current before lane change
