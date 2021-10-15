@@ -34,7 +34,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
                 % Calculate reference lateral position according to reference
                 % trajectory
                 t = clock - obj.t_start; 
-                d_ref = obj.getReferenceLateralPosition(t);
+                [d_ref, ~] = obj.getLateralReference(t);
             end
             
             % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?

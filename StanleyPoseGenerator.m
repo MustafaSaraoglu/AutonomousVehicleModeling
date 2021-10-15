@@ -24,7 +24,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % Perform one-time calculations, such as computing constants
         end
 
-        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLane, clock)
+        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLane, clock, velocity)
             % Implement algorithm. 
             pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Staneley Lateral Controller
             
@@ -39,14 +39,18 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
                 % Calculate reference lateral position according to reference
                 % trajectory
                 t = clock - obj.t_start;
-                d_ref = obj.getReferenceLateralPosition(t);
+                [d_ref, dDot_ref] = obj.getLateralReference(t);
+                refOrientation = atan2(dDot_ref, velocity); % MIGHT ONLY WORK FOR STRAIGHT ROADS
+            else
+                % Use road geometry as reference orientation
+                [~, refOrientation] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory);
             end
             
             % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
             s = s + 0.01; % Add <delta s>
             
             % Generate reference pose for Stanley
-            [refPos, refOrientation] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory); % Coordinate conversion function
+            [refPos, ~] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory); % Coordinate conversion function
             
             poseOut = pose';
             referencePose = [refPos(1); refPos(2); refOrientation]';

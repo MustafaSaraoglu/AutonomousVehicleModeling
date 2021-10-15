@@ -42,7 +42,7 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
                 latSpeed = obj.a1 + 2*obj.a2*t + 3*obj.a3*t.^2 + 4*obj.a4*t.^3 + 5*obj.a5*t.^4; 
                 
                 % Calculate reference lateral position
-                d_ref = obj.getReferenceLateralPosition(t);
+                [d_ref, ~] = obj.getLateralReference(t);
             else
                 latSpeed = 0;
             end

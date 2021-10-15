@@ -94,25 +94,28 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             obj.a5 = X(6);
         end   
         
-        function d_ref = getReferenceLateralPosition(obj, t)
-            % Get the reference lateral position for maneuver
+        function [d_ref, dDot_ref] = getLateralReference(obj, t)
+            % Get the reference lateral position and speed for maneuver
             
-            % Calculate d according to minimum jerk trajectory
+            % Calculate d and dDot according to minimum jerk trajectory
             d_ref = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5;
+            dDot_ref = obj.a1 + 2*obj.a2*t + 3*obj.a3*t.^2 + 4*obj.a4*t.^3 + 5*obj.a5*t.^4; 
 
             % Check whether t exceeds deltaT planned for the maneuver, in
             % this case use the center of the right/left lane as the
-            % reference lateral position instead
+            % reference lateral position and 0 as the lateral speed instead
             switch obj.currentManeuver
                 % To the left (lane changing)
                 case 1
                     if t >= obj.deltaT_LC
                         d_ref = obj.LaneWidth;
+                        dDot_ref = 0;
                     end
                 % To the right (overtaking)
                 case -1
                     if t >= obj.deltaT_OT
                         d_ref = 0;
+                        dDot_ref = 0;
                     end
             end
         end
