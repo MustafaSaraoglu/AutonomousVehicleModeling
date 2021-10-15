@@ -29,11 +29,10 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
             % Implement algorithm.
 
             % Cartesian to Frenet coordinate transformation
-            [~, d] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
-            d_ref = d;
+            [~, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
             
             % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLane, d, clock);
+            obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
             
             % Check if ego vehicle should execute maneuver
             if obj.currentManeuver
@@ -43,8 +42,7 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
                 latSpeed = obj.a1 + 2*obj.a2*t + 3*obj.a3*t.^2 + 4*obj.a4*t.^3 + 5*obj.a5*t.^4; 
                 
                 % Calculate reference lateral position
-                d = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5;
-                d_ref = obj.getReferenceLateralPosition(d, t);
+                d_ref = obj.getReferenceLateralPosition(t);
             else
                 latSpeed = 0;
             end

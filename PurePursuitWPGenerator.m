@@ -20,29 +20,27 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % Perform one-time calculations, such as computing constants
         end
 
-        function [nextWPs, d_ref] = stepImpl(obj, pose, changeLane, clock, velocity)
+        function [nextWPs, d_ref] = stepImpl(obj, pose, changeLane, clock)
             % Implement algorithm. 
 
             % Cartesian to Frenet coordinate transformation
-            [s, d] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
-            d_ref = d;
+            [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
             
             % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLane, d, clock);
+            obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
             
             % Check if ego vehicle should execute maneuver
             if obj.currentManeuver % Add <delta d>
                 % Calculate reference lateral position according to reference
                 % trajectory
-                t = clock - obj.t_start;
-                d = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5; 
-                d_ref = obj.getReferenceLateralPosition(d, t);
+                t = clock - obj.t_start; 
+                d_ref = obj.getReferenceLateralPosition(t);
             end
             
             % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
             s = s + 0.01; % Add <delta s>
             
-            nextWPs = [s, d];
+            nextWPs = [s, d_ref];
         end
 
         function resetImpl(obj)

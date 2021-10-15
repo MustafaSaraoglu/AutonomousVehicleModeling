@@ -94,11 +94,15 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             obj.a5 = X(6);
         end   
         
-        function d_ref = getReferenceLateralPosition(obj, d, t)
+        function d_ref = getReferenceLateralPosition(obj, t)
             % Get the reference lateral position for maneuver
             
-            d_ref = d;
-            % Check whether t exceeds deltaT planned for the maneuver
+            % Calculate d according to minimum jerk trajectory
+            d_ref = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5;
+
+            % Check whether t exceeds deltaT planned for the maneuver, in
+            % this case use the center of the right/left lane as the
+            % reference lateral position instead
             switch obj.currentManeuver
                 % To the left (lane changing)
                 case 1

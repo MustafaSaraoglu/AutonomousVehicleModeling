@@ -26,29 +26,27 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
 
         function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLane, clock)
             % Implement algorithm. 
-            pose(3) = rad2deg(pose(3)); % Conversion necessary fpr MATLAB Staneley Lateral Controller
+            pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Staneley Lateral Controller
             
             % Cartesian to Frenet Coordinate Transformation
-            [s, d] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
-            d_ref = d;
+            [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
             
             % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLane, d, clock);
+            obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
 
             % Check if ego vehicle should execute maneuver
             if obj.currentManeuver % Add <delta d>
                 % Calculate reference lateral position according to reference
                 % trajectory
                 t = clock - obj.t_start;
-                d = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5; 
-                d_ref = obj.getReferenceLateralPosition(d, t);
+                d_ref = obj.getReferenceLateralPosition(t);
             end
             
             % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
             s = s + 0.01; % Add <delta s>
             
             % Generate reference pose for Stanley
-            [refPos, refOrientation] = obj.Frenet2Cartesian(s, [s, d], obj.CurrentTrajectory); % Coordinate conversion function
+            [refPos, refOrientation] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory); % Coordinate conversion function
             
             poseOut = pose';
             referencePose = [refPos(1); refPos(2); refOrientation]';
