@@ -31,15 +31,19 @@ classdef CollisionDetection < matlab.System
             % Implement algorithm.           
             collisionDetected = false; 
             
-            % Check if circles around vehicles intersect
-            intersectionPoints = circcirc(poseEgo(1), poseEgo(2), obj.rEgo, poseLead(1), poseLead(2), obj.rLead);
-            
-            % Only check for collison if circles intersect
-            if ~isnan(intersectionPoints(1))
+            % Check if vehicles are close enough: d_euclidian <= (rEgo + rLead)
+            d_euclidian = obj.calculateEuclidianDistance(poseEgo(1), poseEgo(2), poseLead(1), poseLead(2));
+            if d_euclidian <= obj.rEgo + obj.rLead
                 HitboxEgo = obj.getHitbox(poseEgo, obj.dimEgo);
                 HitboxLead = obj.getHitbox(poseLead, obj.dimLead);
                 collisionDetected = obj.checkIntersection(HitboxLead, HitboxEgo);
             end
+        end
+        
+        function d_euclidian = calculateEuclidianDistance(~, x1, y1, x2, y2)
+            % Calculate Euclidian distance between two points P1(x1, y1)
+            % and P2(x2, y2)
+            d_euclidian = sqrt((x2 - x1)^2 + (y2 - y1)^2);
         end
         
         function Hitbox = getHitbox(~, pose, dim)
