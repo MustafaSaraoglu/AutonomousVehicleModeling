@@ -7,8 +7,8 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
     end
     
     properties(Nontunable)
-        deltaT_LC = evalin('base', 'deltaT_LC'); % Time for lane changing
-        deltaT_OT = evalin('base', 'deltaT_OT'); % Time for overtaking
+        durationToLeftLane = evalin('base', 'durationToLeftLane'); % Time for lane changing
+        durationToRightLane = evalin('base', 'durationToRightLane'); % Time for overtaking
     end
     
     % Pre-computed constants
@@ -49,36 +49,37 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             
             % Initialisation maneuver to right lane
             if changeLaneInfo == 1
-                obj.initialiseManeuver(d, obj.LaneWidth, changeLaneInfo, obj.deltaT_LC, clock);
+                obj.initialiseManeuver(d, obj.LaneWidth, changeLaneInfo, obj.durationToLeftLane, clock);
             % Initialisation maneuver to left lane
             elseif changeLaneInfo == -1
-                obj.initialiseManeuver(d, 0, changeLaneInfo, obj.deltaT_OT, clock);
+                obj.initialiseManeuver(d, 0, changeLaneInfo, obj.durationToRightLane, clock);
             % Stop maneuver
             elseif changeLaneInfo == 2
                 obj.currentManeuver = 0;
             end
         end
         
-        function initialiseManeuver(obj, d_currnet, d_destination, maneuver, deltaManeuver, clock)
+        function initialiseManeuver(obj, d_currnet, d_destination, maneuver, durationManeuver, clock)
             % Initialise lane changing maneuver and calculate reference
             % trajectory
             
-            obj.calculateLaneChangingTrajectoryCoefficients(d_currnet, d_destination, deltaManeuver);
+            obj.calculateLaneChangingTrajectoryCoefficients(d_currnet, d_destination, durationManeuver);
             obj.currentManeuver = maneuver; % Set maneuver to indicate lane change
             obj.t_start = clock; % Store global time when starting the maneuver
         end
         
-        function calculateLaneChangingTrajectoryCoefficients(obj, d_currnet, d_destination, deltaManeuver)
+        function calculateLaneChangingTrajectoryCoefficients(obj, d_currnet, d_destination, durationManeuver)
             % Calculate coefficients for minimum jerk trajectory
             
+            % Initial conditions
             t_i = 0; % Start at 0 (relative time frame)
                     
             d_i =         [1  t_i   t_i^2   t_i^3    t_i^4      t_i^5]; % d_initial = d_current before lane change
             d_dot_i =     [0  1     2*t_i   3*t_i^2  4*t_i^3    5*t_i^4]; %  0
             d_ddot_i =    [0  0     2       6*t_i    12*t_i^2   20*t_i^3]; %  0
 
-
-            t_f = deltaManeuver; % deltaT: time to finish maneuver
+            % Final conditions
+            t_f = durationManeuver; % deltaT: time to finish maneuver
 
             d_f =         [1  t_f   t_f^2   t_f^3    t_f^4      t_f^5]; % d_destination
             d_dot_f =     [0  1     2*t_f   3*t_f^2  4*t_f^3    5*t_f^4]; % 0
@@ -105,19 +106,19 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             d_ref = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5;
             dDot_ref = obj.a1 + 2*obj.a2*t + 3*obj.a3*t.^2 + 4*obj.a4*t.^3 + 5*obj.a5*t.^4; 
 
-            % Check whether t exceeds deltaT planned for the maneuver, in
-            % this case use the center of the right/left lane as the
-            % reference lateral position and 0 as the lateral speed instead
+            % Check whether t exceeds duration planned for the maneuver,
+            % because calculated minimum jerk trajectory is only valid for 
+            % t in [0, durationManeuver]
             switch obj.currentManeuver
-                % To the left (lane changing)
+                % To the left
                 case 1
-                    if t >= obj.deltaT_LC
+                    if t >= obj.durationToLeftLane
                         d_ref = obj.LaneWidth;
                         dDot_ref = 0;
                     end
-                % To the right (overtaking)
+                % To the right
                 case -1
-                    if t >= obj.deltaT_OT
+                    if t >= obj.durationToRightLane
                         d_ref = 0;
                         dDot_ref = 0;
                     end

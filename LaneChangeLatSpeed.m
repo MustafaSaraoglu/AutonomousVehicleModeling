@@ -29,8 +29,7 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
             % Calculate steering command and the reference lateral postion
             % by using the lateral speed
 
-            % Cartesian to Frenet coordinate transformation
-            [~, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
+            [~, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]);
             
             % Check whether to start or stop lane changing maneuver
             obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
@@ -42,7 +41,6 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
                 t = clock - obj.t_start;
                 latSpeed = obj.a1 + 2*obj.a2*t + 3*obj.a3*t.^2 + 4*obj.a4*t.^3 + 5*obj.a5*t.^4; 
                 
-                % Calculate reference lateral position
                 [d_ref, ~] = obj.getLateralReference(t);
             else
                 latSpeed = 0;

@@ -7,10 +7,10 @@ classdef CollisionDetection < matlab.System
     end
     
     properties(Nontunable)
-        rEgo = evalin('base', 'R2'); % Radius around ego vehicle rectangle representation
-        rLead = evalin('base', 'R1'); % Radius around lead vehicle rectangle representation
-        dimEgo = evalin('base', 'V2_dim'); % Dimensions (length, width) ego vehicle
-        dimLead = evalin('base', 'V1_dim') ; % Dimensions (length, width) lead vehicle
+        radiusEgo = evalin('base', 'radiusEgo'); % Radius around ego vehicle rectangle representation
+        radiusLead = evalin('base', 'radiusLead'); % Radius around lead vehicle rectangle representation
+        dimensionsEgo = evalin('base', 'dimensionsEgo'); % Dimensions (length, width) ego vehicle
+        dimensionsLead = evalin('base', 'dimensionsLead') ; % Dimensions (length, width) lead vehicle
     end
     
     properties(DiscreteState)
@@ -32,22 +32,23 @@ classdef CollisionDetection < matlab.System
             
             collisionDetected = false; 
             
-            % Check if vehicles are close enough: d_euclidian <= (rEgo + rLead)
-            d_euclidian = obj.calculateEuclidianDistance(poseEgo(1), poseEgo(2), poseLead(1), poseLead(2));
-            if d_euclidian <= obj.rEgo + obj.rLead
-                HitboxEgo = obj.getHitbox(poseEgo, obj.dimEgo);
-                HitboxLead = obj.getHitbox(poseLead, obj.dimLead);
+            % Only check if vehicles are close using euclidian distance to
+            % reduce computational resources
+            euclidianDistance = obj.calculateEuclidianDistance(poseEgo(1), poseEgo(2), poseLead(1), poseLead(2));
+            if euclidianDistance <= obj.radiusEgo + obj.radiusLead
+                HitboxEgo = obj.getHitbox(poseEgo, obj.dimensionsEgo);
+                HitboxLead = obj.getHitbox(poseLead, obj.dimensionsLead);
                 collisionDetected = obj.checkIntersection(HitboxLead, HitboxEgo);
             end
         end
         
-        function d_euclidian = calculateEuclidianDistance(~, x1, y1, x2, y2)
+        function euclidianDistance = calculateEuclidianDistance(~, x1, y1, x2, y2)
             % Calculate Euclidian distance between two points P1(x1, y1)
             % and P2(x2, y2)
-            d_euclidian = sqrt((x2 - x1)^2 + (y2 - y1)^2);
+            euclidianDistance = sqrt((x2 - x1)^2 + (y2 - y1)^2);
         end
         
-        function Hitbox = getHitbox(~, pose, dim)
+        function Hitbox = getHitbox(~, pose, dimension)
             % Get vehicle hitbox (representation as rectangle)
             
             % Vehicle pose
@@ -57,8 +58,8 @@ classdef CollisionDetection < matlab.System
 
             centerP = [x; y];
 
-            V_Length = dim(1);
-            V_Width = dim(2);
+            V_Length = dimension(1);
+            V_Width = dimension(2);
 
             % Vehicle as rectangle
             p1 = [V_Length/2; V_Width/2];

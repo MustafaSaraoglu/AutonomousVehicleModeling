@@ -29,9 +29,8 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % the current pose 
             
             pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Staneley Lateral Controller
-            
-            % Cartesian to Frenet Coordinate Transformation
-            [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
+
+            [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); 
             
             % Check whether to start or stop lane changing maneuver
             obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
@@ -42,19 +41,18 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
                 % trajectory
                 t = clock - obj.t_start;
                 [d_ref, dDot_ref] = obj.getLateralReference(t);
-                refOrientation = atan2(dDot_ref, velocity); % MIGHT ONLY WORK FOR STRAIGHT ROADS
+                refOrientation = atan2(dDot_ref, velocity); % TODO: CHECK:MIGHT ONLY WORK FOR STRAIGHT ROADS
             else
                 % Use road geometry as reference orientation
                 [~, refOrientation] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory);
             end
             
             % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
-            s = s + 0.01; % Add <delta s>
+            s = s + 0.01;
             
-            % Generate reference pose for Stanley
-            [refPos, ~] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory); % Coordinate conversion function
+            [refPos, ~] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory);
             
-            poseOut = pose';
+            poseOut = pose'; % MATLAB Staneley Lateral Controller input is [1x3]
             referencePose = [refPos(1); refPos(2); refOrientation]';
         end
 

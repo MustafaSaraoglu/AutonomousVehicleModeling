@@ -24,8 +24,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % Return the reference waypoints necessary for Pure Pursuit and
             % the reference lateral positon
 
-            % Cartesian to Frenet coordinate transformation
-            [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); % Determine current <s,d>
+            [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]);
             
             % Check whether to start or stop lane changing maneuver
             obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
@@ -39,7 +38,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             end
             
             % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
-            s = s + 0.01; % Add <delta s>
+            s = s + 0.01; 
             
             nextWPs = [s, d_ref];
         end

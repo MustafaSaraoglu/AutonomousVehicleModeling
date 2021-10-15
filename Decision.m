@@ -53,19 +53,25 @@ classdef Decision  < CoordinateTransformations
             
             obj.currentLane = 0; % Right lane
         end
-
+        
         function [changeLane, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
-            % Return command whether to change lane, the current lane state 
-            % (left, right, left to right, right to left) the and the 
-            % current driving mode (see system description)
+            % Return lane change command, the current lane state 
+            % and the current driving mode (see system description)
 
-            % Cartesian to Frenet coordinate transformation
-            [~, dEgo] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]); % Determine current <s,d>
+            [~, dEgo] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]);
 
-            % By default follow current trajectory
+            [changeLane, currentLane] = obj.setLaneChangingManeuver(deltaS, dEgo, vEgo, vLead);
+            
+            drivingMode = obj.selectDrivingMode(deltaS);
+        end
+        
+        function [changeLane, currentLane] = setLaneChangingManeuver(obj, deltaS, dEgo, vEgo, vLead)
+            % Set the command whether to start or stop a lane changing
+            % maneuver, also set the lane state accordingly
+            
+            % If there is no command to change lane, follow current trajectory
             changeLane = 0;
             
-            %% Lane changing maneuver
             switch obj.currentLane
                 % Right lane
                 case 0
@@ -94,8 +100,10 @@ classdef Decision  < CoordinateTransformations
             end
             
             currentLane = obj.currentLane;
-            
-            %% Logic for switching driving mode
+        end
+        
+        function drivingMode = selectDrivingMode(obj, deltaS)
+            % Select driving mode according to transition conditions
             
             % FreeDrive while lane changing maneuver or if leading vehicle
             % was overtaken
@@ -128,7 +136,6 @@ classdef Decision  < CoordinateTransformations
                         obj.currentDrivingMode = 2;
                     end   
             end
-            
             drivingMode = obj.currentDrivingMode;
         end
 
