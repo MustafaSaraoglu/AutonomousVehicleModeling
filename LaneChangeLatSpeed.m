@@ -25,7 +25,7 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
             obj.currentManeuver = 0; % Initially do not execute any maneuver
         end
 
-        function [d_ref, SteerCmd] = stepImpl(obj, pose, clock, changeLane, velocity)
+        function [SteerCmd, d_ref] = stepImpl(obj, pose, changeLane, clock, velocity)
             % Implement algorithm.
 
             % Cartesian to Frenet coordinate transformation

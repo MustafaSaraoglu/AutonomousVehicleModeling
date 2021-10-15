@@ -52,7 +52,16 @@ Yaw2_0 = 0;
 
 V2_0 = 15;
 
-%% Lane Changing maneuver
+%% Lateral Control
+% Modes
+PURE_PURSUIT = Simulink.Variant('MODE == 1'); % Mode for Pure Pursuit
+LATERAL_SPEED = Simulink.Variant('MODE == 2'); % Mode for computing steering command using lateral speed
+STANLEY = Simulink.Variant('MODE == 3'); % Mode for Stanley
+
+% By default use MODE 1 when opening the model
+MODE = 1;
+
+% Lane Changing maneuver
 % Time for lane changing and overtaking
 deltaT_LC = 5;
 deltaT_OT = 5;
