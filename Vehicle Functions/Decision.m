@@ -5,11 +5,16 @@ classdef Decision  < CoordinateTransformations
     %   1 = FreeDrive
     %   2 = VehicleFollowing
     %   3 = EmergencyBrake
-    % Change Lane
+    % Change Lane Cmd
     %   0 = Command to follow current trajectory (straight/lane change)
     %   1 = Command to start changing to left lane
     %  -1 = Command to start changing to right lane
     %   2 = Command to stop lane changing maneuver
+    % Current Lane
+    %   0 = On the left lane
+    %   0.5 = Going to the right lane
+    %   1 = On the right lane
+    %  -0.5 = Going to the left lane
     
     properties(Nontunable)
         
@@ -26,9 +31,10 @@ classdef Decision  < CoordinateTransformations
 
     % Pre-computed constants
     properties(Access = private)
-        currentDrivingMode % Driving mode
+        drivingModes % Possible driving modes
+        currentDrivingMode % Current driving mode
         
-        % Transition distances
+        % Transition distances for selecting driving mode
         toEmergeny
         toFreeDrive
         EmergencyToFollow
@@ -36,13 +42,18 @@ classdef Decision  < CoordinateTransformations
         
         s_threshold % Relative distance threshold to start lane changing maneuver
         
+        lanes % Possible lane states
         currentLane % Current lane state
+        
+        laneChangeCmds % Possible commands for lane changing
     end
 
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            obj.currentDrivingMode = 1;
+            obj.drivingModes = ...
+                containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
+            obj.currentDrivingMode = obj.drivingModes('FreeDrive');
 
             obj.toEmergeny = 10;
             obj.toFreeDrive = 50;
@@ -51,51 +62,52 @@ classdef Decision  < CoordinateTransformations
             
             obj.s_threshold = 40; % Constant threshold
             
-            obj.currentLane = 0; % Right lane
+            obj.lanes = ...
+                containers.Map({'RightLane', 'ToLeftLane', 'LeftLane', 'ToRightLane'}, [0, 0.5, 1, -0.5]);
+            obj.currentLane = obj.lanes('RightLane');
+            
+            obj.laneChangeCmds = ...
+                containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight', 'CmdStopLaneChange'}, [0, 1, -1, 2]);
         end
         
-        function [changeLane, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
+        function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
             % Return lane change command, the current lane state 
             % and the current driving mode (see system description)
 
             [~, dEgo] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]);
 
-            [changeLane, currentLane] = obj.setLaneChangingManeuver(deltaS, dEgo, vEgo, vLead);
+            [changeLaneCmd, currentLane] = obj.setLaneChangingManeuver(deltaS, dEgo, vEgo, vLead);
             
             drivingMode = obj.selectDrivingMode(deltaS);
         end
         
-        function [changeLane, currentLane] = setLaneChangingManeuver(obj, deltaS, dEgo, vEgo, vLead)
+        function [changeLaneCmd, currentLane] = setLaneChangingManeuver(obj, deltaS, dEgo, vEgo, vLead)
             % Set the command whether to start or stop a lane changing
             % maneuver, also set the lane state accordingly
             
             % If there is no command to change lane, follow current trajectory
-            changeLane = 0;
+            changeLaneCmd = obj.laneChangeCmds('CmdFollow');
             
             switch obj.currentLane
-                % Right lane
-                case 0
+                case obj.lanes('RightLane')
                     if vEgo > vLead && deltaS < obj.s_threshold && deltaS > 0
-                        obj.currentLane = 0.5;
-                        changeLane = 1;
+                        changeLaneCmd = obj.laneChangeCmds('CmdStartToLeft');
+                        obj.currentLane = obj.lanes('ToLeftLane');
                     end
-                % To left lane
-                case 0.5
-                    if dEgo >= obj.LaneWidth
-                        obj.currentLane = 1;
-                        changeLane = 2;
+                case obj.lanes('ToLeftLane')
+                    if dEgo >= obj.LaneWidth % Reached left lane
+                        changeLaneCmd = obj.laneChangeCmds('CmdStopLaneChange');
+                        obj.currentLane = obj.lanes('LeftLane');
                     end
-                % Left lane
-                case 1
+                case obj.lanes('LeftLane')
                     if vEgo > vLead && deltaS < -obj.s_threshold/2
-                        obj.currentLane = -0.5;
-                        changeLane = -1;
+                        changeLaneCmd = obj.laneChangeCmds('CmdStartToRight');
+                        obj.currentLane = obj.lanes('ToRightLane');
                     end
-                % To right lane
-                case -0.5
-                    if dEgo <= 0
-                        obj.currentLane = 0;
-                        changeLane = 2;
+                case obj.lanes('ToRightLane')
+                    if dEgo <= 0 % Reached right lane
+                        changeLaneCmd = obj.laneChangeCmds('CmdStopLaneChange');
+                        obj.currentLane = obj.lanes('RightLane');
                     end
             end
             
@@ -107,33 +119,30 @@ classdef Decision  < CoordinateTransformations
             
             % FreeDrive while lane changing maneuver or if leading vehicle
             % was overtaken
-            if obj.currentLane ~= 0 || deltaS < 0
-                obj.currentDrivingMode = 1;
+            if obj.currentLane ~= obj.lanes('RightLane') || deltaS < 0
+                obj.currentDrivingMode = obj.drivingModes('FreeDrive');
                 drivingMode = obj.currentDrivingMode;
                 return
             end
             
             switch obj.currentDrivingMode
-                % FreeDrive
-                case 1
+                case obj.drivingModes('FreeDrive')
                     if deltaS <= obj.FreeDriveToFollow
                         if deltaS <= obj.toEmergeny
-                            obj.currentDrivingMode = 3;
+                            obj.currentDrivingMode = obj.drivingModes('EmergencyBrake');
                         else
-                            obj.currentDrivingMode = 2;
+                            obj.currentDrivingMode = obj.drivingModes('VehicleFollowing');
                         end
                     end
-                % VehicleFollowing
-                case 2
+                case obj.drivingModes('VehicleFollowing')
                     if deltaS > obj.toFreeDrive
-                        obj.currentDrivingMode = 1;
+                        obj.currentDrivingMode = obj.drivingModes('FreeDrive');
                     elseif deltaS <= obj.toEmergeny
-                        obj.currentDrivingMode = 3;
+                        obj.currentDrivingMode = obj.drivingModes('EmergencyBrake');
                     end
-                % EmergencyBrake
-                case 3
+                case obj.drivingModes('EmergencyBrake')
                     if deltaS > obj.EmergencyToFollow
-                        obj.currentDrivingMode = 2;
+                        obj.currentDrivingMode = obj.drivingModes('VehicleFollowing');
                     end   
             end
             drivingMode = obj.currentDrivingMode;

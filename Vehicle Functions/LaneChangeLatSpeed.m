@@ -22,16 +22,17 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
+            setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [SteerCmd, d_ref] = stepImpl(obj, pose, changeLane, clock, velocity)
+        function [SteerCmd, d_ref] = stepImpl(obj, pose, changeLaneCmd, clock, velocity)
             % Calculate steering command and the reference lateral postion
             % by using the lateral speed
 
             [~, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]);
             
             % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
+            obj.checkForLaneChangingManeuver(changeLaneCmd, d_ref, clock);
             
             if obj.executeManeuver
                 % Calculate reference lateral speed according to reference

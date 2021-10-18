@@ -22,9 +22,10 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
+            setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLane, clock, velocity)
+        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, clock, velocity)
             % Return the reference lateral position, the reference pose and 
             % the current pose 
             
@@ -33,7 +34,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); 
             
             % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
+            obj.checkForLaneChangingManeuver(changeLaneCmd, d_ref, clock);
 
             if obj.executeManeuver
                 % Calculate reference lateral position according to reference

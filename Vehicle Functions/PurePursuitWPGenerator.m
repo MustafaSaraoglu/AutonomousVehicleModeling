@@ -18,16 +18,17 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
+            setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [nextWPs, d_ref] = stepImpl(obj, pose, changeLane, clock)
+        function [nextWPs, d_ref] = stepImpl(obj, pose, changeLaneCmd, clock)
             % Return the reference waypoints necessary for Pure Pursuit and
             % the reference lateral positon
 
             [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]);
             
             % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
+            obj.checkForLaneChangingManeuver(changeLaneCmd, d_ref, clock);
             
             if obj.executeManeuver 
                 % Calculate reference lateral position according to reference

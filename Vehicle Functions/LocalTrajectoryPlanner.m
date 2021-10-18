@@ -21,11 +21,15 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         a4
         a5
         
+        maneuvers % Possible maneuvers
+        
         % State if any maneuver should be executed
-        %   0 = Stay in same lane
+        %   0 = Stay on same lane
         %   1 = Change to left lane
         %  -1 = Change to right lane
         executeManeuver
+        
+        laneChangeCmds % Possible commands for lane changing
         
         t_start % Time to start maneuver
     end
@@ -41,21 +45,25 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            obj.executeManeuver = 0; % Initially do not execute any maneuver
+            obj.maneuvers = containers.Map({'StayOnLane', 'ChangeToLeftLane', 'ChangeToRightLane'}, [0, 1, -1]);
+            obj.executeManeuver = obj.maneuvers('StayOnLane'); 
+            
+            obj.laneChangeCmds = ...
+                containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight', 'CmdStopLaneChange'}, [0, 1, -1, 2]);
         end
         
-        function checkForLaneChangingManeuver(obj, changeLaneInfo, d, clock)
+        function checkForLaneChangingManeuver(obj, changeLaneCmd, d, clock)
             % Check whether to start or stop a lane changing maneuver
             
             % Initialisation maneuver to left lane
-            if changeLaneInfo == 1
-                obj.initialiseManeuver(d, obj.LaneWidth, changeLaneInfo, obj.durationToLeftLane, clock);
+            if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeft')
+                obj.initialiseManeuver(d, obj.LaneWidth, obj.maneuvers('ChangeToLeftLane'), obj.durationToLeftLane, clock);
             % Initialisation maneuver to right lane
-            elseif changeLaneInfo == -1
-                obj.initialiseManeuver(d, 0, changeLaneInfo, obj.durationToRightLane, clock);
+            elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRight')
+                obj.initialiseManeuver(d, 0, obj.maneuvers('ChangeToRightLane'), obj.durationToRightLane, clock);
             % Stop maneuver
-            elseif changeLaneInfo == 2
-                obj.executeManeuver = 0;
+            elseif changeLaneCmd == obj.laneChangeCmds('CmdStopLaneChange')
+                obj.executeManeuver = obj.maneuvers('StayOnLane');
             end
         end
         
@@ -110,14 +118,12 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             % because calculated minimum jerk trajectory is only valid for 
             % t in [0, durationManeuver]
             switch obj.executeManeuver
-                % To the left
-                case 1
+                case obj.maneuvers('ChangeToLeftLane')
                     if t >= obj.durationToLeftLane
                         d_ref = obj.LaneWidth;
                         dDot_ref = 0;
                     end
-                % To the right
-                case -1
+                case obj.maneuvers('ChangeToRightLane')
                     if t >= obj.durationToRightLane
                         d_ref = 0;
                         dDot_ref = 0;
