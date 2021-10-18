@@ -22,7 +22,6 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            obj.currentManeuver = 0; % Initially do not execute any maneuver
         end
 
         function [SteerCmd, d_ref] = stepImpl(obj, pose, changeLane, clock, velocity)
@@ -34,8 +33,7 @@ classdef LaneChangeLatSpeed < LocalTrajectoryPlanner
             % Check whether to start or stop lane changing maneuver
             obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
             
-            % Check if ego vehicle should execute maneuver
-            if obj.currentManeuver
+            if obj.executeManeuver
                 % Calculate reference lateral speed according to reference
                 % trajectory
                 t = clock - obj.t_start;

@@ -29,8 +29,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % Check whether to start or stop lane changing maneuver
             obj.checkForLaneChangingManeuver(changeLane, d_ref, clock);
             
-            % Check if ego vehicle should execute maneuver
-            if obj.currentManeuver % Add <delta d>
+            if obj.executeManeuver 
                 % Calculate reference lateral position according to reference
                 % trajectory
                 t = clock - obj.t_start; 

@@ -25,7 +25,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         %   0 = Stay in same lane
         %   1 = Change to left lane
         %  -1 = Change to right lane
-        currentManeuver
+        executeManeuver
         
         t_start % Time to start maneuver
     end
@@ -41,21 +41,21 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            obj.currentManeuver = 0; % Initially do not execute any maneuver
+            obj.executeManeuver = 0; % Initially do not execute any maneuver
         end
         
         function checkForLaneChangingManeuver(obj, changeLaneInfo, d, clock)
             % Check whether to start or stop a lane changing maneuver
             
-            % Initialisation maneuver to right lane
+            % Initialisation maneuver to left lane
             if changeLaneInfo == 1
                 obj.initialiseManeuver(d, obj.LaneWidth, changeLaneInfo, obj.durationToLeftLane, clock);
-            % Initialisation maneuver to left lane
+            % Initialisation maneuver to right lane
             elseif changeLaneInfo == -1
                 obj.initialiseManeuver(d, 0, changeLaneInfo, obj.durationToRightLane, clock);
             % Stop maneuver
             elseif changeLaneInfo == 2
-                obj.currentManeuver = 0;
+                obj.executeManeuver = 0;
             end
         end
         
@@ -64,7 +64,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             % trajectory
             
             obj.calculateLaneChangingTrajectoryCoefficients(d_currnet, d_destination, durationManeuver);
-            obj.currentManeuver = maneuver; % Set maneuver to indicate lane change
+            obj.executeManeuver = maneuver; % Set maneuver to indicate lane change to the left or right
             obj.t_start = clock; % Store global time when starting the maneuver
         end
         
@@ -109,7 +109,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             % Check whether t exceeds duration planned for the maneuver,
             % because calculated minimum jerk trajectory is only valid for 
             % t in [0, durationManeuver]
-            switch obj.currentManeuver
+            switch obj.executeManeuver
                 % To the left
                 case 1
                     if t >= obj.durationToLeftLane
