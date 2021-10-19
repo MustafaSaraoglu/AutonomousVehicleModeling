@@ -57,8 +57,7 @@ vEgo_0 = 15; % Initial longitudinal velocity [m/s]
 %% Lateral Control
 % Modes for lateral control
 PURE_PURSUIT = Simulink.Variant('lateralMode == 1'); % Mode for Pure Pursuit
-LATERAL_SPEED = Simulink.Variant('lateralMode == 2'); % Mode for computing steering command using lateral speed
-STANLEY = Simulink.Variant('lateralMode == 3'); % Mode for Stanley
+STANLEY = Simulink.Variant('lateralMode == 2'); % Mode for Stanley
 
 % By default use MODE 1 when opening the model
 lateralMode = 1;
