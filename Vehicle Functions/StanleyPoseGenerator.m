@@ -50,10 +50,10 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
             s = s + 0.01;
             
-            [refPos, ~] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory);
-            
+            [refPos, ~] = obj.Frenet2Cartesian(0, [s, d_ref], obj.CurrentTrajectory);
+
             poseOut = pose'; % MATLAB Staneley Lateral Controller input is [1x3]
-            referencePose = [refPos(1); refPos(2); refOrientation]';
+            referencePose = [refPos(1); refPos(2); rad2deg(refOrientation)]'; % Degree for MATLAB Stanley Controller
         end
 
         function resetImpl(obj)
