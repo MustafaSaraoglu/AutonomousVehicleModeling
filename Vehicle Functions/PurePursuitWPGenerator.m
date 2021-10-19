@@ -40,7 +40,9 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
             s = s + 0.01; 
             
-            nextWPs = [s, d_ref];
+            [refPos, ~] = obj.Frenet2Cartesian(0, [s, d_ref], obj.CurrentTrajectory);
+            
+            nextWPs = refPos;
         end
 
         function resetImpl(obj)
