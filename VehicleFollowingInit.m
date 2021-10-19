@@ -55,15 +55,8 @@ yawEgo_0 = 0; % Initial steering angle [rad]
 vEgo_0 = 15; % Initial longitudinal velocity [m/s]
 
 %% Lateral Control
-% Modes for lateral control
-PURE_PURSUIT = Simulink.Variant('lateralMode == 1'); % Mode for Pure Pursuit
-STANLEY = Simulink.Variant('lateralMode == 2'); % Mode for Stanley
-
-% By default use MODE 1 when opening the model
-lateralMode = 1;
-
 % Lane Changing maneuver
-durationToLeftLane = 5; % Time for lane changing [s]
-durationToRightLane = 5; % Time for overtaking [s]
+durationToLeftLane = 5; % Time for lane changing (to left lane) [s]
+durationToRightLane = 5; % Time for overtaking (to right lane) [s]
 
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
