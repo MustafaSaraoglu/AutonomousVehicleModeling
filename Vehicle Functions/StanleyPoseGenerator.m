@@ -1,24 +1,6 @@
 classdef StanleyPoseGenerator < LocalTrajectoryPlanner
     % Provide reference pose for Stanely Lateral Controller
 
-    % Public, tunable properties
-    properties
-
-    end
-    
-    properties(Nontunable)
-        
-    end
-
-    properties(DiscreteState)
-
-    end
-
-    % Pre-computed constants
-    properties(Access = private)
-
-    end
-
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
@@ -55,12 +37,8 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             poseOut = pose'; % MATLAB Staneley Lateral Controller input is [1x3]
             referencePose = [refPos(1); refPos(2); rad2deg(refOrientation)]'; % Degree for MATLAB Stanley Controller
         end
-
-        function resetImpl(obj)
-            % Initialize / reset discrete-state properties
-        end
         
-        function [out1, out2, out3] = getOutputSizeImpl(obj)
+        function [out1, out2, out3] = getOutputSizeImpl(~)
             % Return size for each output port
             out1 = [1 1];
             out2 = [1 3];
@@ -70,7 +48,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % out = propagatedInputSize(obj,1);
         end
 
-        function [out1, out2, out3] = getOutputDataTypeImpl(obj)
+        function [out1, out2, out3] = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out1 = "double";
             out2 = "double";
@@ -80,7 +58,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % out = propagatedInputDataType(obj,1);
         end
 
-        function [out1, out2, out3] = isOutputComplexImpl(obj)
+        function [out1, out2, out3] = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out1 = false;
             out2 = false;
@@ -90,7 +68,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function [out1, out2, out3] = isOutputFixedSizeImpl(obj)
+        function [out1, out2, out3] = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out1 = true;
             out2 = true;

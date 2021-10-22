@@ -1,25 +1,7 @@
 classdef RelativeFrenetDistance < CoordinateTransformations
     % Calculate the relative distance according to Frenet delta_s
 
-    % Public, tunable properties
-    properties
-
-    end
-
-    properties(DiscreteState)
-
-    end
-
-    % Pre-computed constants
-    properties(Access = private)
-
-    end
-
     methods(Access = protected)
-        function setupImpl(obj)
-            % Perform one-time calculations, such as computing constants
-        end
-
         function deltaS = stepImpl(obj, poseLead, poseEgo)
             % Return relative distance using Frenet coordinate system 
             
@@ -28,12 +10,8 @@ classdef RelativeFrenetDistance < CoordinateTransformations
             
             deltaS = sLead - sEgo;
         end
-
-        function resetImpl(obj)
-            % Initialize / reset discrete-state properties
-        end
         
-        function out = getOutputSizeImpl(obj)
+        function out = getOutputSizeImpl(~)
             % Return size for each output port
             out = [1 1];
 
@@ -41,7 +19,7 @@ classdef RelativeFrenetDistance < CoordinateTransformations
             % out = propagatedInputSize(obj,1);
         end
 
-        function out = getOutputDataTypeImpl(obj)
+        function out = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out = "double";
 
@@ -49,7 +27,7 @@ classdef RelativeFrenetDistance < CoordinateTransformations
             % out = propagatedInputDataType(obj,1);
         end
 
-        function out = isOutputComplexImpl(obj)
+        function out = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out = false;
 
@@ -57,7 +35,7 @@ classdef RelativeFrenetDistance < CoordinateTransformations
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function out = isOutputFixedSizeImpl(obj)
+        function out = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out = true;
 

@@ -1,23 +1,9 @@
 classdef CoordinateTransformations < matlab.System & handle & matlab.system.mixin.Propagates & matlab.system.mixin.SampleTime & matlab.system.mixin.CustomIcon
     % Perform transformations from Cartesian to Frenet and vice versa
-
-    % Public, tunable properties
-    properties
-
-    end
     
     properties(Nontunable)
-        LaneWidth = evalin('base', 'laneWidth'); % Width of road lane
-        CurrentTrajectory = evalin('base', 'roadTrajectory'); % Road trajectory according to MOBATSim map format
-    end
-
-    properties(DiscreteState)
-
-    end
-
-    % Pre-computed constants
-    properties(Access = protected)
-
+        LaneWidth % Width of road lane
+        CurrentTrajectory % Road trajectory according to MOBATSim map format
     end
 
     methods
@@ -28,17 +14,13 @@ classdef CoordinateTransformations < matlab.System & handle & matlab.system.mixi
         end
     end
     
-    methods(Access = protected)
-        function setupImpl(obj)
-            % Perform one-time calculations, such as computing constants
-        end
-        
+    methods(Static)      
         %% FROM MOBATSim
-        function [updatedPathPoints_Cartesian, yawAngle_in_Cartesian] = Frenet2Cartesian(~,s,laneChangingPoints,currentTrajectory)
+        function [updatedPathPoints_Cartesian, yawAngle_in_Cartesian] = Frenet2Cartesian(s,laneChangingPoints,currentTrajectory)
             route = currentTrajectory([1,2],[1,3]).*[1 -1;1 -1];
             radian = currentTrajectory(3,1);
             cclockwise = currentTrajectory(4,1);
-            yawAngle_in_Cartesian = 0; % NOT IMPLEMENTED FOR CURVED ROAD?
+            yawAngle_in_Cartesian = []; % NOT IMPLEMENTED FOR CURVED ROAD?
             
             if radian == 0 % Straight road
                 route_Vector = route(2,:)-route(1,:);
@@ -68,7 +50,7 @@ classdef CoordinateTransformations < matlab.System & handle & matlab.system.mixi
             end
         end
         
-        function [s, d] = Cartesian2Frenet(~, currentTrajectory, Vpos_C)
+        function [s, d] = Cartesian2Frenet(currentTrajectory, Vpos_C)
             %Transform a position in Cartesian coordinate into Frenet coordinate
             
             %Function Inputs:
@@ -119,8 +101,5 @@ classdef CoordinateTransformations < matlab.System & handle & matlab.system.mixi
         end
         
         %%
-        function resetImpl(obj)
-            % Initialize / reset discrete-state properties
-        end
     end
 end

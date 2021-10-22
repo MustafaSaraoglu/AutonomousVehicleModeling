@@ -1,20 +1,6 @@
 classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
     % Provide reference waypoints for Pure Pursuit
-
-    % Public, tunable properties
-    properties
-
-    end
-
-    properties(DiscreteState)
-
-    end
-
-    % Pre-computed constants
-    properties(Access = private)
-
-    end
-
+    
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
@@ -44,12 +30,8 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             
             nextWPs = refPos;
         end
-
-        function resetImpl(obj)
-            % Initialize / reset discrete-state properties
-        end
         
-        function [out1, out2] = getOutputSizeImpl(obj)
+        function [out1, out2] = getOutputSizeImpl(~)
             % Return size for each output port
             out1 = [1 2];
             out2 = [1 1];
@@ -58,7 +40,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % out = propagatedInputSize(obj,1);
         end
 
-        function [out1, out2] = getOutputDataTypeImpl(obj)
+        function [out1, out2] = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out1 = "double";
             out2 = "double";
@@ -67,7 +49,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % out = propagatedInputDataType(obj,1);
         end
 
-        function [out1, out2] = isOutputComplexImpl(obj)
+        function [out1, out2] = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out1 = false;
             out2 = false;
@@ -76,7 +58,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function [out1, out2] = isOutputFixedSizeImpl(obj)
+        function [out1, out2] = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out1 = true;
             out2 = true;

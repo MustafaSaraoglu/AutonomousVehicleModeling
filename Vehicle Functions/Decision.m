@@ -15,19 +15,6 @@ classdef Decision  < CoordinateTransformations
     %   0.5 = Going to the right lane
     %   1 = On the right lane
     %  -0.5 = Going to the left lane
-    
-    properties(Nontunable)
-        
-    end
-    
-    % Public, tunable properties
-    properties
-
-    end
-
-    properties(DiscreteState)
-
-    end
 
     % Pre-computed constants
     properties(Access = private)
@@ -35,7 +22,7 @@ classdef Decision  < CoordinateTransformations
         currentDrivingMode % Current driving mode
         
         % Transition distances for selecting driving mode
-        toEmergeny
+        toEmergency
         toFreeDrive
         EmergencyToFollow
         FreeDriveToFollow
@@ -55,7 +42,7 @@ classdef Decision  < CoordinateTransformations
                 containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
             obj.currentDrivingMode = obj.drivingModes('FreeDrive');
 
-            obj.toEmergeny = 10;
+            obj.toEmergency = 10;
             obj.toFreeDrive = 50;
             obj.EmergencyToFollow = 15;
             obj.FreeDriveToFollow = 39;
@@ -128,7 +115,7 @@ classdef Decision  < CoordinateTransformations
             switch obj.currentDrivingMode
                 case obj.drivingModes('FreeDrive')
                     if deltaS <= obj.FreeDriveToFollow
-                        if deltaS <= obj.toEmergeny
+                        if deltaS <= obj.toEmergency
                             obj.currentDrivingMode = obj.drivingModes('EmergencyBrake');
                         else
                             obj.currentDrivingMode = obj.drivingModes('VehicleFollowing');
@@ -137,7 +124,7 @@ classdef Decision  < CoordinateTransformations
                 case obj.drivingModes('VehicleFollowing')
                     if deltaS > obj.toFreeDrive
                         obj.currentDrivingMode = obj.drivingModes('FreeDrive');
-                    elseif deltaS <= obj.toEmergeny
+                    elseif deltaS <= obj.toEmergency
                         obj.currentDrivingMode = obj.drivingModes('EmergencyBrake');
                     end
                 case obj.drivingModes('EmergencyBrake')
@@ -147,12 +134,8 @@ classdef Decision  < CoordinateTransformations
             end
             drivingMode = obj.currentDrivingMode;
         end
-
-        function resetImpl(obj)
-            % Initialize / reset discrete-state properties
-        end
         
-        function [out1, out2, out3] = getOutputSizeImpl(obj)
+        function [out1, out2, out3] = getOutputSizeImpl(~)
             % Return size for each output port
             out1 = [1 1];
             out2 = [1 1];
@@ -162,7 +145,7 @@ classdef Decision  < CoordinateTransformations
             % out = propagatedInputSize(obj,1);
         end
 
-        function [out1, out2, out3] = getOutputDataTypeImpl(obj)
+        function [out1, out2, out3] = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out1 = "double";
             out2 = "double";
@@ -172,7 +155,7 @@ classdef Decision  < CoordinateTransformations
             % out = propagatedInputDataType(obj,1);
         end
 
-        function [out1, out2, out3] = isOutputComplexImpl(obj)
+        function [out1, out2, out3] = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out1 = false;
             out2 = false;
@@ -182,7 +165,7 @@ classdef Decision  < CoordinateTransformations
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function [out1, out2, out3] = isOutputFixedSizeImpl(obj)
+        function [out1, out2, out3] = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out1 = true;
             out2 = true;

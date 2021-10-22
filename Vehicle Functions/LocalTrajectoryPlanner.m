@@ -2,13 +2,9 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
     % LocalTrajectoryPlanner Superclass for generating necessary inputs for 
     % the lateral controllers.
     
-    properties
-        
-    end
-    
     properties(Nontunable)
-        durationToLeftLane = evalin('base', 'durationToLeftLane'); % Time for lane changing
-        durationToRightLane = evalin('base', 'durationToRightLane'); % Time for overtaking
+        durationToLeftLane % Time for lane changing
+        durationToRightLane % Time for overtaking
     end
     
     % Pre-computed constants

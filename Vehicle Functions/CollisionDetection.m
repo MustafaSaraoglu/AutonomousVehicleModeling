@@ -1,54 +1,21 @@
 classdef CollisionDetection < matlab.System
     % Check for vehicle collisions
-
-    % Public, tunable properties
-    properties
-
-    end
     
     properties(Nontunable)
-        radiusEgo = evalin('base', 'radiusEgo'); % Radius around ego vehicle rectangle representation
-        radiusLead = evalin('base', 'radiusLead'); % Radius around lead vehicle rectangle representation
-        dimensionsEgo = evalin('base', 'dimensionsEgo'); % Dimensions (length, width) ego vehicle
-        dimensionsLead = evalin('base', 'dimensionsLead') ; % Dimensions (length, width) lead vehicle
+        radiusEgo % Radius around ego vehicle rectangle representation
+        radiusLead % Radius around lead vehicle rectangle representation
+        dimensionsEgo % Dimensions (length, width) ego vehicle
+        dimensionsLead % Dimensions (length, width) lead vehicle
     end
     
-    properties(DiscreteState)
-
-    end
-
-    % Pre-computed constants
-    properties(Access = private)
-
-    end
-
-    methods(Access = protected)
-        function setupImpl(obj)
-            % Perform one-time calculations, such as computing constants
-        end
-
-        function collisionDetected = stepImpl(obj, poseLead, poseEgo)
-            % Check whether a collision between two vehicles is detected
-            
-            collisionDetected = false; 
-            
-            % Only check if vehicles are close using euclidian distance to
-            % reduce computational resources
-            euclidianDistance = obj.calculateEuclidianDistance(poseEgo(1), poseEgo(2), poseLead(1), poseLead(2));
-            if euclidianDistance <= obj.radiusEgo + obj.radiusLead
-                HitboxEgo = obj.getHitbox(poseEgo, obj.dimensionsEgo);
-                HitboxLead = obj.getHitbox(poseLead, obj.dimensionsLead);
-                collisionDetected = obj.checkIntersection(HitboxLead, HitboxEgo);
-            end
-        end
-        
-        function euclidianDistance = calculateEuclidianDistance(~, x1, y1, x2, y2)
+    methods(Static)    
+        function euclidianDistance = calculateEuclidianDistance(x1, y1, x2, y2)
             % Calculate Euclidian distance between two points P1(x1, y1)
             % and P2(x2, y2)
             euclidianDistance = sqrt((x2 - x1)^2 + (y2 - y1)^2);
         end
         
-        function Hitbox = getHitbox(~, pose, dimension)
+        function Hitbox = getHitbox(pose, dimension)
             % Get vehicle hitbox (representation as rectangle)
             
             % Vehicle pose
@@ -80,8 +47,8 @@ classdef CollisionDetection < matlab.System
             Hitbox = [p1r p2r p3r p4r];
         end
         
-        %% FROM MOBATSim
-        function CollisionFlag = checkIntersection(~, BoxA, BoxB)
+        % FROM MOBATSim
+        function CollisionFlag = checkIntersection(BoxA, BoxB)
             % Check if there is an intersection between two rectangle hitboxes
             CornersAx = transpose(BoxA(1,:));
             CornersAy = transpose(BoxA(2,:));
@@ -106,13 +73,25 @@ classdef CollisionDetection < matlab.System
                 end 
             end
         end
-        
-        %%
-        function resetImpl(obj)
-            % Initialize / reset discrete-state properties
+    end
+
+    methods(Access = protected)
+        function collisionDetected = stepImpl(obj, poseLead, poseEgo)
+            % Check whether a collision between two vehicles is detected
+            
+            collisionDetected = false; 
+            
+            % Only check if vehicles are close using euclidian distance to
+            % reduce computational resources
+            euclidianDistance = obj.calculateEuclidianDistance(poseEgo(1), poseEgo(2), poseLead(1), poseLead(2));
+            if euclidianDistance <= obj.radiusEgo + obj.radiusLead
+                HitboxEgo = obj.getHitbox(poseEgo, obj.dimensionsEgo);
+                HitboxLead = obj.getHitbox(poseLead, obj.dimensionsLead);
+                collisionDetected = obj.checkIntersection(HitboxLead, HitboxEgo);
+            end
         end
         
-        function out = getOutputSizeImpl(obj)
+        function out = getOutputSizeImpl(~)
             % Return size for each output port
             out = [1 1];
 
@@ -120,7 +99,7 @@ classdef CollisionDetection < matlab.System
             % out = propagatedInputSize(obj,1);
         end
 
-        function out = getOutputDataTypeImpl(obj)
+        function out = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out = "boolean";
 
@@ -128,7 +107,7 @@ classdef CollisionDetection < matlab.System
             % out = propagatedInputDataType(obj,1);
         end
 
-        function out = isOutputComplexImpl(obj)
+        function out = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out = false;
 
@@ -136,7 +115,7 @@ classdef CollisionDetection < matlab.System
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function out = isOutputFixedSizeImpl(obj)
+        function out = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out = true;
 
