@@ -2,49 +2,19 @@ classdef CollisionDetection < matlab.System
     % Check for vehicle collisions
     
     properties(Nontunable)
-        radiusEgo % Radius around ego vehicle rectangle representation
-        radiusLead % Radius around lead vehicle rectangle representation
         dimensionsEgo % Dimensions (length, width) ego vehicle
+        wheelBaseEgo % Wheel base ego vehicle
+        radiusEgo % Radius around ego vehicle rectangle representation
         dimensionsLead % Dimensions (length, width) lead vehicle
+        wheelBaseLead % Wheel base lead vehicle
+        radiusLead % Radius around lead vehicle rectangle representation
     end
     
     methods(Static)    
-        function euclidianDistance = calculateEuclidianDistance(x1, y1, x2, y2)
+        function euclidianDistance = calculateEuclidianDistance(P1, P2)
             % Calculate Euclidian distance between two points P1(x1, y1)
             % and P2(x2, y2)
-            euclidianDistance = sqrt((x2 - x1)^2 + (y2 - y1)^2);
-        end
-        
-        function Hitbox = getHitbox(pose, dimension)
-            % Get vehicle hitbox (representation as rectangle)
-            
-            % Vehicle pose
-            x = pose(1);
-            y = pose(2);
-            yaw = pose(3);
-
-            centerP = [x; y];
-
-            V_Length = dimension(1);
-            V_Width = dimension(2);
-
-            % Vehicle as rectangle
-            p1 = [V_Length/2; V_Width/2];
-            p2 = [V_Length/2; -V_Width/2];
-            p3 = [-V_Length/2; -V_Width/2];
-            p4 = [-V_Length/2; V_Width/2];
-
-            % Rotation of rectangle points
-            Rmatrix = [cos(yaw) -sin(yaw);
-                       sin(yaw)  cos(yaw)];
-
-            p1r = centerP + Rmatrix*p1;
-            p2r = centerP + Rmatrix*p2;
-            p3r = centerP + Rmatrix*p3;
-            p4r = centerP + Rmatrix*p4;
-
-            % Connect points to rectangle
-            Hitbox = [p1r p2r p3r p4r];
+            euclidianDistance = sqrt((P2(1) - P1(1))^2 + (P2(2) - P2(2))^2);
         end
         
         % FROM MOBATSim
@@ -81,12 +51,14 @@ classdef CollisionDetection < matlab.System
             
             collisionDetected = false; 
             
-            % Only check if vehicles are close using euclidian distance to
-            % reduce computational resources
-            euclidianDistance = obj.calculateEuclidianDistance(poseEgo(1), poseEgo(2), poseLead(1), poseLead(2));
+            centerPointEgo = getVehicleCenterPoint(poseEgo, obj.wheelBaseEgo);
+            centerPointLead = getVehicleCenterPoint(poseLead, obj.wheelBaseLead);
+            
+            % Only check for collision if vehicles are close 
+            euclidianDistance = obj.calculateEuclidianDistance(centerPointEgo, centerPointLead);
             if euclidianDistance <= obj.radiusEgo + obj.radiusLead
-                HitboxEgo = obj.getHitbox(poseEgo, obj.dimensionsEgo);
-                HitboxLead = obj.getHitbox(poseLead, obj.dimensionsLead);
+                [~, ~, HitboxEgo] = createRectangleVehicle(centerPointEgo, poseEgo(3), obj.dimensionsEgo);
+                [~, ~, HitboxLead] = createRectangleVehicle(centerPointLead, poseLead(3), obj.dimensionsLead);
                 collisionDetected = obj.checkIntersection(HitboxLead, HitboxEgo);
             end
         end

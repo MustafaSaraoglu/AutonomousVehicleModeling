@@ -10,7 +10,7 @@ v_max = 30; % Maximum allowed longitudinal velocity [m/s]
 a_min = -3; % Minimum allowed longitudinal acceleration [m/s^2]
 a_max = 2; % Maximum allowed longitudinal acceleration [m/s^2]
 
-yawAngle_max = pi/4; % Maximum allowed steering angle [rad]
+steerAngle_max = pi/4; % Maximum allowed steering angle [rad]
 
 %% Road
 laneWidth = 3.7; % lane width [m]
@@ -27,7 +27,8 @@ d_max = 3/2*laneWidth; % Left lateral lane boundary [m]
 
 %% Leading Vehicle
 % Vehicle's geometry
-dimensionsLead = [6; 2];  % length and width [[m]; [m]]
+dimensionsLead = [6; 2];  % Length and width [[m]; [m]]
+wheelBaseLead = 4; % Wheel base [m]
 % Radius of circle around rectangle vehicle representation for collision 
 % detection [m]
 radiusLead = sqrt((dimensionsLead(1)/2)^2 + (dimensionsLead(2)/2)^2); 
@@ -44,6 +45,7 @@ vLead_ref = 10; % Reference longitudinal velocity [m/s]
 %% Ego Vehicle
 % Vehicle's geometry
 dimensionsEgo = [4; 2];  % length and width [[m]; [m]]
+wheelBaseEgo = 3; % Wheel base [m]
 % Radius of circle around rectangle vehicle representation for collision 
 % detection [m]
 radiusEgo = sqrt((dimensionsEgo(1)/2)^2 + (dimensionsEgo(2)/2)^2); 
