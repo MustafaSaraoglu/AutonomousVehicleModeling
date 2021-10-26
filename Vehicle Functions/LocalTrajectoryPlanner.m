@@ -1,6 +1,6 @@
 classdef LocalTrajectoryPlanner < CoordinateTransformations
-    % LocalTrajectoryPlanner Superclass for generating necessary inputs for 
-    % the lateral controllers.
+% LocalTrajectoryPlanner Superclass for generating necessary inputs for 
+% the lateral controllers.
     
     properties(Nontunable)
         durationToLeftLane % Time for lane changing
@@ -49,7 +49,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         end
         
         function checkForLaneChangingManeuver(obj, changeLaneCmd, s, d, velocity)
-            % Check whether to start or stop a lane changing maneuver
+        % Check whether to start or stop a lane changing maneuver
             
             % Initialisation maneuver to left lane
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeft')
@@ -64,15 +64,14 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         end
         
         function initialiseManeuver(obj, s_current, d_currnet, d_destination, maneuver, durationManeuver, velocity)
-            % Initialise lane changing maneuver and calculate reference
-            % trajectory
+        % Initialise lane changing maneuver and calculate reference trajectory
             
             obj.calculateLaneChangingTrajectory(s_current, d_currnet, d_destination, durationManeuver, velocity);
             obj.executeManeuver = maneuver; % Set maneuver to indicate lane change to the left or right
         end
         
         function calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, velocity)
-            % Calculate minimum jerk trajectory for lane changing maneuver
+        % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
             t_i = 0; % Start at 0 (relative time frame)
@@ -101,7 +100,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             obj.a4 = X(5);
             obj.a5 = X(6);
             
-            % Calculate trajectory for complete maneuver
+            % Calculate trajectory for whole maneuver
             t_discrete = 0:0.01:durationManeuver;
             
             s_trajectory = s_current + velocity*t_discrete;
@@ -113,7 +112,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         end   
         
         function [s_ref, d_ref, dDot_ref] = getNextTrajectoryWaypoint(obj, s)
-            % Get the next waypoint for trajectory according to current s
+        % Get the next waypoint for trajectory according to current s
             
             IDs_passedWPs = s >= obj.maneuverTrajectory(:, 1);
             ID_nextWP = sum(IDs_passedWPs) + 1;

@@ -1,10 +1,10 @@
 classdef RelativeFrenetDistance < CoordinateTransformations
-    % Calculate the relative distance according to Frenet delta_s
+% Calculate the relative distance according to Frenet delta_s
 
     methods(Access = protected)
         function deltaS = stepImpl(obj, poseLead, poseEgo)
-            % Return relative distance using Frenet coordinate system 
-            
+        % Return relative distance using Frenet coordinate system
+        
             [sEgo, ~] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]); 
             [sLead, ~] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseLead(1) poseLead(2)]); 
             

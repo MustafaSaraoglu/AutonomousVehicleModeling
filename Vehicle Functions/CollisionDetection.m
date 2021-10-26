@@ -1,5 +1,5 @@
 classdef CollisionDetection < matlab.System
-    % Check for vehicle collisions
+% Check for vehicle collisions
     
     properties(Nontunable)
         dimensionsEgo % Dimensions (length, width) ego vehicle
@@ -12,8 +12,8 @@ classdef CollisionDetection < matlab.System
     
     methods(Static)    
         function euclidianDistance = calculateEuclidianDistance(P1, P2)
-            % Calculate Euclidian distance between two points P1(x1, y1)
-            % and P2(x2, y2)
+        % Calculate Euclidian distance between two points P1(x1, y1) and P2(x2, y2)
+            
             euclidianDistance = sqrt((P2(1) - P1(1))^2 + (P2(2) - P2(2))^2);
         end
         
@@ -47,8 +47,7 @@ classdef CollisionDetection < matlab.System
 
     methods(Access = protected)
         function collisionDetected = stepImpl(obj, poseLead, poseEgo)
-            % Check whether a collision between two vehicles is detected
-            
+        % Check whether a collision between two vehicles is detected
             collisionDetected = false; 
             
             centerPointEgo = getVehicleCenterPoint(poseEgo, obj.wheelBaseEgo);

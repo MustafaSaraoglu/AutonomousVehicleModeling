@@ -1,20 +1,20 @@
 classdef Decision  < CoordinateTransformations
-    % Select driving mode and decide if to execute lane changing maneuver
-    %
-    % Driving Mode
-    %   1 = FreeDrive
-    %   2 = VehicleFollowing
-    %   3 = EmergencyBrake
-    % Change Lane Cmd
-    %   0 = Command to follow current trajectory (straight/lane change)
-    %   1 = Command to start changing to left lane
-    %  -1 = Command to start changing to right lane
-    %   2 = Command to stop lane changing maneuver
-    % Current Lane
-    %   0 = On the left lane
-    %   0.5 = Going to the right lane
-    %   1 = On the right lane
-    %  -0.5 = Going to the left lane
+% Select driving mode and decide if to execute lane changing maneuver
+%
+% Driving Mode
+%   1 = FreeDrive
+%   2 = VehicleFollowing
+%   3 = EmergencyBrake
+% Change Lane Cmd
+%   0 = Command to follow current trajectory (straight/lane change)
+%   1 = Command to start changing to left lane
+%  -1 = Command to start changing to right lane
+%   2 = Command to stop lane changing maneuver
+% Current Lane
+%   0 = On the left lane
+%   0.5 = Going to the right lane
+%   1 = On the right lane
+%  -0.5 = Going to the left lane
 
     % Pre-computed constants
     properties(Access = private)
@@ -58,9 +58,8 @@ classdef Decision  < CoordinateTransformations
         end
         
         function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
-            % Return lane change command, the current lane state 
-            % and the current driving mode (see system description)
-
+        % Return lane change command, the current lane state and the current driving mode (see system description)
+        
             [~, dEgo] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]);
 
             [changeLaneCmd, currentLane] = obj.setLaneChangingManeuver(deltaS, dEgo, vEgo, vLead);
@@ -69,8 +68,7 @@ classdef Decision  < CoordinateTransformations
         end
         
         function [changeLaneCmd, currentLane] = setLaneChangingManeuver(obj, deltaS, dEgo, vEgo, vLead)
-            % Set the command whether to start or stop a lane changing
-            % maneuver, also set the lane state accordingly
+        % Set the command whether to start or stop a lane changing maneuver, also set the lane state accordingly
             
             % If there is no command to change lane, follow current trajectory
             changeLaneCmd = obj.laneChangeCmds('CmdFollow');
@@ -102,7 +100,7 @@ classdef Decision  < CoordinateTransformations
         end
         
         function drivingMode = selectDrivingMode(obj, deltaS)
-            % Select driving mode according to transition conditions
+        % Select driving mode according to transition conditions
             
             % FreeDrive while lane changing maneuver or if leading vehicle
             % was overtaken

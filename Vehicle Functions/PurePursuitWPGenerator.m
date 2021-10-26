@@ -1,5 +1,5 @@
 classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
-    % Provide reference waypoints for Pure Pursuit
+% Provide reference waypoints for Pure Pursuit
     
     methods(Access = protected)
         function setupImpl(obj)
@@ -8,8 +8,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
         end
 
         function [nextWPs, d_ref] = stepImpl(obj, pose, changeLaneCmd, velocity)
-            % Return the reference waypoints necessary for Pure Pursuit and
-            % the reference lateral positon
+        % Return the reference waypoints necessary for Pure Pursuit and the reference lateral positon
 
             [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]);
             

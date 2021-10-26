@@ -1,5 +1,5 @@
 classdef StanleyPoseGenerator < LocalTrajectoryPlanner
-    % Provide reference pose for Stanely Lateral Controller
+% Provide reference pose for Stanely Lateral Controller
 
     methods(Access = protected)
         function setupImpl(obj)
@@ -8,9 +8,8 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
         end
 
         function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, velocity)
-            % Return the reference lateral position, the reference pose and 
-            % the current pose 
-            
+        % Return the reference lateral position, the reference pose and the current pose  
+        
             pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Staneley Lateral Controller
 
             [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); 

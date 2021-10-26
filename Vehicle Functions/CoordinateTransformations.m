@@ -1,5 +1,5 @@
 classdef CoordinateTransformations < matlab.System & handle & matlab.system.mixin.Propagates & matlab.system.mixin.SampleTime & matlab.system.mixin.CustomIcon
-    % Perform transformations from Cartesian to Frenet and vice versa
+% Perform transformations from Cartesian to Frenet and vice versa
     
     properties(Nontunable)
         LaneWidth % Width of road lane

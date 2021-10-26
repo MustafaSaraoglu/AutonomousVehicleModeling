@@ -1,5 +1,5 @@
 function [corners_x, corners_y, Hitbox] = createRectangleVehicle(centerPoint, yaw, dim)
-    % Vehicle representation as rectangle using center point
+% Vehicle representation as rectangle using center point
 
     V_Length = dim(1);
     V_Width = dim(2);
