@@ -27,7 +27,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         
         laneChangeCmds % Possible commands for lane changing
         
-        t_start % Time to start maneuver
+        maneuverTrajectory % Planned trajectory for maneuver (x, y, lateral velociy)
     end
     
     methods
@@ -48,32 +48,31 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
                 containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight', 'CmdStopLaneChange'}, [0, 1, -1, 2]);
         end
         
-        function checkForLaneChangingManeuver(obj, changeLaneCmd, d, clock)
+        function checkForLaneChangingManeuver(obj, changeLaneCmd, s, d, velocity)
             % Check whether to start or stop a lane changing maneuver
             
             % Initialisation maneuver to left lane
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeft')
-                obj.initialiseManeuver(d, obj.LaneWidth, obj.maneuvers('ChangeToLeftLane'), obj.durationToLeftLane, clock);
+                obj.initialiseManeuver(s, d, obj.LaneWidth, obj.maneuvers('ChangeToLeftLane'), obj.durationToLeftLane, velocity);
             % Initialisation maneuver to right lane
             elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRight')
-                obj.initialiseManeuver(d, 0, obj.maneuvers('ChangeToRightLane'), obj.durationToRightLane, clock);
+                obj.initialiseManeuver(s, d, 0, obj.maneuvers('ChangeToRightLane'), obj.durationToRightLane, velocity);
             % Stop maneuver
             elseif changeLaneCmd == obj.laneChangeCmds('CmdStopLaneChange')
                 obj.executeManeuver = obj.maneuvers('StayOnLane');
             end
         end
         
-        function initialiseManeuver(obj, d_currnet, d_destination, maneuver, durationManeuver, clock)
+        function initialiseManeuver(obj, s_current, d_currnet, d_destination, maneuver, durationManeuver, velocity)
             % Initialise lane changing maneuver and calculate reference
             % trajectory
             
-            obj.calculateLaneChangingTrajectoryCoefficients(d_currnet, d_destination, durationManeuver);
+            obj.calculateLaneChangingTrajectory(s_current, d_currnet, d_destination, durationManeuver, velocity);
             obj.executeManeuver = maneuver; % Set maneuver to indicate lane change to the left or right
-            obj.t_start = clock; % Store global time when starting the maneuver
         end
         
-        function calculateLaneChangingTrajectoryCoefficients(obj, d_currnet, d_destination, durationManeuver)
-            % Calculate coefficients for minimum jerk trajectory
+        function calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, velocity)
+            % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
             t_i = 0; % Start at 0 (relative time frame)
@@ -101,30 +100,33 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             obj.a3 = X(4);
             obj.a4 = X(5);
             obj.a5 = X(6);
+            
+            % Calculate trajectory for complete maneuver
+            t_discrete = 0:0.01:durationManeuver;
+            
+            s_trajectory = s_current + velocity*t_discrete;
+            d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
+            dDot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
+%             positionCartesianTrajectory = obj.Frenet2Cartesian(0, [s_trajectory' d_trajectory'], obj.CurrentTrajectory);
+            
+            obj.maneuverTrajectory = [s_trajectory', d_trajectory',  dDot_trajectory'];
         end   
         
-        function [d_ref, dDot_ref] = getLateralReference(obj, t)
-            % Get the reference lateral position and speed for maneuver
+        function [s_ref, d_ref, dDot_ref] = getNextTrajectoryWaypoint(obj, s)
+            % Get the next waypoint for trajectory according to current s
             
-            % Calculate d and dDot according to minimum jerk trajectory
-            d_ref = obj.a0 + obj.a1*t + obj.a2*t.^2 + obj.a3*t.^3 + obj.a4*t.^4 + obj.a5*t.^5;
-            dDot_ref = obj.a1 + 2*obj.a2*t + 3*obj.a3*t.^2 + 4*obj.a4*t.^3 + 5*obj.a5*t.^4; 
-
-            % Check whether t exceeds duration planned for the maneuver,
-            % because calculated minimum jerk trajectory is only valid for 
-            % t in [0, durationManeuver]
-            switch obj.executeManeuver
-                case obj.maneuvers('ChangeToLeftLane')
-                    if t >= obj.durationToLeftLane
-                        d_ref = obj.LaneWidth;
-                        dDot_ref = 0;
-                    end
-                case obj.maneuvers('ChangeToRightLane')
-                    if t >= obj.durationToRightLane
-                        d_ref = 0;
-                        dDot_ref = 0;
-                    end
+            IDs_passedWPs = s >= obj.maneuverTrajectory(:, 1);
+            ID_nextWP = sum(IDs_passedWPs) + 1;
+            
+            if ID_nextWP > length(obj.maneuverTrajectory)
+                s_ref = s + 0.01; % No more waypoints in list: waypoint ahead on the same lane
+                ID_nextWP = length(obj.maneuverTrajectory);
+            else
+                s_ref = obj.maneuverTrajectory(ID_nextWP, 1);
             end
+
+            d_ref = obj.maneuverTrajectory(ID_nextWP, 2);
+            dDot_ref = obj.maneuverTrajectory(ID_nextWP, 3);
         end
     end
 end

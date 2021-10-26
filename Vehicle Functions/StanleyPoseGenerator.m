@@ -7,7 +7,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, clock, velocity)
+        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, velocity)
             % Return the reference lateral position, the reference pose and 
             % the current pose 
             
@@ -16,23 +16,18 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); 
             
             % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLaneCmd, d_ref, clock);
+            obj.checkForLaneChangingManeuver(changeLaneCmd, s, d_ref, velocity);
 
             if obj.executeManeuver
-                % Calculate reference lateral position according to reference
-                % trajectory
-                t = clock - obj.t_start;
-                [d_ref, dDot_ref] = obj.getLateralReference(t);
+                [s_ref, d_ref, dDot_ref] = obj.getNextTrajectoryWaypoint(s);
                 refOrientation = atan2(dDot_ref, velocity); % TODO: CHECK:MIGHT ONLY WORK FOR STRAIGHT ROADS
             else
+                s_ref = s + 0.01; % Waypoint ahead on the same lane
                 % Use road geometry as reference orientation
-                [~, refOrientation] = obj.Frenet2Cartesian(s, [s, d_ref], obj.CurrentTrajectory);
+                [~, refOrientation] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.CurrentTrajectory);
             end
             
-            % TODO: NECESSARY TO CONSIDER TIME AND CURRENT VELOCITY?
-            s = s + 0.01;
-            
-            [refPos, ~] = obj.Frenet2Cartesian(0, [s, d_ref], obj.CurrentTrajectory);
+            [refPos, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.CurrentTrajectory);
 
             poseOut = pose'; % MATLAB Staneley Lateral Controller input is [1x3]
             referencePose = [refPos(1); refPos(2); rad2deg(refOrientation)]'; % Degree for MATLAB Stanley Controller
