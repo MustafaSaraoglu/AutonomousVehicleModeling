@@ -7,21 +7,18 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [nextWPs, d_ref] = stepImpl(obj, pose, changeLaneCmd, velocity)
+        function [nextWPs, d_ref] = stepImpl(obj, pose, changeLaneCmd, currentLane, velocity)
         % Return the reference waypoints necessary for Pure Pursuit and the reference lateral positon
 
-            [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]);
+            [s, d] = obj.Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
-            % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLaneCmd, s, d_ref, velocity);
+            trajectoryFrenet = obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
+%             plotTraj = trajectoryFrenet(1:75:end, :);
+%             plot(plotTraj(:, 1), plotTraj(:, 2), 'Color', 'green');
             
-            if obj.executeManeuver 
-                [s_ref, d_ref, ~] = obj.getNextTrajectoryWaypoint(s);
-            else
-                s_ref = s + 0.01; % Waypoint ahead on the same lane
-            end
+            [s_ref, d_ref, ~] = obj.getNextTrajectoryWaypoint(s);
             
-            [refPos, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.CurrentTrajectory);
+            [refPos, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.RoadTrajectory);
             
             nextWPs = refPos;
         end

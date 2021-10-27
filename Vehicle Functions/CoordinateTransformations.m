@@ -2,8 +2,8 @@ classdef CoordinateTransformations < matlab.System & handle & matlab.system.mixi
 % Perform transformations from Cartesian to Frenet and vice versa
     
     properties(Nontunable)
-        LaneWidth % Width of road lane
-        CurrentTrajectory % Road trajectory according to MOBATSim map format
+        LaneWidth % Width of road lane [m]
+        RoadTrajectory % Road trajectory according to MOBATSim map format
     end
 
     methods

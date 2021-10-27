@@ -60,7 +60,7 @@ classdef Decision  < CoordinateTransformations
         function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
         % Return lane change command, the current lane state and the current driving mode (see system description)
         
-            [~, dEgo] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [poseEgo(1) poseEgo(2)]);
+            [~, dEgo] = obj.Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
 
             [changeLaneCmd, currentLane] = obj.setLaneChangingManeuver(deltaS, dEgo, vEgo, vLead);
             

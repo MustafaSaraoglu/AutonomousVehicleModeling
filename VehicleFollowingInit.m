@@ -62,3 +62,5 @@ durationToLeftLane = 5; % Time for lane changing (to left lane) [s]
 durationToRightLane = 5; % Time for overtaking (to right lane) [s]
 
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
+
+timeHorizon = 3; % Time horizon for trajectory genereation [s]

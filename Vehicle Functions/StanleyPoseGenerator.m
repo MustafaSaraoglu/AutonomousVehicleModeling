@@ -1,5 +1,18 @@
 classdef StanleyPoseGenerator < LocalTrajectoryPlanner
 % Provide reference pose for Stanely Lateral Controller
+    
+    properties(Nontunable)
+        wheelBase % Wheel base vehicle
+    end
+    
+    methods(Static)
+        function closestPoint = getClosestPointToTrajectory(point, trajectory)
+        % Calculate which point on a trajectory is closest to a given point
+            
+            [~, idx] = min(sum((trajectory - point).^2, 2));
+            closestPoint = trajectory(idx, :);
+        end
+    end
 
     methods(Access = protected)
         function setupImpl(obj)
@@ -7,29 +20,40 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, velocity)
+        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, currentLane, velocity)
         % Return the reference lateral position, the reference pose and the current pose  
-        
-            pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Staneley Lateral Controller
-
-            [s, d_ref] = obj.Cartesian2Frenet(obj.CurrentTrajectory, [pose(1) pose(2)]); 
             
-            % Check whether to start or stop lane changing maneuver
-            obj.checkForLaneChangingManeuver(changeLaneCmd, s, d_ref, velocity);
+            [s, d] = obj.Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
+            
+            trajectoryFrenet = obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
+%             plotTraj = trajectoryFrenet(1:75:end, :);
+%             plot(plotTraj(:, 1), plotTraj(:, 2), 'Color', 'green');
+            
+            [s_ref, d_ref] = obj.getReferenceStanley(pose, trajectoryFrenet);
 
             if obj.executeManeuver
-                [s_ref, d_ref, dDot_ref] = obj.getNextTrajectoryWaypoint(s);
+                [~, ~, dDot_ref] = obj.getNextTrajectoryWaypoint(s_ref);
                 refOrientation = atan2(dDot_ref, velocity); % TODO: CHECK:MIGHT ONLY WORK FOR STRAIGHT ROADS
             else
-                s_ref = s + 0.01; % Waypoint ahead on the same lane
-                % Use road geometry as reference orientation
-                [~, refOrientation] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.CurrentTrajectory);
+                [~, refOrientation] = obj.Frenet2Cartesian(0, [s, d_ref], obj.RoadTrajectory);
             end
             
-            [refPos, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.CurrentTrajectory);
-
+            [refPos, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.RoadTrajectory);
+            
+            [~, d_ref, ~] = obj.getNextTrajectoryWaypoint(s); % d_ref according to current pose and not according to rear axle
+            
+            pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Staneley Lateral Controller
             poseOut = pose'; % MATLAB Staneley Lateral Controller input is [1x3]
+            
             referencePose = [refPos(1); refPos(2); rad2deg(refOrientation)]'; % Degree for MATLAB Stanley Controller
+        end
+        
+        function [s_ref, d_ref] = getReferenceStanley(obj, pose, trajectoryFrenet)
+            % Reference is the center of the front axle
+            centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
+            trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
+            referencePositionCartesian = obj.getClosestPointToTrajectory(centerFrontAxle', trajectoryCartesian);
+            [s_ref, d_ref] = obj.Cartesian2Frenet(obj.RoadTrajectory, referencePositionCartesian); 
         end
         
         function [out1, out2, out3] = getOutputSizeImpl(~)
