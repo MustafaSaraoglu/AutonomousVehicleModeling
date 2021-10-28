@@ -6,6 +6,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         durationToLeftLane % Time for lane changing [s]
         durationToRightLane % Time for overtaking [s]
         timeHorizon % Time horizon for trajectory genereation [s]
+        Ts % Sampling time for trajectory generation [s]
     end
     
     % Pre-computed constants
@@ -17,9 +18,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         a3
         a4
         a5
-        
-        Ts % Sampling time for trajectory generation [s]
-        
+           
         trajectoryReferenceLength % Number of points for trajectory generation
         
         residualLaneChangingTrajectory % Store residual lane changing trajectory if timeHorizon is to small to fit whole trajectory
@@ -36,7 +35,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         
         laneChangeCmds % Possible commands for lane changing
 
-        currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates
+        currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates [s, d, dDot]
     end
     
     methods
@@ -59,7 +58,6 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             obj.lanes = ...
                 containers.Map({'RightLane', 'ToLeftLane', 'LeftLane', 'ToRightLane'}, [0, 0.5, 1, -0.5]);
             
-            obj.Ts = 0.01;
             obj.trajectoryReferenceLength = obj.timeHorizon/obj.Ts;
             
             obj.currentTrajectoryFrenet = zeros(obj.timeHorizon/obj.Ts, 3);
@@ -75,14 +73,14 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
                 d_goal = obj.LaneWidth;
             end
             
-            legthDifference = 0;
+            lengthDifference = 0;
             if changeLaneCmd
                 obj.checkForLaneChangingManeuver(changeLaneCmd, s, d, v_average); 
-                legthDifference = obj.trajectoryReferenceLength - size(obj.currentTrajectoryFrenet, 1);
-                if legthDifference < 0
+                lengthDifference = obj.trajectoryReferenceLength - size(obj.currentTrajectoryFrenet, 1);
+                if lengthDifference < 0
                     obj.residualLaneChangingTrajectory = obj.currentTrajectoryFrenet(obj.trajectoryReferenceLength+1:end, :);
                     obj.currentTrajectoryFrenet = obj.currentTrajectoryFrenet(1:obj.trajectoryReferenceLength, :);
-                    legthDifference = 0;
+                    lengthDifference = 0;
                 end
             end
             
@@ -91,9 +89,9 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             IDs_passed = s >= obj.currentTrajectoryFrenet(:, 1);
             ID_current = sum(IDs_passed);
             
-            if ID_current > 1 || legthDifference
+            if ID_current > 1 || lengthDifference
                 obj.currentTrajectoryFrenet = obj.currentTrajectoryFrenet(ID_current:end, :);
-                pointsToAdd = ID_current - 1 + legthDifference;
+                pointsToAdd = ID_current - 1 + lengthDifference;
                 durationToAdd = pointsToAdd*obj.Ts;
                 
                 if ~isempty(obj.residualLaneChangingTrajectory)
@@ -191,7 +189,19 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             s_trajectory = s_current + v_average*t_discrete;
             d_trajectory = d_current*ones(1, length(t_discrete));
             
-            straightTrajectoryFrenet = [s_trajectory', d_trajectory',  zeros(length(t_discrete), 1)];
+            straightTrajectoryFrenet = [s_trajectory', d_trajectory',  zeros(length(t_discrete), 1)]; % TODO: dDot probably incorrect for curved road
+        end
+        
+        function trajectoryToPlot = getTrajectoryForPlotting(obj, trajectoryCartesian)
+        % Return trajectory with reduced samples for plotting  
+            
+            trajectoryToPlot = trajectoryCartesian;
+            % TODO: Find a way to output variable size
+%             if obj.executeManeuver
+%                 trajectoryToPlot = [trajectoryCartesian(1:obj.timeHorizon*10:end, 1:2); trajectoryCartesian(end, 1:2)]; % Reduce points to plot
+%             else
+%                 trajectoryToPlot = [trajectoryCartesian(1, 1:2); trajectoryCartesian(end, 1:2)]; % For straight line two points are sufficient
+%             end
         end
         
         function [s_ref, d_ref, dDot_ref] = getNextTrajectoryWaypoint(obj, s)

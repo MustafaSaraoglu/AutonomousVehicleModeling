@@ -20,19 +20,19 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [d_ref, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, currentLane, velocity)
-        % Return the reference lateral position, the reference pose and the current pose  
+        function [d_ref, trajectoryToPlot, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, currentLane, velocity)
+        % Return the reference lateral position, the reference trajectory to plot, the reference pose and the current pose  
             
             [s, d] = obj.Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
             trajectoryFrenet = obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
-%             plotTraj = trajectoryFrenet(1:75:end, :);
-%             plot(plotTraj(:, 1), plotTraj(:, 2), 'Color', 'green');
+            trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
+            trajectoryToPlot = getTrajectoryForPlotting(obj, trajectoryCartesian);
             
-            [s_ref, d_ref] = obj.getReferenceStanley(pose, trajectoryFrenet);
+            [s_ref, d_ref] = obj.getReferenceStanley(pose, trajectoryCartesian);
 
             if obj.executeManeuver
-                [~, ~, dDot_ref] = obj.getNextTrajectoryWaypoint(s_ref);
+                [~, ~, dDot_ref] = obj.getNextTrajectoryWaypoint(s_ref); % TODO: Get orientation directly from trajectory 
                 refOrientation = atan2(dDot_ref, velocity); % TODO: CHECK:MIGHT ONLY WORK FOR STRAIGHT ROADS
             else
                 [~, refOrientation] = obj.Frenet2Cartesian(0, [s, d_ref], obj.RoadTrajectory);
@@ -48,49 +48,56 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             referencePose = [refPos(1); refPos(2); rad2deg(refOrientation)]'; % Degree for MATLAB Stanley Controller
         end
         
-        function [s_ref, d_ref] = getReferenceStanley(obj, pose, trajectoryFrenet)
+        function [s_ref, d_ref] = getReferenceStanley(obj, pose, trajectoryCartesian)
+        % Get the reference position for Stanley in Frenet coordinates    
+            
             % Reference is the center of the front axle
             centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
-            trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
             referencePositionCartesian = obj.getClosestPointToTrajectory(centerFrontAxle', trajectoryCartesian);
             [s_ref, d_ref] = obj.Cartesian2Frenet(obj.RoadTrajectory, referencePositionCartesian); 
         end
         
-        function [out1, out2, out3] = getOutputSizeImpl(~)
+        function [out1, out2, out3, out4] = getOutputSizeImpl(obj)
             % Return size for each output port
+            lengthTrajectory = obj.timeHorizon/obj.Ts;
+            
             out1 = [1 1];
-            out2 = [1 3];
+            out2 = [lengthTrajectory 2];
             out3 = [1 3];
+            out4 = [1 3];
 
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);
         end
 
-        function [out1, out2, out3] = getOutputDataTypeImpl(~)
+        function [out1, out2, out3, out4] = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out1 = "double";
             out2 = "double";
             out3 = "double";
+            out4 = "double";
 
             % Example: inherit data type from first input port
             % out = propagatedInputDataType(obj,1);
         end
 
-        function [out1, out2, out3] = isOutputComplexImpl(~)
+        function [out1, out2, out3, out4] = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out1 = false;
             out2 = false;
             out3 = false;
+            out4 = false;
 
             % Example: inherit complexity from first input port
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function [out1, out2, out3] = isOutputFixedSizeImpl(~)
+        function [out1, out2, out3, out4] = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out1 = true;
             out2 = true;
             out3 = true;
+            out4 = true;
 
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
