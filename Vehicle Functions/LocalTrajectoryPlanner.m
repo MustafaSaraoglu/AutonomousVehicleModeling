@@ -192,7 +192,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             straightTrajectoryFrenet = [s_trajectory', d_trajectory',  zeros(length(t_discrete), 1)]; % TODO: dDot probably incorrect for curved road
         end
         
-        function trajectoryToPlot = getTrajectoryForPlotting(obj, trajectoryCartesian)
+        function trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian)
         % Return trajectory with reduced samples for plotting  
             
             trajectoryToPlot = trajectoryCartesian;

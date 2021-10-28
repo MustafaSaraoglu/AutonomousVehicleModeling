@@ -27,12 +27,12 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             trajectoryFrenet = obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
             trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
-            trajectoryToPlot = getTrajectoryForPlotting(obj, trajectoryCartesian);
+            trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian);
             
             [s_ref, d_ref] = obj.getReferenceStanley(pose, trajectoryCartesian);
 
             if obj.executeManeuver
-                [~, ~, dDot_ref] = obj.getNextTrajectoryWaypoint(s_ref); % TODO: Get orientation directly from trajectory 
+                [~, ~, dDot_ref] = obj.getNextTrajectoryWaypoint(s_ref); % TODO: Get orientation directly from trajectory atan2(delta_y,delta_x) for small Ts?
                 refOrientation = atan2(dDot_ref, velocity); % TODO: CHECK:MIGHT ONLY WORK FOR STRAIGHT ROADS
             else
                 [~, refOrientation] = obj.Frenet2Cartesian(0, [s, d_ref], obj.RoadTrajectory);
