@@ -196,7 +196,8 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             
             numberWPsMax = size(obj.currentTrajectoryFrenet(ID_nextWP:end, 1), 1);
             if (numberWPs <= 0) || (numberWPs > numberWPsMax)
-                error('Number of waypoints is not valid'); % For debugging
+                fprintf('Number of Waypoints must be greater than 0 and smaller than %d \n', numberWPsMax);
+                error('Number of waypoints is not valid');
             end
             
             s_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 1);
