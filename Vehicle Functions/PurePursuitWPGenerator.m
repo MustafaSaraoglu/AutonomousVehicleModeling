@@ -14,7 +14,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             
             trajectoryFrenet = obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
             trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
-            trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian);
+            trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane);
             
             [s_ref, d_ref, ~] = obj.getNextTrajectoryWaypoint(s);
             

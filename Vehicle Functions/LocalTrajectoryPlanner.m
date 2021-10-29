@@ -208,15 +208,25 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             end
         end
         
+        function laneCenterReached = isReachedLaneCenter(obj, currentLane)
+        % Return if the vehicle has reached the center of one lane
+            
+            laneCenterReached = false;
+            if currentLane == obj.lanes('RightLane') || currentLane == obj.lanes('LeftLane')
+                laneCenterReached = true;
+            end    
+        end
+        
         function trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane)
         % Return trajectory in Cartesian coordinates with reduced samples for plotting  
             
             trajectoryToPlot = trajectoryCartesian;
             % TODO: Find a way to output variable size
-%             if currentLane == obj.lanes('ToLeftLane') || currentLane == obj.lanes('ToRightLane')
+%             if obj.isReachedLaneCenter(currentLane)
 %                 trajectoryToPlot = [trajectoryCartesian(1:obj.timeHorizon*10:end, 1:2); trajectoryCartesian(end, 1:2)]; % Reduce points to plot
 %             else
 %                 trajectoryToPlot = [trajectoryCartesian(1, 1:2); trajectoryCartesian(end, 1:2)]; % For straight line two points are sufficient
+                % TODO: What about curved lanes?
 %             end
         end
     end
