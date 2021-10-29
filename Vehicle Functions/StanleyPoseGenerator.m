@@ -6,7 +6,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
     end
     
     methods(Static)
-        function [closestPoint, idxInTrajectory] = getClosestPointToTrajectory(point, trajectory)
+        function [closestPoint, idxInTrajectory] = getClosestPointOnTrajectory(point, trajectory)
         % Calculate which point on a trajectory is closest to a given point
             
             [~, idxInTrajectory] = min(sum((trajectory - point).^2, 2));
@@ -48,7 +48,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             % Reference is the center of the front axle
             centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
-            [referencePositionCartesian, idx] = obj.getClosestPointToTrajectory(centerFrontAxle', trajectoryCartesian);
+            [referencePositionCartesian, idx] = obj.getClosestPointOnTrajectory(centerFrontAxle', trajectoryCartesian);
             delta_position = (trajectoryCartesian(idx+1, :) - trajectoryCartesian(idx-1, :))'; % [delta_x; delta_y]
             refOrientationCartesian = atan2(delta_position(2), delta_position(1));
             

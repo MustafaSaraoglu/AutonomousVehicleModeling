@@ -59,49 +59,42 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         function trajectoryFrenet = planTrajectory(obj, changeLaneCmd, currentLane, s, d, v_average)
         % Plan trajectory for the next obj.timeHorizon seconds in Frenet coordinates
             
-            d_destination = 0; % Reference lane
-            if currentLane == obj.lanes('ToLeftLane') || currentLane == obj.lanes('LeftLane')
-                d_destination = obj.LaneWidth;
-            end
-            
-            lengthDifference = 0;
-            if changeLaneCmd
+            lengthDifference = 0; % Difference in length between current trajectory and reference trajectory
+            if changeLaneCmd 
                 laneChangingTrajectoryFrenet = obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, v_average); 
-                lengthDifference = obj.trajectoryReferenceLength - size(laneChangingTrajectoryFrenet, 1);
-                if lengthDifference < 0 % Divide into current and residual lane changing trajectory
-                    obj.currentTrajectoryFrenet = laneChangingTrajectoryFrenet(1:obj.trajectoryReferenceLength, :);
-                    obj.residualLaneChangingTrajectory = laneChangingTrajectoryFrenet(obj.trajectoryReferenceLength+1:end, :);
-                    lengthDifference = 0;
-                else
-                    obj.currentTrajectoryFrenet = laneChangingTrajectoryFrenet;
-                end
+                lengthDifference = obj.divideLaneChangingTrajectory(laneChangingTrajectoryFrenet);
             end
             
-            s_last = obj.currentTrajectoryFrenet(end, 1);
+            obj.updateCurrentTrajectory(s, currentLane, v_average, lengthDifference);
             
-            IDs_passed = s >= obj.currentTrajectoryFrenet(:, 1);
-            ID_current = sum(IDs_passed);
+            trajectoryFrenet = obj.currentTrajectoryFrenet;
+        end
+        
+        function lengthDifference = divideLaneChangingTrajectory(obj, laneChangingTrajectory)
+        % Divide provided lane changing trajectory into current trajectory and residual lane changing trajectory 
+        % and return the difference in length between the new current trajectory and the reference trajectory
+        
+            lengthDifference = obj.trajectoryReferenceLength - size(laneChangingTrajectory, 1);
+            if lengthDifference < 0 
+                % Divide into current trajectory and residual lane changing trajectory
+                obj.currentTrajectoryFrenet = laneChangingTrajectory(1:obj.trajectoryReferenceLength, :);
+                obj.residualLaneChangingTrajectory = laneChangingTrajectory(obj.trajectoryReferenceLength+1:end, :);
+                lengthDifference = 0; 
+            else
+                obj.currentTrajectoryFrenet = laneChangingTrajectory;
+            end
+        end
+        
+        function updateCurrentTrajectory(obj, s_current, currentLane, v_average, lengthDifference)
+        % Remove passed waypoints and add new ones, always keep the same trajectory length
             
-            if ID_current > 1 || lengthDifference
+            ID_current = sum(s_current >= obj.currentTrajectoryFrenet(:, 1));
+        
+            if ID_current > 1 || lengthDifference 
                 obj.currentTrajectoryFrenet = obj.currentTrajectoryFrenet(ID_current:end, :);
                 pointsToAdd = ID_current - 1 + lengthDifference;
-                durationToAdd = pointsToAdd*obj.Ts;
                 
-                if ~isempty(obj.residualLaneChangingTrajectory)
-                    if pointsToAdd >= size(obj.residualLaneChangingTrajectory, 1)
-                        addTrajectory = obj.residualLaneChangingTrajectory;
-                        
-                        durationToAdd = (pointsToAdd - size(obj.residualLaneChangingTrajectory, 1))*obj.Ts;
-                        
-                        addTrajectory = [addTrajectory; obj.calculateStraightTrajectory(s_last, d_destination, v_average, durationToAdd)];
-                        obj.residualLaneChangingTrajectory = [];
-                    else
-                        addTrajectory = obj.residualLaneChangingTrajectory(1:pointsToAdd, :);
-                        obj.residualLaneChangingTrajectory = obj.residualLaneChangingTrajectory(pointsToAdd+1:end ,:);
-                    end
-                else
-                    addTrajectory = obj.calculateStraightTrajectory(s_last, d_destination, v_average, durationToAdd);
-                end
+                addTrajectory = obj.calculateTrajectoryToAdd(currentLane, v_average, pointsToAdd);
 
                 obj.currentTrajectoryFrenet = [obj.currentTrajectoryFrenet; addTrajectory];
             end
@@ -109,8 +102,28 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             if size(obj.currentTrajectoryFrenet, 1) ~= obj.trajectoryReferenceLength 
                 error('Trajectory length is incorrect'); % For debugging
             end
+        end
+        
+        function addTrajectory = calculateTrajectoryToAdd(obj, currentLane, v_average, pointsToAdd)
+        % Calculate trajectory that needs to be added to the current trajectory in order to get the correct reference trajectory length 
             
-            trajectoryFrenet = obj.currentTrajectoryFrenet;
+            s_lastElement = obj.currentTrajectoryFrenet(end, 1);
+            d_destination = obj.getLateralDestination(currentLane);
+        
+            if isempty(obj.residualLaneChangingTrajectory)
+                durationToAdd = pointsToAdd*obj.Ts;
+                addTrajectory = obj.calculateStraightTrajectory(s_lastElement, d_destination, v_average, durationToAdd);
+            elseif pointsToAdd >= size(obj.residualLaneChangingTrajectory, 1)
+                addTrajectory = obj.residualLaneChangingTrajectory;
+
+                durationToAdd = (pointsToAdd - size(obj.residualLaneChangingTrajectory, 1))*obj.Ts;
+
+                addTrajectory = [addTrajectory; obj.calculateStraightTrajectory(s_lastElement, d_destination, v_average, durationToAdd)];
+                obj.residualLaneChangingTrajectory = [];
+            else
+                addTrajectory = obj.residualLaneChangingTrajectory(1:pointsToAdd, :);
+                obj.residualLaneChangingTrajectory = obj.residualLaneChangingTrajectory(pointsToAdd+1:end ,:);
+            end
         end
         
         function laneChangingTrajectoryFrenet = calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, v_average)
@@ -176,8 +189,27 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             straightTrajectoryFrenet = [s_trajectory', d_trajectory',  zeros(length(t_discrete), 1)]; % TODO: dDot probably incorrect for curved road
         end
         
+        function [s_ref, d_ref, dDot_ref] = getNextTrajectoryWaypoint(obj, s)
+        % Get the next waypoint for trajectory according to current s
+        
+            ID_nextWP = sum(s >= obj.currentTrajectoryFrenet(:, 1)) + 1;
+            
+            s_ref = obj.currentTrajectoryFrenet(ID_nextWP, 1);
+            d_ref = obj.currentTrajectoryFrenet(ID_nextWP, 2);
+            dDot_ref = obj.currentTrajectoryFrenet(ID_nextWP, 3);
+        end
+        
+        function d_destination = getLateralDestination(obj, currentLane)
+        % Get the reference lateral destination (either right or left lane)
+        
+            d_destination = 0;
+            if currentLane == obj.lanes('ToLeftLane') || currentLane == obj.lanes('LeftLane')
+                d_destination = obj.LaneWidth;
+            end
+        end
+        
         function trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane)
-        % Return trajectory with reduced samples for plotting  
+        % Return trajectory in Cartesian coordinates with reduced samples for plotting  
             
             trajectoryToPlot = trajectoryCartesian;
             % TODO: Find a way to output variable size
@@ -186,17 +218,6 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
 %             else
 %                 trajectoryToPlot = [trajectoryCartesian(1, 1:2); trajectoryCartesian(end, 1:2)]; % For straight line two points are sufficient
 %             end
-        end
-        
-        function [s_ref, d_ref, dDot_ref] = getNextTrajectoryWaypoint(obj, s)
-        % Get the next waypoint for trajectory according to current s
-            
-            IDs_passedWPs = s >= obj.currentTrajectoryFrenet(:, 1);
-            ID_nextWP = sum(IDs_passedWPs) + 1;
-            
-            s_ref = obj.currentTrajectoryFrenet(ID_nextWP, 1);
-            d_ref = obj.currentTrajectoryFrenet(ID_nextWP, 2);
-            dDot_ref = obj.currentTrajectoryFrenet(ID_nextWP, 3);
         end
     end
 end
