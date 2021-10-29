@@ -6,11 +6,11 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
     end
     
     methods(Static)
-        function closestPoint = getClosestPointToTrajectory(point, trajectory)
+        function [closestPoint, idxInTrajectory] = getClosestPointToTrajectory(point, trajectory)
         % Calculate which point on a trajectory is closest to a given point
             
-            [~, idx] = min(sum((trajectory - point).^2, 2));
-            closestPoint = trajectory(idx, :);
+            [~, idxInTrajectory] = min(sum((trajectory - point).^2, 2));
+            closestPoint = trajectory(idxInTrajectory, :);
         end
     end
 
@@ -27,34 +27,32 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             trajectoryFrenet = obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
             trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
-            trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian);
-            
-            [s_ref, d_ref] = obj.getReferenceStanley(pose, trajectoryCartesian);
+            trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane);
 
-            if obj.executeManeuver
-                [~, ~, dDot_ref] = obj.getNextTrajectoryWaypoint(s_ref); % TODO: Get orientation directly from trajectory atan2(delta_y,delta_x) for small Ts?
-                refOrientation = atan2(dDot_ref, velocity); % TODO: CHECK:MIGHT ONLY WORK FOR STRAIGHT ROADS
-            else
-                [~, refOrientation] = obj.Frenet2Cartesian(0, [s, d_ref], obj.RoadTrajectory);
-            end
-            
-            [refPos, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.RoadTrajectory);
+% TODO: Correct dDot_ref/ orientation... Get orientation directly from trajectory atan2(delta_y,delta_x) for small Ts?         
+%             referencePose = obj.getReferencePoseStanley(pose, trajectoryCartesian);
+%             [s_ref, ~, ~]obj.Cartesian2Frenet(obj.RoadTrajectory, [referencePose(1) referencePose(2)]);
+%             dDot_ref = trajectoryFrenet(trajectoryFrenet == s_ref, 3);
+%             refOrientation = atan2(dDot_ref, velocity); % TODO: CHECK:MIGHT ONLY WORK FOR STRAIGHT ROADS
             
             [~, d_ref, ~] = obj.getNextTrajectoryWaypoint(s); % d_ref according to current pose and not according to rear axle
             
-            pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Staneley Lateral Controller
-            poseOut = pose'; % MATLAB Staneley Lateral Controller input is [1x3]
+            referencePose = obj.getReferencePoseStanley(pose, trajectoryCartesian); 
             
-            referencePose = [refPos(1); refPos(2); rad2deg(refOrientation)]'; % Degree for MATLAB Stanley Controller
+            pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Stanley Lateral Controller
+            poseOut = pose'; % MATLAB Stanley Lateral Controller input is [1x3]
         end
         
-        function [s_ref, d_ref] = getReferenceStanley(obj, pose, trajectoryCartesian)
-        % Get the reference position for Stanley in Frenet coordinates    
+        function referencePoseCartesian = getReferencePoseStanley(obj, pose, trajectoryCartesian)
+        % Get the reference position for Stanley in Cartesian coordinates    
             
             % Reference is the center of the front axle
             centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
-            referencePositionCartesian = obj.getClosestPointToTrajectory(centerFrontAxle', trajectoryCartesian);
-            [s_ref, d_ref] = obj.Cartesian2Frenet(obj.RoadTrajectory, referencePositionCartesian); 
+            [referencePositionCartesian, idx] = obj.getClosestPointToTrajectory(centerFrontAxle', trajectoryCartesian);
+            delta_position = (trajectoryCartesian(idx+1, :) - trajectoryCartesian(idx-1, :))'; % [delta_x; delta_y]
+            refOrientationCartesian = atan2(delta_position(2), delta_position(1));
+            
+            referencePoseCartesian = [referencePositionCartesian, rad2deg(refOrientationCartesian)]; % Degree for MATLAB Stanley Controller
         end
         
         function [out1, out2, out3, out4] = getOutputSizeImpl(obj)
@@ -102,5 +100,14 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
         end
+
+%         function sts = getSampleTimeImpl(obj)
+%             % Define sample time type and parameters
+%             %  sts = obj.createSampleTime("Type", "Inherited");
+% 
+%             % Example: specify discrete sample time
+%             sts = obj.createSampleTime("Type", "Discrete", ...
+%                 "SampleTime", 'inherited');
+%         end      
     end
 end

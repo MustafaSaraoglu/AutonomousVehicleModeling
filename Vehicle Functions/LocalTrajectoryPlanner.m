@@ -27,12 +27,6 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         
         lanes % Possible lane states
         
-        % State if any maneuver should be executed
-        %   0 = Stay on same lane
-        %   1 = Change to left lane
-        %  -1 = Change to right lane
-        executeManeuver
-        
         laneChangeCmds % Possible commands for lane changing
 
         currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates [s, d, dDot]
@@ -49,11 +43,8 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            obj.maneuvers = containers.Map({'StayOnLane', 'ChangeToLeftLane', 'ChangeToRightLane'}, [0, 1, -1]);
-            obj.executeManeuver = obj.maneuvers('StayOnLane'); 
-            
             obj.laneChangeCmds = ...
-                containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight', 'CmdStopLaneChange'}, [0, 1, -1, 2]);
+                containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight'}, [0, 1, -1]);
             
             obj.lanes = ...
                 containers.Map({'RightLane', 'ToLeftLane', 'LeftLane', 'ToRightLane'}, [0, 0.5, 1, -0.5]);
@@ -68,23 +59,25 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
         function trajectoryFrenet = planTrajectory(obj, changeLaneCmd, currentLane, s, d, v_average)
         % Plan trajectory for the next obj.timeHorizon seconds in Frenet coordinates
             
-            d_goal = 0;
+            d_destination = 0; % Reference lane
             if currentLane == obj.lanes('ToLeftLane') || currentLane == obj.lanes('LeftLane')
-                d_goal = obj.LaneWidth;
+                d_destination = obj.LaneWidth;
             end
             
             lengthDifference = 0;
             if changeLaneCmd
-                obj.checkForLaneChangingManeuver(changeLaneCmd, s, d, v_average); 
-                lengthDifference = obj.trajectoryReferenceLength - size(obj.currentTrajectoryFrenet, 1);
-                if lengthDifference < 0
-                    obj.residualLaneChangingTrajectory = obj.currentTrajectoryFrenet(obj.trajectoryReferenceLength+1:end, :);
-                    obj.currentTrajectoryFrenet = obj.currentTrajectoryFrenet(1:obj.trajectoryReferenceLength, :);
+                laneChangingTrajectoryFrenet = obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, v_average); 
+                lengthDifference = obj.trajectoryReferenceLength - size(laneChangingTrajectoryFrenet, 1);
+                if lengthDifference < 0 % Divide into current and residual lane changing trajectory
+                    obj.currentTrajectoryFrenet = laneChangingTrajectoryFrenet(1:obj.trajectoryReferenceLength, :);
+                    obj.residualLaneChangingTrajectory = laneChangingTrajectoryFrenet(obj.trajectoryReferenceLength+1:end, :);
                     lengthDifference = 0;
+                else
+                    obj.currentTrajectoryFrenet = laneChangingTrajectoryFrenet;
                 end
             end
             
-            sLast = obj.currentTrajectoryFrenet(end, 1);
+            s_last = obj.currentTrajectoryFrenet(end, 1);
             
             IDs_passed = s >= obj.currentTrajectoryFrenet(:, 1);
             ID_current = sum(IDs_passed);
@@ -100,49 +93,40 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
                         
                         durationToAdd = (pointsToAdd - size(obj.residualLaneChangingTrajectory, 1))*obj.Ts;
                         
-                        addTrajectory = [addTrajectory; obj.calculateStraightTrajectory(sLast, d_goal, v_average, durationToAdd)];
+                        addTrajectory = [addTrajectory; obj.calculateStraightTrajectory(s_last, d_destination, v_average, durationToAdd)];
                         obj.residualLaneChangingTrajectory = [];
                     else
                         addTrajectory = obj.residualLaneChangingTrajectory(1:pointsToAdd, :);
                         obj.residualLaneChangingTrajectory = obj.residualLaneChangingTrajectory(pointsToAdd+1:end ,:);
                     end
                 else
-                    addTrajectory = obj.calculateStraightTrajectory(sLast, d_goal, v_average, durationToAdd);
+                    addTrajectory = obj.calculateStraightTrajectory(s_last, d_destination, v_average, durationToAdd);
                 end
 
                 obj.currentTrajectoryFrenet = [obj.currentTrajectoryFrenet; addTrajectory];
             end
             
-            if size(obj.currentTrajectoryFrenet, 1) ~= obj.trajectoryReferenceLength
-                error('Trajectory length is incorrect')
+            if size(obj.currentTrajectoryFrenet, 1) ~= obj.trajectoryReferenceLength 
+                error('Trajectory length is incorrect'); % For debugging
             end
             
             trajectoryFrenet = obj.currentTrajectoryFrenet;
         end
         
-        function checkForLaneChangingManeuver(obj, changeLaneCmd, s, d, v_average)
-        % Check whether to start or stop a lane changing maneuver
+        function laneChangingTrajectoryFrenet = calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, v_average)
+        % Check whether to start or stop executing a lane changing maneuver
             
-            % Initialisation maneuver to left lane
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeft')
-                obj.initialiseManeuver(s, d, obj.LaneWidth, obj.maneuvers('ChangeToLeftLane'), obj.durationToLeftLane, v_average);
-            % Initialisation maneuver to right lane
+                d_destination = obj.LaneWidth;
+                durationManeuver = obj.durationToLeftLane;
             elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRight')
-                obj.initialiseManeuver(s, d, 0, obj.maneuvers('ChangeToRightLane'), obj.durationToRightLane, v_average);
-            % Stop maneuver
-            elseif changeLaneCmd == obj.laneChangeCmds('CmdStopLaneChange')
-                obj.executeManeuver = obj.maneuvers('StayOnLane');
+                d_destination = 0;
+                durationManeuver = obj.durationToRightLane;
             end
+            laneChangingTrajectoryFrenet = obj.calculateLaneChangingTrajectory(s, d, d_destination, durationManeuver, v_average);
         end
         
-        function initialiseManeuver(obj, s_current, d_currnet, d_destination, maneuver, durationManeuver, v_average)
-        % Initialise lane changing maneuver and calculate reference trajectory
-            
-            obj.calculateLaneChangingTrajectory(s_current, d_currnet, d_destination, durationManeuver, v_average);
-            obj.executeManeuver = maneuver; % Set maneuver to indicate lane change to the left or right
-        end
-        
-        function calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, v_average)
+        function laneChangingTrajectoryFrenet = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, v_average)
         % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
@@ -179,7 +163,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
             dDot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
             
-            obj.currentTrajectoryFrenet = [s_trajectory', d_trajectory',  dDot_trajectory'];
+            laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory',  dDot_trajectory'];
         end  
         
         function straightTrajectoryFrenet = calculateStraightTrajectory(obj, s_current, d_current, v_average, duartion)
@@ -192,12 +176,12 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             straightTrajectoryFrenet = [s_trajectory', d_trajectory',  zeros(length(t_discrete), 1)]; % TODO: dDot probably incorrect for curved road
         end
         
-        function trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian)
+        function trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane)
         % Return trajectory with reduced samples for plotting  
             
             trajectoryToPlot = trajectoryCartesian;
             % TODO: Find a way to output variable size
-%             if obj.executeManeuver
+%             if currentLane == obj.lanes('ToLeftLane') || currentLane == obj.lanes('ToRightLane')
 %                 trajectoryToPlot = [trajectoryCartesian(1:obj.timeHorizon*10:end, 1:2); trajectoryCartesian(end, 1:2)]; % Reduce points to plot
 %             else
 %                 trajectoryToPlot = [trajectoryCartesian(1, 1:2); trajectoryCartesian(end, 1:2)]; % For straight line two points are sufficient

@@ -9,7 +9,6 @@ classdef Decision  < CoordinateTransformations
 %   0 = Command to follow current trajectory (straight/lane change)
 %   1 = Command to start changing to left lane
 %  -1 = Command to start changing to right lane
-%   2 = Command to stop lane changing maneuver
 % Current Lane
 %   0 = On the left lane
 %   0.5 = Going to the right lane
@@ -54,7 +53,7 @@ classdef Decision  < CoordinateTransformations
             obj.currentLane = obj.lanes('RightLane');
             
             obj.laneChangeCmds = ...
-                containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight', 'CmdStopLaneChange'}, [0, 1, -1, 2]);
+                containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight'}, [0, 1, -1]);
         end
         
         function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
@@ -81,7 +80,6 @@ classdef Decision  < CoordinateTransformations
                     end
                 case obj.lanes('ToLeftLane')
                     if dEgo >= obj.LaneWidth % Reached left lane
-                        changeLaneCmd = obj.laneChangeCmds('CmdStopLaneChange');
                         obj.currentLane = obj.lanes('LeftLane');
                     end
                 case obj.lanes('LeftLane')
@@ -91,7 +89,6 @@ classdef Decision  < CoordinateTransformations
                     end
                 case obj.lanes('ToRightLane')
                     if dEgo <= 0 % Reached right lane
-                        changeLaneCmd = obj.laneChangeCmds('CmdStopLaneChange');
                         obj.currentLane = obj.lanes('RightLane');
                     end
             end
@@ -171,6 +168,6 @@ classdef Decision  < CoordinateTransformations
 
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
-        end
+        end 
     end
 end
