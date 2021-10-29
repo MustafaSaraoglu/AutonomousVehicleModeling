@@ -90,7 +90,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             
             ID_current = sum(s_current >= obj.currentTrajectoryFrenet(:, 1));
         
-            if ID_current > 1 || lengthDifference 
+            if (ID_current > 1) || lengthDifference 
                 obj.currentTrajectoryFrenet = obj.currentTrajectoryFrenet(ID_current:end, :);
                 pointsToAdd = ID_current - 1 + lengthDifference;
                 
@@ -189,14 +189,19 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             straightTrajectoryFrenet = [s_trajectory', d_trajectory',  zeros(length(t_discrete), 1)]; % TODO: dDot probably incorrect for curved road
         end
         
-        function [s_ref, d_ref, dDot_ref] = getNextTrajectoryWaypoint(obj, s)
-        % Get the next waypoint for trajectory according to current s
+        function [s_ref, d_ref, dDot_ref] = getNextFrenetTrajectoryWaypoints(obj, s, numberWPs)
+        % Get the next waypoint(s) for current trajectory according to current s in Frenet coordinates
         
             ID_nextWP = sum(s >= obj.currentTrajectoryFrenet(:, 1)) + 1;
             
-            s_ref = obj.currentTrajectoryFrenet(ID_nextWP, 1);
-            d_ref = obj.currentTrajectoryFrenet(ID_nextWP, 2);
-            dDot_ref = obj.currentTrajectoryFrenet(ID_nextWP, 3);
+            numberWPsMax = size(obj.currentTrajectoryFrenet(ID_nextWP:end, 1), 1);
+            if (numberWPs <= 0) || (numberWPs > numberWPsMax)
+                error('Number of waypoints is not valid'); % For debugging
+            end
+            
+            s_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 1);
+            d_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 2);
+            dDot_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 3);
         end
         
         function d_destination = getLateralDestination(obj, currentLane)
@@ -226,7 +231,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
 %                 trajectoryToPlot = [trajectoryCartesian(1:obj.timeHorizon*10:end, 1:2); trajectoryCartesian(end, 1:2)]; % Reduce points to plot
 %             else
 %                 trajectoryToPlot = [trajectoryCartesian(1, 1:2); trajectoryCartesian(end, 1:2)]; % For straight line two points are sufficient
-                % TODO: What about curved lanes?
+%                 % TODO: What about curved lanes?
 %             end
         end
     end

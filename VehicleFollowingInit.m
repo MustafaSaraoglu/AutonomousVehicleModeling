@@ -11,6 +11,7 @@ a_min = -3; % Minimum allowed longitudinal acceleration [m/s^2]
 a_max = 2; % Maximum allowed longitudinal acceleration [m/s^2]
 
 steerAngle_max = pi/4; % Maximum allowed steering angle [rad]
+angularVelocity_max = 0.1; % Maximum angular velocity [rad/s]
 
 %% Road
 laneWidth = 3.7; % lane width [m]
@@ -61,6 +62,7 @@ vEgo_0 = 15; % Initial longitudinal velocity [m/s]
 durationToLeftLane = 5; % Time for lane changing (to left lane) [s]
 durationToRightLane = 5; % Time for overtaking (to right lane) [s]
 
+numberWaypoints = 6; % Number of waypoints to provide for Pure Pursuit
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
 Ts = 0.01; % Sampling time [s]

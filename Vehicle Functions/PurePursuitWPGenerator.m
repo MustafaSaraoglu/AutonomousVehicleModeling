@@ -1,6 +1,10 @@
 classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
 % Provide reference waypoints for Pure Pursuit
     
+    properties(Nontunable)
+        numberWaypoints % Number of waypoints to provide for Pure Pursuit
+    end
+
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
@@ -16,18 +20,20 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
             trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane);
             
-            [s_ref, d_ref, ~] = obj.getNextTrajectoryWaypoint(s);
+            [s_ref, d_ref, ~] = obj.getNextFrenetTrajectoryWaypoints(s, obj.numberWaypoints);
             
-            [refPos, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.RoadTrajectory);
+            [referencePositionCartesian, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.RoadTrajectory);
             
-            nextWPs = refPos;
+            nextWPs = referencePositionCartesian;
+            
+            d_ref = d_ref(1); % Only use first waypoint as current reference for d
         end
         
         function [out1, out2, out3] = getOutputSizeImpl(obj)
             % Return size for each output port
             lengthTrajectory = obj.timeHorizon/obj.Ts;
             
-            out1 = [1 2];
+            out1 = [obj.numberWaypoints 2];
             out2 = [1 1];
             out3 = [lengthTrajectory 2];
 

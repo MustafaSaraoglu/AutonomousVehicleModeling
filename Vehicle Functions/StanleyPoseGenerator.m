@@ -35,7 +35,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
 %             dDot_ref = trajectoryFrenet(trajectoryFrenet == s_ref, 3);
 %             refOrientation = atan2(dDot_ref, velocity); % TODO: CHECK:MIGHT ONLY WORK FOR STRAIGHT ROADS
             
-            [~, d_ref, ~] = obj.getNextTrajectoryWaypoint(s); % d_ref according to current pose and not according to rear axle
+            [~, d_ref, ~] = obj.getNextFrenetTrajectoryWaypoints(s, 1); % d_ref according to current pose and not according to rear axle
             
             referencePose = obj.getReferencePoseStanley(pose, trajectoryCartesian); 
             
