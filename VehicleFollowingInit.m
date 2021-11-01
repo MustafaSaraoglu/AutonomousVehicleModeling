@@ -17,10 +17,17 @@ angularVelocity_max = 0.1; % Maximum angular velocity [rad/s]
 laneWidth = 3.7; % lane width [m]
 
 % Road trajectory according to MOBATSim map format
-roadTrajectory =    [s_min  0   0;
-                     s_max  0   0;
-                     0      0   0;
-                     0      0   0];
+% Straight Road
+% roadTrajectory =    [s_min  0   0;
+%                      s_max  0   -200;
+%                      0      0   0;
+%                      0      0   0];
+                 
+% Curved Road
+roadTrajectory =    [s_min  0        0;
+                     s_max  0       -s_max;
+                     pi/2   s_min   -s_max;
+                     -1     -1      -1]; % TODO: '+1' or '-1' ?; '-' seems to be counter clockwise
 
 % Double lane
 d_min = - laneWidth/2; % Right lateral lane boundary [m]
@@ -34,10 +41,8 @@ wheelBaseLead = 4; % Wheel base [m]
 % detection [m]
 radiusLead = sqrt((dimensionsLead(1)/2)^2 + (dimensionsLead(2)/2)^2); 
 
-xLead_0 = 40; % Initial x-coordinate [m]
-
-yLead = 0; % (Initial) y-coordinate [m]
-yawLead = 0; % (Initial) steering angle [rad]
+sLead_0 = 40; % Initial Frenet s-coordinate [m]
+dLead = 0; % (Initial) Frenet d-coordinate [m]
 
 vLead_0 = 20; % Initial longitudinal velocity [m/s]
 
@@ -51,9 +56,16 @@ wheelBaseEgo = 3; % Wheel base [m]
 % detection [m]
 radiusEgo = sqrt((dimensionsEgo(1)/2)^2 + (dimensionsEgo(2)/2)^2); 
 
-xEgo_0 = 0; % Initial x-coordinate [m]
-yEgo_0 = 0; % Initial y-coordinate [m]
-yawEgo_0 = 0; % Initial steering angle [rad]
+sEgo_0 = 0; % Initial Frenet s-coordinate [m]
+dEgo_0 = 0; % Initial Frenet d-coordinate [m]
+
+% Transformation to Cartesian for Bicycle Kinematic Model
+% xEgo_0: Initial x-coordinate [m]
+% yEgo_0: Initial y-coordinate [m]
+% yawEgo_0: Initial steering angle [rad]
+[positionEgo_0, yawEgo_0] = Frenet2Cartesian(0, [sEgo_0, dEgo_0], roadTrajectory);
+xEgo_0 = positionEgo_0(1);
+yEgo_0 = positionEgo_0(2);
 
 vEgo_0 = 15; % Initial longitudinal velocity [m/s]
 

@@ -11,8 +11,8 @@ function [corners_x, corners_y, Hitbox] = createRectangleVehicle(centerPoint, ya
     p4 = [-V_Length/2; V_Width/2];
 
     % Rotation of rectangle points
-    Rmatrix = [cos(yaw) -sin(yaw);
-               sin(yaw)  cos(yaw)];
+    Rmatrix = [cos(yaw), -sin(yaw);
+               sin(yaw),  cos(yaw)];
 
     p1r = centerPoint + Rmatrix*p1;
     p2r = centerPoint + Rmatrix*p2;
@@ -20,8 +20,8 @@ function [corners_x, corners_y, Hitbox] = createRectangleVehicle(centerPoint, ya
     p4r = centerPoint + Rmatrix*p4;
 
     % Connect points to rectangle
-    rectangle = [p1r p2r p3r p4r p1r];
-    Hitbox = [p1r p2r p3r p4r];
+    rectangle = [p1r, p2r, p3r, p4r, p1r];
+    Hitbox = [p1r, p2r, p3r, p4r];
 
     corners_x = transpose(rectangle(1, :));
     corners_y = transpose(rectangle(2, :));

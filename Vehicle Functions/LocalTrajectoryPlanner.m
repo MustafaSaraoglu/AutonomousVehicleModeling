@@ -1,8 +1,11 @@
-classdef LocalTrajectoryPlanner < CoordinateTransformations
+classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.Propagates & matlab.system.mixin.SampleTime & matlab.system.mixin.CustomIcon
 % LocalTrajectoryPlanner Superclass for generating necessary inputs for 
 % the lateral controllers.
     
     properties(Nontunable)
+        LaneWidth % Width of road lane [m]
+        RoadTrajectory % Road trajectory according to MOBATSim map format
+        
         durationToLeftLane % Time for lane changing [s]
         durationToRightLane % Time for overtaking [s]
         timeHorizon % Time horizon for trajectory genereation [s]

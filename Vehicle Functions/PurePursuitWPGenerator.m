@@ -14,15 +14,15 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
         function [nextWPs, d_ref, trajectoryToPlot] = stepImpl(obj, pose, changeLaneCmd, currentLane, velocity)
         % Return the reference waypoints necessary for Pure Pursuit, the reference lateral positon and the reference trajectory to plot
 
-            [s, d] = obj.Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
+            [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
             trajectoryFrenet = obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
-            trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
+            [trajectoryCartesian, ~] = Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
             trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane);
             
             [s_ref, d_ref, ~] = obj.getNextFrenetTrajectoryWaypoints(s, obj.numberWaypoints);
             
-            [referencePositionCartesian, ~] = obj.Frenet2Cartesian(0, [s_ref, d_ref], obj.RoadTrajectory);
+            [referencePositionCartesian, ~] = Frenet2Cartesian(0, [s_ref, d_ref], obj.RoadTrajectory);
             
             nextWPs = referencePositionCartesian;
             

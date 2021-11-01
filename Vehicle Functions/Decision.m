@@ -1,4 +1,4 @@
-classdef Decision  < CoordinateTransformations
+classdef Decision < matlab.System
 % Select driving mode and decide if to execute lane changing maneuver
 %
 % Driving Mode
@@ -15,6 +15,12 @@ classdef Decision  < CoordinateTransformations
 %   1 = On the right lane
 %  -0.5 = Going to the left lane
 
+
+    properties(Nontunable)
+        LaneWidth % Width of road lane [m]
+        RoadTrajectory % Road trajectory according to MOBATSim map format
+    end
+    
     % Pre-computed constants
     properties(Access = private)
         drivingModes % Possible driving modes
@@ -59,7 +65,7 @@ classdef Decision  < CoordinateTransformations
         function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
         % Return lane change command, the current lane state and the current driving mode (see system description)
         
-            [~, dEgo] = obj.Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
+            [~, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
 
             [changeLaneCmd, currentLane] = obj.setLaneChangingManeuver(deltaS, dEgo, vEgo, vLead);
             

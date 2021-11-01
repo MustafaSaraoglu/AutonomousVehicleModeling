@@ -23,10 +23,10 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
         function [d_ref, trajectoryToPlot, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, currentLane, velocity)
         % Return the reference lateral position, the reference trajectory to plot, the reference pose and the current pose  
             
-            [s, d] = obj.Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
+            [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
             trajectoryFrenet = obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
-            trajectoryCartesian = obj.Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
+            [trajectoryCartesian, ~] = Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
             trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane);
             
             [~, d_ref, ~] = obj.getNextFrenetTrajectoryWaypoints(s, 1); % d_ref according to current pose and not according to rear axle
@@ -42,9 +42,8 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             % Reference is the center of the front axle
             centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
-            [referencePositionCartesian, ~] = obj.getClosestPointOnTrajectory(centerFrontAxle', trajectoryCartesian);
-            [s_ref, ~] = obj.Cartesian2Frenet(obj.RoadTrajectory, referencePositionCartesian);
-            dDot_ref = trajectoryFrenet(trajectoryFrenet == s_ref, 3);
+            [referencePositionCartesian, idx] = obj.getClosestPointOnTrajectory(centerFrontAxle', trajectoryCartesian);
+            dDot_ref = trajectoryFrenet(idx, 3); % Same index as in Cartesian trajectory
             refOrientationCartesian = atan2(dDot_ref, velocity);
             
 %             % Using slope of the curve

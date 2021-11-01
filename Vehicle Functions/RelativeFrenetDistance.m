@@ -1,12 +1,17 @@
-classdef RelativeFrenetDistance < CoordinateTransformations
+classdef RelativeFrenetDistance < matlab.System
 % Calculate the relative distance according to Frenet delta_s
 
+    properties(Nontunable)
+        LaneWidth % Width of road lane [m]
+        RoadTrajectory % Road trajectory according to MOBATSim map format
+    end
+    
     methods(Access = protected)
         function deltaS = stepImpl(obj, poseLead, poseEgo)
         % Return relative distance using Frenet coordinate system
         
-            [sEgo, ~] = obj.Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]); 
-            [sLead, ~] = obj.Cartesian2Frenet(obj.RoadTrajectory, [poseLead(1) poseLead(2)]); 
+            [sEgo, ~] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]); 
+            [sLead, ~] = Cartesian2Frenet(obj.RoadTrajectory, [poseLead(1) poseLead(2)]); 
             
             deltaS = sLead - sEgo;
         end
