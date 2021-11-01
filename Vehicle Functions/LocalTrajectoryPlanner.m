@@ -186,7 +186,7 @@ classdef LocalTrajectoryPlanner < CoordinateTransformations
             s_trajectory = s_current + v_average*t_discrete;
             d_trajectory = d_current*ones(1, length(t_discrete));
             
-            straightTrajectoryFrenet = [s_trajectory', d_trajectory',  zeros(length(t_discrete), 1)]; % TODO: dDot probably incorrect for curved road
+            straightTrajectoryFrenet = [s_trajectory', d_trajectory', zeros(length(t_discrete), 1)]; 
         end
         
         function [s_ref, d_ref, dDot_ref] = getNextFrenetTrajectoryWaypoints(obj, s, numberWPs)
