@@ -29,9 +29,9 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             [trajectoryCartesian, ~] = Frenet2Cartesian(0, trajectoryFrenet(:, 1:2), obj.RoadTrajectory);
             trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane);
             
-            [~, d_ref, ~] = obj.getNextFrenetTrajectoryWaypoints(s, 1); % d_ref according to current pose and not according to rear axle
-            
             referencePose = obj.getReferencePoseStanley(pose, velocity, trajectoryFrenet, trajectoryCartesian); 
+            
+            [~, d_ref, ~] = obj.getNextFrenetTrajectoryWaypoints(s, 1); % d_ref according to current pose and not according to front axle
             
             pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Stanley Lateral Controller
             poseOut = pose'; % MATLAB Stanley Lateral Controller input is [1x3]
@@ -43,12 +43,13 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % Reference is the center of the front axle
             centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
             [referencePositionCartesian, idx] = obj.getClosestPointOnTrajectory(centerFrontAxle', trajectoryCartesian);
-            dDot_ref = trajectoryFrenet(idx, 3); % Same index as in Cartesian trajectory
-            refOrientationCartesian = atan2(dDot_ref, velocity);
+            [~, roadOrientation] = Frenet2Cartesian(0, trajectoryFrenet(idx, 1:2), obj.RoadTrajectory); % Same index as in Cartesian trajectory
+            dDot_ref = trajectoryFrenet(idx, 3); 
+            refOrientationCartesian = atan2(dDot_ref, velocity) + roadOrientation; % + Consider road orientation
             
-%             % Using slope of the curve
+            % Using slope of the curve
 %             delta_position = (trajectoryCartesian(idx+1, :) - trajectoryCartesian(idx-1, :))'; % [delta_x; delta_y]
-%             refOrientationCartesian2 = atan2(delta_position(2), delta_position(1));
+%             refOrientationCartesian = atan2(delta_position(2), delta_position(1));
             
             referencePoseCartesian = [referencePositionCartesian, rad2deg(refOrientationCartesian)]; % Degree for MATLAB Stanley Controller
         end
