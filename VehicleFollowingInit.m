@@ -30,7 +30,7 @@ roadTrajectory =    [s_min  0        0;
                      -1     -1      -1]; % TODO: '+1' or '-1' ?; '-' seems to be counter clockwise
 
 % Double lane
-d_min = - laneWidth/2; % Right lateral lane boundary [m]
+d_min = -laneWidth/2; % Right lateral lane boundary [m]
 d_max = 3/2*laneWidth; % Left lateral lane boundary [m]       
 
 %% Leading Vehicle
@@ -44,9 +44,9 @@ radiusLead = sqrt((dimensionsLead(1)/2)^2 + (dimensionsLead(2)/2)^2);
 sLead_0 = 40; % Initial Frenet s-coordinate [m]
 dLead = 0; % (Initial) Frenet d-coordinate [m]
 
-vLead_0 = 20; % Initial longitudinal velocity [m/s]
+vLead_0 = 10; % Initial longitudinal velocity [m/s]
 
-vLead_ref = 10; % Reference longitudinal velocity [m/s]
+vLead_ref = vLead_0; % Reference longitudinal velocity [m/s]
 
 %% Ego Vehicle
 % Vehicle's geometry

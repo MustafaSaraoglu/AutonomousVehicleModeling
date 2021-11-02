@@ -2,10 +2,10 @@ classdef PlotDrivingScenario< matlab.System
 % Plot driving scenario
     
     properties(Nontunable)
-        dimensionsVehicle1 % Dimensions (length, width) vehicle 1
-        wheelBaseVehicle1 % Wheel base vehicle 1
-        dimensionsVehicle2 % Dimensions (length, width) vehicle 2
-        wheelBaseVehicle2 % Wheel base vehicle 2
+        dimensionsLead % Dimensions (length, width) leading vehicle [[m]; [m]]
+        wheelBaseLead % Wheel base leading vehicle [m]
+        dimensionsEgo % Dimensions (length, width) ego vehicle [[m]; [m]]
+        wheelBaseEgo % Wheel base ego vehicle [m]
         
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
@@ -17,14 +17,18 @@ classdef PlotDrivingScenario< matlab.System
         % Different plots in the figure
         
         % Vehicles
-        plotVehicle1
-        plotVehicleLocation1
-        plotVehicle2
-        plotVehicleLocation2
+        plotLead
+        plotLocationLead
+        plotLeadFuture_min
+        plotLocationLeadFuture_min
+        plotLeadFuture_max
+        plotLocationLeadFuture_max
+        plotEgo
+        plotLocationEgo
         
         % Trajectory
-        plotTrajectory
-        plotWPs
+        plotTrajectoryEgo
+        plotWPsEgo
     end
     
     methods(Static)
@@ -48,7 +52,7 @@ classdef PlotDrivingScenario< matlab.System
 
             [corners_x, corners_y, ~] = createRectangleVehicle(centerPoint, poseRearAxle(3), dim);
 
-            plotVehicle = plot(corners_x, corners_y, color); % Vehicle rectangle
+            plotVehicle = plot(corners_x, corners_y, 'Color', color); % Vehicle rectangle
             plotVehicleLocation = plot(poseRearAxle(1), poseRearAxle(2), originRepresentation, 'Color', color); % Vehicle location
         end
     end
@@ -65,28 +69,31 @@ classdef PlotDrivingScenario< matlab.System
             obj.plotRoad(obj.RoadTrajectory, obj.LaneWidth); % Road 
         end
 
-        function stepImpl(obj, poseVehicle1, egoTrajectory, nextWPsPurePursuit, poseVehicle2)
+        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, nextWPsPurePursuit, poseEgo)
         % Plot driving scenario
         
              obj.deletePreviousPlots; 
         
-            % Vehicle 1
-            [obj.plotVehicle1, obj.plotVehicleLocation1] = obj.plotVehicle(poseVehicle1, obj.wheelBaseVehicle1, obj.dimensionsVehicle1, 'cyan', 'o');
-            plot(poseVehicle1(1), poseVehicle1(2), '.', 'Color', 'cyan'); % Traces
+            % Vehicle Lead
+            [obj.plotLead, obj.plotLocationLead] = obj.plotVehicle(poseLead, obj.wheelBaseLead, obj.dimensionsLead, [0, 204/255, 204/255], 'o');
+            plot(poseLead(1), poseLead(2), '.', 'Color', 'cyan'); % Traces
+            % Future predictions
+            [obj.plotLeadFuture_min, obj.plotLocationLeadFuture_min] = obj.plotVehicle(poseLeadFuture_min, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
+            [obj.plotLeadFuture_max, obj.plotLocationLeadFuture_max] = obj.plotVehicle(poseLeadFuture_max, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
 
-            % Vehicle 2
-            [obj.plotVehicle2, obj.plotVehicleLocation2] = obj.plotVehicle(poseVehicle2, obj.wheelBaseVehicle2, obj.dimensionsVehicle2, 'red', 'o');
-            plot(poseVehicle2(1), poseVehicle2(2), '.', 'Color', 'red'); 
+            % Vehicle Ego
+            [obj.plotEgo, obj.plotLocationEgo] = obj.plotVehicle(poseEgo, obj.wheelBaseEgo, obj.dimensionsEgo, 'red', 'o');
+            plot(poseEgo(1), poseEgo(2), '.', 'Color', 'red'); 
             
             % Trajectory
-            obj.plotTrajectory = plot(egoTrajectory(:, 1), egoTrajectory(:, 2), 'Color', 'green');
+            obj.plotTrajectoryEgo = plot(egoTrajectory(:, 1), egoTrajectory(:, 2), 'Color', 'green');
             if size(nextWPsPurePursuit ,2) == 2
-                obj.plotWPs = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
+                obj.plotWPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
             end
 
             % Adjust Axis
-            x2 = poseVehicle2(1);
-            y2 = poseVehicle2(2);
+            x2 = poseEgo(1);
+            y2 = poseEgo(2);
             axis([x2-40, x2+40, y2-20, y2+20]); % Camera following V2 as ego vehicle
         end
         
@@ -94,14 +101,18 @@ classdef PlotDrivingScenario< matlab.System
         % Delete plots (cars, trajectory, etc.) from the previous iteration
             
             % Vehicles
-            delete(obj.plotVehicle1);
-            delete(obj.plotVehicleLocation1);
-            delete(obj.plotVehicle2);
-            delete(obj.plotVehicleLocation2);
+            delete(obj.plotLead);
+            delete(obj.plotLocationLead);
+            delete(obj.plotLeadFuture_min);
+            delete(obj.plotLocationLeadFuture_min);
+            delete(obj.plotLeadFuture_max);
+            delete(obj.plotLocationLeadFuture_max);
+            delete(obj.plotEgo);
+            delete(obj.plotLocationEgo);
             
             % Trajectory
-            delete(obj.plotTrajectory);
-            delete(obj.plotWPs);
+            delete(obj.plotTrajectoryEgo);
+            delete(obj.plotWPsEgo);
         end
         
         function plotRoad(obj, roadTrajectory, laneWidth)
