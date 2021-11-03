@@ -9,6 +9,8 @@ classdef PlotDrivingScenario< matlab.System
         
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
+        
+        spaceDiscretisation % Space Discretisation
     end
 
     % Pre-computed constants
@@ -66,7 +68,8 @@ classdef PlotDrivingScenario< matlab.System
             grid on;
             axis equal;
             hold on;
-            obj.plotRoad(obj.RoadTrajectory, obj.LaneWidth); % Road 
+            obj.plotRoad(obj.RoadTrajectory, obj.LaneWidth);
+%             obj.plotDiscreteSpace(); 
         end
 
         function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, nextWPsPurePursuit, poseEgo)
@@ -95,6 +98,19 @@ classdef PlotDrivingScenario< matlab.System
             x2 = poseEgo(1);
             y2 = poseEgo(2);
             axis([x2-40, x2+40, y2-20, y2+20]); % Camera following V2 as ego vehicle
+        end
+        
+        function plotDiscreteSpace(obj)
+        % Plot discrete space
+            
+            for row = 1:size(obj.spaceDiscretisation, 1)
+                for column = 1:size(obj.spaceDiscretisation, 2)
+                    cell_Frenet = obj.spaceDiscretisation{row, column};
+                    corners_Frenet = [cell_Frenet(1,1), cell_Frenet(1,1), cell_Frenet(1,2), cell_Frenet(1,2); cell_Frenet(2,1), cell_Frenet(2,2), cell_Frenet(2,1), cell_Frenet(2,2)];
+                    corners_Cartesian = (Frenet2Cartesian(0, corners_Frenet', obj.RoadTrajectory))';
+                    plot(corners_Cartesian(1, :), corners_Cartesian(2, :), 'x', 'Color', 'blue');
+                end
+            end
         end
         
         function deletePreviousPlots(obj)

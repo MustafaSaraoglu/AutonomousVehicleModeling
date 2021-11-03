@@ -19,7 +19,7 @@ laneWidth = 3.7; % lane width [m]
 % Road trajectory according to MOBATSim map format
 % Straight Road
 % roadTrajectory =    [s_min  0   0;
-%                      s_max  0   -200;
+%                      s_max  0   0;
 %                      0      0   0;
 %                      0      0   0];
                  
@@ -44,9 +44,17 @@ radiusLead = sqrt((dimensionsLead(1)/2)^2 + (dimensionsLead(2)/2)^2);
 sLead_0 = 40; % Initial Frenet s-coordinate [m]
 dLead = 0; % (Initial) Frenet d-coordinate [m]
 
-vLead_0 = 10; % Initial longitudinal velocity [m/s]
+% Transformation to Cartesian for 3D-Animation
+% xLead_0: Initial x-coordinate [m]
+% yLead_0: Initial y-coordinate [m]
+% yawLead_0: Initial steering angle [rad]
+[positionLead_0, yawLead_0] = Frenet2Cartesian(0, [sLead_0, dLead], roadTrajectory);
+xLead_0 = positionLead_0(1);
+yLead_0 = positionLead_0(2);
 
-vLead_ref = vLead_0; % Reference longitudinal velocity [m/s]
+vLead_0 = 20; % Initial longitudinal velocity [m/s]
+
+vLead_ref = 10; % Reference longitudinal velocity [m/s]
 
 %% Ego Vehicle
 % Vehicle's geometry
@@ -79,3 +87,66 @@ lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
 Ts = 0.05; % Sampling time [s]
 timeHorizon = 2; % Time horizon for trajectory genereation [s]
+
+%% Space Discretisation
+cell_length = 5; % Cell length in s-coordinate [m]
+laneCell_width = 3; % Width of right/left lane cell [m]
+spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width); % Discretisation of continuous space
+
+%% Functions
+function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)
+    route = roadTrajectory([1, 2],[1, 3]).*[1, -1; 1, -1];
+    radian = roadTrajectory(3, 1);
+    startPoint = route(1, :);
+    endPoint = route(2, :);
+
+    if radian == 0 % Straight road
+        route_Vector = endPoint - startPoint;
+
+        routeLength = norm(route_Vector);
+    else % Curved road
+        rotationCenter = roadTrajectory(3, [2, 3]).*[1, -1]; 
+        startPointVector = startPoint - rotationCenter;
+        routeRadius = norm(startPointVector); 
+
+        routeLength = abs(radian*routeRadius);
+    end
+
+    % Cell dimensions
+    roadBoundryCell_width = (laneWidth - laneCell_width)/2; % Width of road boundry cells [m]
+    roadCenterCell_width = 2*roadBoundryCell_width; % Width of road center cell [m]
+
+    number_rows = ceil(routeLength/cell_length);
+    number_columns = 5; % Divide road width into 5 parts
+    spaceDiscretisation = cell(number_rows, number_columns);
+
+    for row = 1:number_rows
+        s_start = (row-1)*cell_length;
+        s_end = s_start + cell_length;
+        if row == number_rows % Check last row in case could not divide perfectly into equal sized cells
+            s_end = routeLength;
+        end
+
+        for column = 1:number_columns
+            switch column
+                case 1 % Right road boundry cell
+                    d_start = -laneWidth/2; % Start at -laneWidth/2
+                    d_end = -laneWidth/2 + roadBoundryCell_width;
+                case 2 % Right lane cell
+                    d_start = -laneWidth/2 + roadBoundryCell_width;
+                    d_end = -laneWidth/2 + roadBoundryCell_width + laneCell_width;
+                case 3 % Center of the road cell
+                    d_start = -laneWidth/2 + roadBoundryCell_width + laneCell_width;
+                    d_end = -laneWidth/2 + roadBoundryCell_width + laneCell_width + roadCenterCell_width;
+                case 4 % Left lane cell
+                    d_start = -laneWidth/2 + roadBoundryCell_width + laneCell_width + roadCenterCell_width;
+                    d_end = -laneWidth/2 + roadBoundryCell_width + 2*laneCell_width + roadCenterCell_width;
+                case 5 % Left road boundry cell
+                    d_start = -laneWidth/2 + roadBoundryCell_width + 2*laneCell_width + roadCenterCell_width;
+                    d_end = -laneWidth/2 + 2*roadBoundryCell_width + 2*laneCell_width + roadCenterCell_width;
+            end
+
+            spaceDiscretisation{row, column} = [s_start, s_end; d_start, d_end];
+        end
+    end
+end
