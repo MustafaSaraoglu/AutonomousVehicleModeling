@@ -100,19 +100,6 @@ classdef PlotDrivingScenario< matlab.System
             axis([x2-40, x2+40, y2-20, y2+20]); % Camera following V2 as ego vehicle
         end
         
-        function plotDiscreteSpace(obj)
-        % Plot discrete space
-            
-            for row = 1:size(obj.spaceDiscretisation, 1)
-                for column = 1:size(obj.spaceDiscretisation, 2)
-                    cell_Frenet = obj.spaceDiscretisation{row, column};
-                    corners_Frenet = [cell_Frenet(1,1), cell_Frenet(1,1), cell_Frenet(1,2), cell_Frenet(1,2); cell_Frenet(2,1), cell_Frenet(2,2), cell_Frenet(2,1), cell_Frenet(2,2)];
-                    corners_Cartesian = (Frenet2Cartesian(0, corners_Frenet', obj.RoadTrajectory))';
-                    plot(corners_Cartesian(1, :), corners_Cartesian(2, :), 'x', 'Color', 'blue');
-                end
-            end
-        end
-        
         function deletePreviousPlots(obj)
         % Delete plots (cars, trajectory, etc.) from the previous iteration
             
@@ -166,6 +153,19 @@ classdef PlotDrivingScenario< matlab.System
 
                     lineOffset = obj.plotRoadLine(x_arc, y_arc, lineNr, lineOffset, laneWidth);
                 end  
+            end
+        end
+        
+        function plotDiscreteSpace(obj)
+        % Plot discrete space
+            
+            for row = 1:size(obj.spaceDiscretisation, 1)
+                for column = 1:size(obj.spaceDiscretisation, 2)
+                    cell_Frenet = obj.spaceDiscretisation{row, column};
+                    corners_Frenet = [cell_Frenet(1,1), cell_Frenet(1,1), cell_Frenet(1,2), cell_Frenet(1,2); cell_Frenet(2,1), cell_Frenet(2,2), cell_Frenet(2,1), cell_Frenet(2,2)];
+                    corners_Cartesian = (Frenet2Cartesian(0, corners_Frenet', obj.RoadTrajectory))';
+                    plot(corners_Cartesian(1, :), corners_Cartesian(2, :), 'x', 'Color', 'blue');
+                end
             end
         end
         
