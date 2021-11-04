@@ -41,7 +41,7 @@ wheelBaseLead = 4; % Wheel base [m]
 % detection [m]
 radiusLead = sqrt((dimensionsLead(1)/2)^2 + (dimensionsLead(2)/2)^2); 
 
-sLead_0 = 40; % Initial Frenet s-coordinate [m]
+sLead_0 = 60; % Initial Frenet s-coordinate [m]
 dLead = 0; % (Initial) Frenet d-coordinate [m]
 
 % Transformation to Cartesian for 3D-Animation
@@ -52,9 +52,9 @@ dLead = 0; % (Initial) Frenet d-coordinate [m]
 xLead_0 = positionLead_0(1);
 yLead_0 = positionLead_0(2);
 
-vLead_0 = 20; % Initial longitudinal velocity [m/s]
+vLead_0 = 10; % Initial longitudinal velocity [m/s]
 
-vLead_ref = 10; % Reference longitudinal velocity [m/s]
+vLead_ref = vLead_0; % Reference longitudinal velocity [m/s]
 
 %% Ego Vehicle
 % Vehicle's geometry
