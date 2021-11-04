@@ -91,10 +91,10 @@ timeHorizon = 2; % Time horizon for trajectory genereation [s]
 %% Space Discretisation
 cell_length = 5; % Cell length in s-coordinate [m]
 laneCell_width = 3; % Width of right/left lane cell [m]
-spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width); % Discretisation of continuous space
+[spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width); % Discretisation of continuous space
 
 %% Functions
-function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)
+function [spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)
     route = roadTrajectory([1, 2],[1, 3]).*[1, -1; 1, -1];
     radian = roadTrajectory(3, 1);
     startPoint = route(1, :);
@@ -119,6 +119,8 @@ function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWid
     number_rows = ceil(routeLength/cell_length);
     number_columns = 5; % Divide road width into 5 parts
     spaceDiscretisation = cell(number_rows, number_columns);
+    % Using 2*rows x 2*columns matrix instead of rows x columns (2x2) cell array because it is much more efficient than cell array
+    spaceDiscretisationMatrix = zeros(2*number_rows, 2*number_columns); 
 
     for row = 1:number_rows
         s_start = (row-1)*cell_length;
@@ -147,6 +149,7 @@ function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWid
             end
 
             spaceDiscretisation{row, column} = [s_start, s_end; d_start, d_end];
+            spaceDiscretisationMatrix(2*row-1:2*row, 2*column-1:2*column) = [s_start, s_end; d_start, d_end]; % Index shift because of matrix structure
         end
     end
 end

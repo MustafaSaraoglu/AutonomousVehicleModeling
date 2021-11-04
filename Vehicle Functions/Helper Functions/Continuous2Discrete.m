@@ -1,22 +1,21 @@
-function discreteCells = Continuous2Discrete(spaceDiscretisation, s, d)
+function discreteCells = Continuous2Discrete(spaceDiscretisationMatrix, s, d)
 % Maps continuous input to discrete rectangle cell(s)
     
-    discreteCells = []; % [idxRow(cell1), idxColumn(cell1); idxRow(cell2), ...]
-    
-%     % Alternative
-%     matSpaceDiscretisation = cell2mat(spaceDiscretisation); % This takes a lot of time!
-%     rows = matSpaceDiscretisation(1:2:end, 1:2); 
-%     columns = (reshape(matSpaceDiscretisation(2,:), 2, []))';
-%     idxRow = (find(s>=rows(:,1) & s<=rows(:,2)))';
-%     idxColumn = (find(d>=columns(:,1) & d<=columns(:,2)))';
+    % Method using matrix structure makes it twice as fast
+    rows = spaceDiscretisationMatrix(1:2:end, 1:2); 
+    columns = (reshape(spaceDiscretisationMatrix(2,:), 2, []))';
+    idxRow = (find(s>=rows(:,1) & s<=rows(:,2)))';
+    idxColumn = (find(d>=columns(:,1) & d<=columns(:,2)))';
 
-    idxRow = findIdx(spaceDiscretisation, s, 1);
-    idxColumn = findIdx(spaceDiscretisation, d, 2);
+%     % Method using cell array
+%     idxRow = findIdx(spaceDiscretisation, s, 1);
+%     idxColumn = findIdx(spaceDiscretisation, d, 2);
     
     if isempty(idxRow) || isempty(idxColumn)
-        return % s,d not in space discretisation
+        discreteCells = []; % s,d not in space discretisation
+        return 
     end
-    discreteCells = (combvec(idxRow, idxColumn))';
+    discreteCells = (combvec(idxRow, idxColumn))'; % [idxRow(cell1), idxColumn(cell1); idxRow(cell2), ...]
 end
 
 function idx = findIdx(spaceDiscretisation, value, dim)

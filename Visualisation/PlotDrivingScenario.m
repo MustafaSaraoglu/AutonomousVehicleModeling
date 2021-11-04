@@ -10,7 +10,7 @@ classdef PlotDrivingScenario< matlab.System
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
         
-        spaceDiscretisation % Space Discretisation
+        spaceDiscretisationMatrix % Space Discretisation Matrix
     end
 
     % Pre-computed constants
@@ -69,7 +69,7 @@ classdef PlotDrivingScenario< matlab.System
             axis equal;
             hold on;
             obj.plotRoad(obj.RoadTrajectory, obj.LaneWidth);
-%             obj.plotDiscreteSpace(); 
+            obj.plotDiscreteSpace(); 
         end
 
         function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, nextWPsPurePursuit, poseEgo)
@@ -159,11 +159,11 @@ classdef PlotDrivingScenario< matlab.System
         function plotDiscreteSpace(obj)
         % Plot discrete space
             
-            for row = 1:size(obj.spaceDiscretisation, 1)
-                for column = 1:size(obj.spaceDiscretisation, 2)
-                    cell_Frenet = obj.spaceDiscretisation{row, column};
-                    corners_Frenet = [cell_Frenet(1,1), cell_Frenet(1,1), cell_Frenet(1,2), cell_Frenet(1,2); cell_Frenet(2,1), cell_Frenet(2,2), cell_Frenet(2,1), cell_Frenet(2,2)];
-                    corners_Cartesian = (Frenet2Cartesian(0, corners_Frenet', obj.RoadTrajectory))';
+            for row = 1:size(obj.spaceDiscretisationMatrix, 1)/2
+                for column = 1:size(obj.spaceDiscretisationMatrix, 2)/2
+                    cell_Frenet = obj.spaceDiscretisationMatrix(2*row-1:2*row, 2*column-1:2*column);
+                    corners_Frenet = (combvec(cell_Frenet(1,:), cell_Frenet(2,:)))';
+                    corners_Cartesian = (Frenet2Cartesian(0, corners_Frenet, obj.RoadTrajectory))';
                     plot(corners_Cartesian(1, :), corners_Cartesian(2, :), 'x', 'Color', 'blue');
                 end
             end
@@ -172,7 +172,7 @@ classdef PlotDrivingScenario< matlab.System
         function sts = getSampleTimeImpl(obj)
             % Example: specify discrete sample time
             sts = obj.createSampleTime("Type", "Discrete", ...
-                "SampleTime", 0.1); % For smoother plotting
+                "SampleTime", 0.1); % For faster plotting
         end   
     end
 end
