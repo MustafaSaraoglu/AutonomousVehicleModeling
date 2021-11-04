@@ -59,7 +59,7 @@ classdef LongitudinalReachability < matlab.System
         end
 
         function verifyReachabilityAnalysis(obj, initialState)
-        % Track error between predicted position and actual position every time horizon seconds
+        % Track error between predicted state and actual state every time horizon seconds
            
             if get_param('VehicleFollowing', 'SimulationTime') > obj.counter*obj.timeHorizon
                 aLead_ref = 0;
