@@ -63,15 +63,13 @@ classdef LongitudinalReachability < matlab.System
            
             if get_param('VehicleFollowing', 'SimulationTime') > obj.counter*obj.timeHorizon
                 aLead_ref = 0;
-                futreStatePrediction = obj.A_prime*initialState + obj.B_prime*aLead_ref;
-                if isempty(obj.futureStatePrediction)
-                    obj.futureStatePrediction = futreStatePrediction;
-                else
+                if ~isempty(obj.futureStatePrediction)
                     error_s_v = obj.futureStatePrediction - initialState;
                     obj.err_s_v(obj.counter, 2:3) = error_s_v';
-                    obj.futureStatePrediction = futreStatePrediction;
                 end 
-                 obj.counter = obj.counter + 1;
+                
+                obj.futureStatePrediction = obj.A_prime*initialState + obj.B_prime*aLead_ref;
+                obj.counter = obj.counter + 1; 
             end
         end
 
