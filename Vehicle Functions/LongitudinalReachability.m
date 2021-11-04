@@ -21,13 +21,11 @@ classdef LongitudinalReachability < matlab.System
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
             
-            obj.k = obj.timeHorizon/obj.Ts; % Number of discrete time steps
+            obj.k = obj.timeHorizon/obj.Ts; 
             
-            obj.A_prime = [1, (obj.k+1)*obj.Ts; 
-                           0,         1        ];
+            obj.A_prime = obj.calculateAPrime(obj.k);
              
-            obj.B_prime = [obj.Ts^2/2*sum(1:2:(2*obj.k+1)); 
-                                    obj.Ts*(obj.k+1)       ];
+            obj.B_prime = obj.calculateBPrime(obj.k);
         end
 
         function [sFuture_min, sFuture_max] = stepImpl(obj, velocity_0, s_0)
@@ -36,12 +34,34 @@ classdef LongitudinalReachability < matlab.System
             initialState = [s_0; velocity_0];
                     
             futureState_min = obj.A_prime*initialState + obj.B_prime*obj.minimumAcceleration; % TODO: Need to consider/restrict backward motion?
+            if futureState_min(2) < 0
+                % Account for the -speed error in the prediction and
+                % correct the position value and set predicted speed to 0
+                
+                futureState_min(2) = 0;
+                t_stop = -velocity_0/obj.minimumAcceleration; % v(t) = 0 = acc*t + v_0 if acc = const.
+                futureState_min(1) = s_0 + velocity_0*t_stop/2;
+            end
             sFuture_min = futureState_min(1);
             
             futureState_max = obj.A_prime*initialState + obj.B_prime*obj.maximumAcceleration;
             sFuture_max = futureState_max(1);
         end
-        
+
+        function A_prime = calculateAPrime(obj, k)
+        % Calculate modified A-Matrix for k time steps
+
+            A_prime = [1, (k+1)*obj.Ts; 
+                       0,       1      ];
+        end
+
+        function B_prime = calculateBPrime(obj, k)
+        % Calculate modified B-Matrix for k time steps
+
+            B_prime = [obj.Ts^2/2*sum(1:2:(2*k+1)); 
+                            obj.Ts*(k+1)           ];
+        end
+    
         function [out1, out2] = getOutputSizeImpl(~)
             % Return size for each output port
             out1 = [1 1];
