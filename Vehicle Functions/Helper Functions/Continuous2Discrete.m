@@ -3,9 +3,9 @@ function discreteCells = Continuous2Discrete(spaceDiscretisationMatrix, s, d)
     
     % Method using matrix structure makes it twice as fast
     rows = spaceDiscretisationMatrix(1:2:end, 1:2); 
-    columns = (reshape(spaceDiscretisationMatrix(2,:), 2, []))';
-    idxRow = (find(s>=rows(:,1) & s<=rows(:,2)))';
-    idxColumn = (find(d>=columns(:,1) & d<=columns(:,2)))';
+    columns = (reshape(spaceDiscretisationMatrix(2, :), 2, []))';
+    idxRow = (find(s>=rows(:, 1) & s<=rows(:, 2)))';
+    idxColumn = (find(d>=columns(:, 1) & d<=columns(:, 2)))';
 
 %     % Method using cell array
 %     idxRow = findIdx(spaceDiscretisation, s, 1);

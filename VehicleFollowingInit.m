@@ -118,7 +118,7 @@ function [spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuous
 
     number_rows = ceil(routeLength/cell_length);
     number_columns = 5; % Divide road width into 5 parts
-    spaceDiscretisation = cell(number_rows, number_columns);
+    spaceDiscretisation = cell(number_rows, number_columns); % Store cell array for comprehensibility
     % Using 2*rows x 2*columns matrix instead of rows x columns (2x2) cell array because it is much more efficient than cell array
     spaceDiscretisationMatrix = zeros(2*number_rows, 2*number_columns); 
 
