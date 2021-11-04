@@ -33,6 +33,10 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
         laneChangeCmds % Possible commands for lane changing
 
         currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates [s, d, dDot]
+        
+        counter % Counter to stop at correct simulation time
+        predictedTrajectory % Store future trajectory predictions for replanning
+        err_s_d % Error between predicted s and actual s and predicted d and actual d [t, deltaS, deltaD]
     end
     
     methods
@@ -57,6 +61,11 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             obj.currentTrajectoryFrenet = zeros(obj.timeHorizon/obj.Ts, 3);
             
             obj.residualLaneChangingTrajectory = [];
+            
+            obj.counter = 0;
+            obj.predictedTrajectory = [];
+            time = (obj.timeHorizon:obj.timeHorizon:str2double(get_param('VehicleFollowing', 'StopTime')))';
+            obj.err_s_d = [time, zeros(length(time), 2)];
         end
         
         function trajectoryFrenet = planTrajectory(obj, changeLaneCmd, currentLane, s, d, v_average)
@@ -206,6 +215,20 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             s_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 1);
             d_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 2);
             dDot_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 3);
+        end
+        
+        function calculateTrajectoryError(obj, s, d)
+        % Track error between predicted trajectory and actual trajectory every time horizon seconds
+           
+            if get_param('VehicleFollowing', 'SimulationTime') > obj.counter*obj.timeHorizon
+                if ~isempty(obj.predictedTrajectory)
+                    error_s_d = obj.predictedTrajectory - [s, d];
+                    obj.err_s_d(obj.counter, 2:3) = error_s_d;
+                end 
+                
+                obj.predictedTrajectory = obj.currentTrajectoryFrenet(end, 1:2); % Last s and d value (planned to reach in time horizon seconds)
+                obj.counter = obj.counter + 1;
+            end
         end
         
         function d_destination = getLateralDestination(obj, currentLane)
