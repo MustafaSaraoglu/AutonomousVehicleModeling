@@ -235,11 +235,14 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             end
         end
         
-        function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj)
-        % Return current trajectory in Cartesian coordinates [x, y, time]
+        function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj, constantVelocity)
+        % Return current trajectory in Cartesian coordinates [x, y, orientation, time]
             
-            [currentTrajectoryCartesianNoTimeStamps, ~] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
-            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, obj.currentTrajectoryFrenet(:, 4)];
+            [currentTrajectoryCartesianNoTimeStamps, roadOrientation] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
+            dDot_ref = obj.currentTrajectoryFrenet(:, 3);
+            orientation = atan2(dDot_ref, constantVelocity) + roadOrientation;
+            time = obj.currentTrajectoryFrenet(:, 4);
+            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, orientation, time];
         end
         
         function d_destination = getLateralDestination(obj, currentLane)
