@@ -16,7 +16,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
 
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
-            obj.planTrajectory(changeLaneCmd, currentLane, s, d, velocity);
+            obj.planFrenetTrajectory(changeLaneCmd, currentLane, s, d, velocity);
             trajectoryCartesian = obj.getCurrentTrajectoryCartesian();
             trajectoryToPlot = trajectoryCartesian(:, 1:2);
             
@@ -33,7 +33,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
         
         function [out1, out2, out3] = getOutputSizeImpl(obj)
             % Return size for each output port
-            lengthTrajectory = obj.timeHorizon/obj.Ts;
+            lengthTrajectory = obj.timeHorizon/obj.Ts + 1;
             
             out1 = [obj.numberWaypoints 2];
             out2 = [1 1];

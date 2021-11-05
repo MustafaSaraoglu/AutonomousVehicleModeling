@@ -56,9 +56,10 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             obj.lanes = ...
                 containers.Map({'RightLane', 'ToLeftLane', 'LeftLane', 'ToRightLane'}, [0, 0.5, 1, -0.5]);
             
-            obj.trajectoryReferenceLength = obj.timeHorizon/obj.Ts;
+            % +1 because planned trajectory contains current Waypoint at current time
+            obj.trajectoryReferenceLength = obj.timeHorizon/obj.Ts + 1; 
             
-            obj.currentTrajectoryFrenet = zeros(obj.timeHorizon/obj.Ts, 4);
+            obj.currentTrajectoryFrenet = zeros(obj.trajectoryReferenceLength, 4);
             
             obj.residualLaneChangingTrajectory = [];
             
@@ -68,7 +69,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             obj.err_s_d = [time, zeros(length(time), 2)];
         end
         
-        function trajectoryFrenet = planTrajectory(obj, changeLaneCmd, currentLane, s, d, v_average)
+        function trajectoryFrenet = planFrenetTrajectory(obj, changeLaneCmd, currentLane, s, d, v_average)
         % Plan trajectory for the next obj.timeHorizon seconds in Frenet coordinates
             
             lengthDifference = 0; % Difference in length between current trajectory and reference trajectory
