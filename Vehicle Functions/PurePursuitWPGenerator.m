@@ -24,7 +24,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             
             [s_ref, d_ref, ~] = obj.getNextFrenetTrajectoryWaypoints(s, obj.numberWaypoints);
             
-            [referencePositionCartesian, ~] = Frenet2Cartesian(0, [s_ref, d_ref], obj.RoadTrajectory);
+            [referencePositionCartesian, ~] = Frenet2Cartesian(s_ref, d_ref, obj.RoadTrajectory);
             
             nextWPs = referencePositionCartesian;
             

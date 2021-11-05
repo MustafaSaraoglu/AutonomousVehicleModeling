@@ -163,7 +163,7 @@ classdef PlotDrivingScenario< matlab.System
                 for column = 1:size(obj.spaceDiscretisationMatrix, 2)/2
                     cell_Frenet = obj.spaceDiscretisationMatrix(2*row-1:2*row, 2*column-1:2*column);
                     corners_Frenet = (combvec(cell_Frenet(1, :), cell_Frenet(2, :)))';
-                    corners_Cartesian = (Frenet2Cartesian(0, corners_Frenet, obj.RoadTrajectory))';
+                    corners_Cartesian = (Frenet2Cartesian(corners_Frenet(:, 1), corners_Frenet(:, 2), obj.RoadTrajectory))';
                     plot(corners_Cartesian(1, :), corners_Cartesian(2, :), 'x', 'Color', 'blue');
                 end
             end

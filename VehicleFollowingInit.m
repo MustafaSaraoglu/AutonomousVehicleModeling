@@ -48,7 +48,7 @@ dLead = 0; % (Initial) Frenet d-coordinate [m]
 % xLead_0: Initial x-coordinate [m]
 % yLead_0: Initial y-coordinate [m]
 % yawLead_0: Initial steering angle [rad]
-[positionLead_0, yawLead_0] = Frenet2Cartesian(0, [sLead_0, dLead], roadTrajectory);
+[positionLead_0, yawLead_0] = Frenet2Cartesian(sLead_0, dLead, roadTrajectory);
 xLead_0 = positionLead_0(1);
 yLead_0 = positionLead_0(2);
 
@@ -71,7 +71,7 @@ dEgo_0 = 0; % Initial Frenet d-coordinate [m]
 % xEgo_0: Initial x-coordinate [m]
 % yEgo_0: Initial y-coordinate [m]
 % yawEgo_0: Initial steering angle [rad]
-[positionEgo_0, yawEgo_0] = Frenet2Cartesian(0, [sEgo_0, dEgo_0], roadTrajectory);
+[positionEgo_0, yawEgo_0] = Frenet2Cartesian(sEgo_0, dEgo_0, roadTrajectory);
 xEgo_0 = positionEgo_0(1);
 yEgo_0 = positionEgo_0(2);
 

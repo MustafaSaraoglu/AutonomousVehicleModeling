@@ -45,7 +45,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % Reference is the center of the front axle
             centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
             [referencePositionCartesian, idx] = obj.getClosestPointOnTrajectory(centerFrontAxle', trajectoryCartesian(:, 1:2));
-            [~, roadOrientation] = Frenet2Cartesian(0, trajectoryFrenet(idx, 1:2), obj.RoadTrajectory); % Same index as in Cartesian trajectory
+            [~, roadOrientation] = Frenet2Cartesian(trajectoryFrenet(idx, 1), trajectoryFrenet(idx, 2), obj.RoadTrajectory); % Same index as in Cartesian trajectory
             dDot_ref = trajectoryFrenet(idx, 3); 
             refOrientationCartesian = atan2(dDot_ref, velocity) + roadOrientation; % + Consider road orientation
             

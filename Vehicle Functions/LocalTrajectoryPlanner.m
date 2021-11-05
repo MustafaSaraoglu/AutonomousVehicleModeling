@@ -238,7 +238,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
         function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj)
         % Return current trajectory in Cartesian coordinates [x, y, time]
             
-            [currentTrajectoryCartesianNoTimeStamps, ~] = Frenet2Cartesian(0, obj.currentTrajectoryFrenet(:, 1:2), obj.RoadTrajectory);
+            [currentTrajectoryCartesianNoTimeStamps, ~] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
             currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, obj.currentTrajectoryFrenet(:, 4)];
         end
         
