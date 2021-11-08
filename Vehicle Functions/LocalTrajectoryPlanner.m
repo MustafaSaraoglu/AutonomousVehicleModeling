@@ -221,6 +221,16 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             dDot_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 3);
         end
         
+        function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj, constantVelocity)
+        % Return current trajectory in Cartesian coordinates [x, y, orientation, time]
+            
+            [currentTrajectoryCartesianNoTimeStamps, roadOrientation] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
+            dDot_ref = obj.currentTrajectoryFrenet(:, 3);
+            orientation = atan2(dDot_ref, constantVelocity) + roadOrientation;
+            time = obj.currentTrajectoryFrenet(:, 4);
+            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, orientation, time];
+        end
+        
         function calculateTrajectoryError(obj, s, d)
         % Track error between predicted trajectory and actual trajectory every time horizon seconds
            
@@ -233,16 +243,6 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
                 obj.predictedTrajectory = obj.currentTrajectoryFrenet(end, 1:2); % Last s and d value (planned to reach in time horizon seconds)
                 obj.counter = obj.counter + 1;
             end
-        end
-        
-        function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj, constantVelocity)
-        % Return current trajectory in Cartesian coordinates [x, y, orientation, time]
-            
-            [currentTrajectoryCartesianNoTimeStamps, roadOrientation] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
-            dDot_ref = obj.currentTrajectoryFrenet(:, 3);
-            orientation = atan2(dDot_ref, constantVelocity) + roadOrientation;
-            time = obj.currentTrajectoryFrenet(:, 4);
-            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, orientation, time];
         end
         
         function d_destination = getLateralDestination(obj, currentLane)

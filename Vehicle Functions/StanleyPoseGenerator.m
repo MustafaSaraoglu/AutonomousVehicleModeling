@@ -25,7 +25,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
-            trajectoryFrenet = obj.planFrenetTrajectory(changeLaneCmd, currentLane, s, d, velocity);
+            obj.planFrenetTrajectory(changeLaneCmd, currentLane, s, d, velocity);
             trajectoryCartesian = obj.getCurrentTrajectoryCartesian(velocity);
             trajectoryToPlot = trajectoryCartesian(:, 1:2);
             
