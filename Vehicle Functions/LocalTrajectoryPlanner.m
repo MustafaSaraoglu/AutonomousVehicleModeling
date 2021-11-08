@@ -32,7 +32,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
         
         laneChangeCmds % Possible commands for lane changing
 
-        currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates [s, d, dDot, time]
+        currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates [s, d, time]
         
         counter % Counter to stop at correct simulation time
         predictedTrajectory % Store future trajectory predictions for replanning
@@ -59,7 +59,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             % +1 because planned trajectory contains current Waypoint at current time
             obj.trajectoryReferenceLength = obj.timeHorizon/obj.Ts + 1; 
             
-            obj.currentTrajectoryFrenet = zeros(obj.trajectoryReferenceLength, 4);
+            obj.currentTrajectoryFrenet = zeros(obj.trajectoryReferenceLength, 3);
             
             obj.residualLaneChangingTrajectory = [];
             
@@ -121,7 +121,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
         % Calculate trajectory that needs to be added to the current trajectory in order to get the correct reference trajectory length 
             
             s_lastElement = obj.currentTrajectoryFrenet(end, 1);
-            t_lastElement = obj.currentTrajectoryFrenet(end, 4);
+            t_lastElement = obj.currentTrajectoryFrenet(end, 3);
             d_destination = obj.getLateralDestination(currentLane);
         
             if isempty(obj.residualLaneChangingTrajectory)
@@ -188,10 +188,9 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             
             s_trajectory = s_current + v_average*t_discrete;
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
-            dDot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
             time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
             
-            laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory',  dDot_trajectory', time'];
+            laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', time'];
         end  
         
         function straightTrajectoryFrenet = calculateStraightTrajectory(obj, s_last, t_last, d_destination, v_average, duartion)
@@ -202,10 +201,10 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             d_trajectory = d_destination*ones(1, length(t_discrete));
             time = t_last + t_discrete;
             
-            straightTrajectoryFrenet = [s_trajectory', d_trajectory', zeros(length(t_discrete), 1), time']; 
+            straightTrajectoryFrenet = [s_trajectory', d_trajectory', time']; 
         end
         
-        function [s_ref, d_ref, dDot_ref] = getNextFrenetTrajectoryWaypoints(obj, s, numberWPs)
+        function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, numberWPs)
         % Get the next waypoint(s) for current trajectory according to current s in Frenet coordinates
         
             ID_nextWP = sum(s >= obj.currentTrajectoryFrenet(:, 1)) + 1;
@@ -218,17 +217,14 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             
             s_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 1);
             d_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 2);
-            dDot_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 3);
         end
         
-        function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj, constantVelocity)
-        % Return current trajectory in Cartesian coordinates [x, y, orientation, time]
+        function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj)
+        % Return current trajectory in Cartesian coordinates [x, y, time]
             
-            [currentTrajectoryCartesianNoTimeStamps, roadOrientation] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
-            dDot_ref = obj.currentTrajectoryFrenet(:, 3);
-            orientation = atan2(dDot_ref, constantVelocity) + roadOrientation;
-            time = obj.currentTrajectoryFrenet(:, 4);
-            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, orientation, time];
+            [currentTrajectoryCartesianNoTimeStamps, ~] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
+            time = obj.currentTrajectoryFrenet(:, 3);
+            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, time];
         end
         
         function calculateTrajectoryError(obj, s, d)
@@ -236,7 +232,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
            
             if get_param('VehicleFollowing', 'SimulationTime') > obj.counter*obj.timeHorizon
                 if ~isempty(obj.predictedTrajectory)
-                    error_s_d = obj.predictedTrajectory - [s, d]; % TODO: s_predicted gets wrong when steering angle increases !!!
+                    error_s_d = obj.predictedTrajectory - [s, d]; 
                     obj.err_s_d(obj.counter, 2:3) = error_s_d;
                 end 
                 
