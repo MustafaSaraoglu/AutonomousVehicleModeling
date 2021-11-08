@@ -266,14 +266,12 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
         function trajectoryToPlot = getTrajectoryToPlot(obj, trajectoryCartesian, currentLane)
         % Return trajectory in Cartesian coordinates with reduced samples for plotting  
             
-            trajectoryToPlot = trajectoryCartesian;
             % TODO: Find a way to output variable size
-%             if obj.isReachedLaneCenter(currentLane)
-%                 trajectoryToPlot = [trajectoryCartesian(1:obj.timeHorizon*10:end, 1:2); trajectoryCartesian(end, 1:2)]; % Reduce points to plot
-%             else
-%                 trajectoryToPlot = [trajectoryCartesian(1, 1:2); trajectoryCartesian(end, 1:2)]; % For straight line two points are sufficient
-%                 % TODO: What about curved lanes?
-%             end
+            if obj.isReachedLaneCenter(currentLane)
+                trajectoryToPlot = [trajectoryCartesian(1, 1:2); trajectoryCartesian(end, 1:2)]; % For straight line two points are sufficient
+            else
+                trajectoryToPlot = [trajectoryCartesian(1:obj.timeHorizon*10:end, 1:2); trajectoryCartesian(end, 1:2)]; % Reduce points to plot
+            end
         end
     end
 end
