@@ -85,7 +85,7 @@ durationToRightLane = 5; % Time for overtaking (to right lane) [s]
 numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
-Ts = 0.05; % Sampling time [s]
+Ts = 0.01; % Sampling time [s]
 timeHorizon = 2; % Time horizon for trajectory genereation [s]
 
 %% Space Discretisation

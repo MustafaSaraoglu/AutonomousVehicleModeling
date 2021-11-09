@@ -101,11 +101,10 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
 
 %         function sts = getSampleTimeImpl(obj)
 %             % Define sample time type and parameters
-%             %  sts = obj.createSampleTime("Type", "Inherited");
 % 
 %             % Example: specify discrete sample time
 %             sts = obj.createSampleTime("Type", "Discrete", ...
-%                 "SampleTime", 'inherited');
+%                 "SampleTime", obj.Ts);
 %         end      
     end
 end
