@@ -22,12 +22,12 @@ laneWidth = 3.7; % lane width [m]
 %                      s_max  0   0;
 %                      0      0   0;
 %                      0      0   0];
-                 
+               
 % Curved Road
 roadTrajectory =    [s_min  0        0;
                      s_max  0       -s_max;
                      pi/2   s_min   -s_max;
-                     -1     -1      -1]; % TODO: '+1' or '-1' ?; '-' seems to be counter clockwise
+                     -1     -1      -1]; 
 
 % Double lane
 d_min = -laneWidth/2; % Right lateral lane boundary [m]
