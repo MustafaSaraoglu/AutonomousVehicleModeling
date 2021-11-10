@@ -89,6 +89,13 @@ Ts = 0.01; % Sampling time [s]
 timeHorizon = 2; % Time horizon for trajectory genereation [s]
 partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
 
+% Gains for PID controller
+Kp = 9.9326;
+Ki = 9.5739;
+Kd = 1.7831;
+
+forwardMotionGain = 3.4715; % Position gain of forward motion for Stanley
+
 %% Space Discretisation
 cell_length = 5; % Cell length in s-coordinate [m]
 laneCell_width = 3; % Width of right/left lane cell [m]
