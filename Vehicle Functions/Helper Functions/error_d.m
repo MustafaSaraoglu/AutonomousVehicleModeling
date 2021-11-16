@@ -4,10 +4,15 @@ function ISE_d = error_d(paramsToBeOptimized)
 
 	% Prepare simulation
     mdl = 'VehicleFollowing';
-    assignin('base', 'Kp', paramsToBeOptimized(1));
-    assignin('base', 'Ki', paramsToBeOptimized(2));
-    assignin('base', 'Kd', paramsToBeOptimized(3));
-    assignin('base', 'forwardMotionGain', paramsToBeOptimized(4));
+    
+    %% With PID
+%     assignin('base', 'Kp', paramsToBeOptimized(1));
+%     assignin('base', 'Ki', paramsToBeOptimized(2));
+%     assignin('base', 'Kd', paramsToBeOptimized(3));
+%     assignin('base', 'forwardMotionGain', paramsToBeOptimized(4));
+    %% Without PID
+    assignin('base', 'forwardMotionGain', paramsToBeOptimized);
+    %%
     
     % Run simulation
     out = sim(mdl);
