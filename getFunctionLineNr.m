@@ -4,11 +4,12 @@ function lineNr = getFunctionLineNr(functionName)
 
     entries = {...
         % LocalTrajectoryPlanner.m
-        'calculateStraightTrajectory', 245;
-        'updateCurrentTrajectory', 110;
-        'calculateLaneChangingTrajectory', 165;
+        'planFrenetTrajectory', 72;
         'divideLaneChangingTrajectory', 95;
+        'updateCurrentTrajectory', 110;
         'calculateTrajectoryToAdd', 129;
+        'calculateLaneChangingTrajectory', 165;
+        'calculateStraightTrajectory', 245;
         'getCurrentTrajectoryCartesian', 256;
         'getNextFrenetTrajectoryWaypoints', 264;
         'calculateTrajectoryError', 279
