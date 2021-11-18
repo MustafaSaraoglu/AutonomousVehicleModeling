@@ -1,6 +1,6 @@
 function ISE_d = error_d(paramsToBeOptimized)
 % Use genetic algorithm to optimize parameters
-% paramsToBeOptimized = [Kp, Ki, Kd, forwardMotionGain]
+% paramsToBeOptimized = [Kp, Ki, Kd, forwardMotionGain] / only Kp
 
 	% Prepare simulation
     mdl = 'VehicleFollowing';
