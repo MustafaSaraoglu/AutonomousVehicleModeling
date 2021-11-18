@@ -12,7 +12,11 @@ function lineNr = getFunctionLineNr(functionName)
         'calculateStraightTrajectory', 245;
         'getCurrentTrajectoryCartesian', 256;
         'getNextFrenetTrajectoryWaypoints', 264;
-        'calculateTrajectoryError', 279
+        'calculateTrajectoryError', 279;
+        
+        % StanleyPoseGenerator.m
+        'getClosestPointOnTrajectory', 9;
+        'getReferencePoseStanley', 41
         };
     
     referenceFunctions = containers.Map(entries(:, 1)', [entries{:, 2}]);
