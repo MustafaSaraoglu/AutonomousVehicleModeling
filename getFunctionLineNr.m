@@ -3,6 +3,9 @@ function lineNr = getFunctionLineNr(functionName)
 % files up to date to use them as a reference
 
     entries = {...
+        % VehicleFollowingInit.m
+        'discretiseContinuousSpace', 105;
+    
         % LocalTrajectoryPlanner.m
         'planFrenetTrajectory', 72;
         'divideLaneChangingTrajectory', 95;
