@@ -150,7 +150,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
         end
         
         function laneChangingTrajectoryFrenet = calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, v_average)
-        % Check whether to start or stop executing a lane changing maneuver
+        % Calculate the lane changing maneuver either to the left or right lane
             
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeft')
                 d_destination = obj.LaneWidth;
@@ -253,6 +253,14 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             straightTrajectoryFrenet = [s_trajectory', d_trajectory', time']; 
         end
         
+        function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj)
+        % Return current trajectory in Cartesian coordinates [x, y, time]
+            
+            [currentTrajectoryCartesianNoTimeStamps, ~] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
+            time = obj.currentTrajectoryFrenet(:, 3);
+            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, time];
+        end
+        
         function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, numberWPs)
         % Get the next waypoint(s) for current trajectory according to current s in Frenet coordinates
         
@@ -266,14 +274,6 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             
             s_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 1);
             d_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 2);
-        end
-        
-        function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj)
-        % Return current trajectory in Cartesian coordinates [x, y, time]
-            
-            [currentTrajectoryCartesianNoTimeStamps, ~] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
-            time = obj.currentTrajectoryFrenet(:, 3);
-            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, time];
         end
         
         function replan = calculateTrajectoryError(obj, s, d)
