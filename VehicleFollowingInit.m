@@ -87,6 +87,14 @@ lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
 Ts = 0.01; % Sampling time [s]
 timeHorizon = 2; % Time horizon for trajectory genereation [s]
+partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
+
+% Gains for PID controller
+% Kp = 9.7639; 
+% Ki = 8.0739;
+% Kd = 0.1865;
+
+forwardMotionGain = 1; % Position gain of forward motion for Stanley
 
 %% Space Discretisation
 cell_length = 5; % Cell length in s-coordinate [m]
