@@ -19,7 +19,13 @@ function lineNr = getFunctionLineNr(functionName)
         
         % StanleyPoseGenerator.m
         'getClosestPointOnTrajectory', 9;
-        'getReferencePoseStanley', 41
+        'getReferencePoseStanley', 41;
+        
+        % PlotDrivingScenario.m
+        'plotVehicle', 50;
+        'deletePreviousPlots', 103;
+        'plotRoad', 121;
+        'plotDiscreteSpace', 159
         };
     
     referenceFunctions = containers.Map(entries(:, 1)', [entries{:, 2}]);
