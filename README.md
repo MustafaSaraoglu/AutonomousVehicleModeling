@@ -1,5 +1,5 @@
 # Autonomous Vehicle Modeling and Simulation in Simulink Tutorials
-Autonomous Vehicle Modeling with MATLAB and Simulink. Check out the YouTube Channel of MOBATSim for the tutorial playlist: https://www.youtube.com/watch?v=MS66nlDOmRY&amp;list=PLNNL3443z4lHTmBFrrur6aYhJnwvITqWM
+Autonomous Vehicle Modeling with MATLAB and Simulink. Check out the YouTube Channel of MOBATSim for the tutorial playlist: https://www.youtube.com/playlist?list=PLNNL3443z4lHTmBFrrur6aYhJnwvITqWM
 
 [![MustafaSaraoglu - AutonomousVehicleModeling](https://img.shields.io/static/v1?label=MustafaSaraoglu&message=AutonomousVehicleModeling&color=orange&logo=github)](https://github.com/MustafaSaraoglu/AutonomousVehicleModeling)
 [![stars - AutonomousVehicleModeling](https://img.shields.io/github/stars/MustafaSaraoglu/AutonomousVehicleModeling?style=social)](https://github.com/MustafaSaraoglu/AutonomousVehicleModeling/stargazers)
