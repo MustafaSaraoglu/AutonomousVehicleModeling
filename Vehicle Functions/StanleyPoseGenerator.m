@@ -53,7 +53,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
         function [out1, out2, out3, out4, out5] = getOutputSizeImpl(obj)
             % Return size for each output port
             lengthTrajectory = obj.timeHorizon/obj.Ts + 1;
-            numberPointsSteering = ceil(rad2deg(2*abs(obj.steerAngle_max))) + 1;
+            numberPointsSteering =  2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max)));
             
             out1 = [1 1];
             out2 = [lengthTrajectory, 2];

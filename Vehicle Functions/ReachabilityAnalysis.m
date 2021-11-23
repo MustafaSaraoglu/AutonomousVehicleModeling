@@ -44,7 +44,8 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             obj.A_prime = obj.calculateAPrime(obj.k);
             obj.B_prime = obj.calculateBPrime(obj.k);
             
-            obj.numberPointsSteering = ceil(rad2deg(2*abs(obj.steerAngle_max))) + 1; % At least one point every degree
+            % Needs to be even number TODO: why?
+            obj.numberPointsSteering = 2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max))); % Consider steering angle range and time horizon
         end
         
         function [futureState_min, futureState_max] = predictLongitudinalFutureState(obj, s_0, v_0)
@@ -68,7 +69,8 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         
         function steeringReachability = calculateSteeringReachability(obj, pose, s, v)
         % Calcuate reachability for all possible steering angles
-        
+            
+            % TODO: cclockwise variable instead of radii < 0
             steeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
             turningRadii = obj.wheelBase./tan(steeringAngles);
             [longitudinalFutureState_min, longitudinalFutureState_max] = obj.predictLongitudinalFutureState(s, v);
