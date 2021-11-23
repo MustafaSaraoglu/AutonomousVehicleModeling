@@ -18,6 +18,21 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         
         A_prime % Modified A-Matrix for reachability analysis
         B_prime % Modified B-Matrix for reachability analysis
+        
+        numberPointsSteering  % Number of points for steering reachability
+    end
+    
+    methods(Static)
+        function destinations = predictFutureDestinations(pose, turningRadius, arcLength)
+        % Predict points for future destinations according to truning radius and arc length
+            
+            arcAngle = arcLength./turningRadius;
+        
+            x_destination = pose(1) + turningRadius.*(sin(pose(3) + arcAngle) - sin(pose(3)));
+            y_destination = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcAngle));
+            
+            destinations = [x_destination', y_destination'];
+        end
     end
 
     methods(Access = protected)
@@ -28,6 +43,8 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             
             obj.A_prime = obj.calculateAPrime(obj.k);
             obj.B_prime = obj.calculateBPrime(obj.k);
+            
+            obj.numberPointsSteering = ceil(rad2deg(2*abs(obj.steerAngle_max))) + 1; % At least one point every degree
         end
         
         function [futureState_min, futureState_max] = predictLongitudinalFutureState(obj, s_0, v_0)
@@ -51,31 +68,24 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         
         function steeringReachability = calculateSteeringReachability(obj, pose, s, v)
         % Calcuate reachability for all possible steering angles
+        
+            steeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
+            turningRadii = obj.wheelBase./tan(steeringAngles);
+            [longitudinalFutureState_min, longitudinalFutureState_max] = obj.predictLongitudinalFutureState(s, v);
             
-            steeringAngles = -obj.steerAngle_max:0.01:obj.steerAngle_max;
+            destinations_minBoundary = obj.predictFutureDestinations(pose, turningRadii, longitudinalFutureState_min(1)-s);
+            destinations_maxBoundary = obj.predictFutureDestinations(pose, turningRadii, longitudinalFutureState_max(1)-s);
+           
+            arcLengths =  linspace(longitudinalFutureState_min(1), longitudinalFutureState_max(1), obj.numberPointsSteering) - s;
+            turningRadius_minimum = obj.wheelBase./tan(obj.steerAngle_max);
             
-            [futureState_min, futureState_max] = obj.predictLongitudinalFutureState(s, v);
-            arcLength_min = futureState_min(1) - s;
-            arcLength_max = futureState_max(1) - s;
+            destinations_rightBoundary = obj.predictFutureDestinations(pose, -turningRadius_minimum, arcLengths);
+            destinations_leftBoundary = obj.predictFutureDestinations(pose, turningRadius_minimum, arcLengths);
             
-            %arcLengthConstantVelocity = v*obj.timeHorizon; 
-            turningRadius = obj.wheelBase./tan(steeringAngles);
-            arcAngle_min = arcLength_min./turningRadius;
-            arcAngle_max = arcLength_max./turningRadius;
-            
-            x_destination_min = pose(1) + turningRadius.*(sin(pose(3) + arcAngle_min) - sin(pose(3)));
-            y_destination_min = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcAngle_min));
-            
-            x_destination_max = pose(1) + turningRadius.*(sin(pose(3) + arcAngle_max) - sin(pose(3)));
-            y_destination_max = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcAngle_max));
-            
-            steeringReachability = [x_destination_min', y_destination_min', x_destination_max', y_destination_max'];
+            steeringReachability = [destinations_minBoundary, destinations_maxBoundary, ...
+                                    destinations_rightBoundary, destinations_leftBoundary];
         end
         
-%         function calculateSteeringAngleArc(obj, pose, steeringAngle)
-%         % Return tunring arc for a given steering angle, possible in specified time horizon
-%             
-%         end
 
         function A_prime = calculateAPrime(obj, k)
         % Calculate modified A-Matrix for constant accelerations and k time steps

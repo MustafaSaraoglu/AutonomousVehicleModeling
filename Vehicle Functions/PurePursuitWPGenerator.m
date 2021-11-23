@@ -35,12 +35,12 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
         function [out1, out2, out3, out4] = getOutputSizeImpl(obj)
             % Return size for each output port
             lengthTrajectory = obj.timeHorizon/obj.Ts + 1;
-            angleRangeLength = length(-obj.steerAngle_max:0.01:obj.steerAngle_max);
+            numberPointsSteering = ceil(rad2deg(2*abs(obj.steerAngle_max))) + 1;
             
             out1 = [obj.numberWaypoints, 2];
             out2 = [1 1];
             out3 = [lengthTrajectory, 2];
-            out4 = [angleRangeLength, 4];
+            out4 = [numberPointsSteering, 8];
 
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);

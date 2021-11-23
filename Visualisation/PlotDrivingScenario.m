@@ -35,6 +35,8 @@ classdef PlotDrivingScenario< matlab.System
         % Ego Reachability
         plotEgoReachabilityMin
         plotEgoReachabilityMax
+        plotEgoReachabilityRightBoundary
+        plotEgoReachabilityLeftBoundary
     end
     
     methods(Static)
@@ -101,6 +103,8 @@ classdef PlotDrivingScenario< matlab.System
             % Ego Reachability
             obj.plotEgoReachabilityMin = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
             obj.plotEgoReachabilityMax = plot(egoReachability(:, 3), egoReachability(:, 4), 'Color', [51/255, 102/255, 0]);
+            obj.plotEgoReachabilityRightBoundary = plot(egoReachability(:, 5), egoReachability(:, 6), 'Color', [51/255, 102/255, 0]);
+            obj.plotEgoReachabilityLeftBoundary = plot(egoReachability(:, 7), egoReachability(:, 8), 'Color', [51/255, 102/255, 0]);
 
             % Adjust Axis
             x2 = poseEgo(1);
@@ -128,6 +132,8 @@ classdef PlotDrivingScenario< matlab.System
             % Ego Reachability
             delete(obj.plotEgoReachabilityMin);
             delete(obj.plotEgoReachabilityMax);
+            delete(obj.plotEgoReachabilityRightBoundary);
+            delete(obj.plotEgoReachabilityLeftBoundary);
         end
         
         function plotRoad(obj, roadTrajectory, laneWidth)
