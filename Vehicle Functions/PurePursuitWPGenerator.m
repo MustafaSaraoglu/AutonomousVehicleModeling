@@ -21,7 +21,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             trajectoryCartesian = obj.getCurrentTrajectoryCartesian();
             trajectoryToPlot = trajectoryCartesian(:, 1:2);
             
-            steeringReachability = obj.calculateSteeringReachability(pose, velocity);
+            steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
             [s_ref, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, obj.numberWaypoints);
             
@@ -40,7 +40,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             out1 = [obj.numberWaypoints, 2];
             out2 = [1 1];
             out3 = [lengthTrajectory, 2];
-            out4 = [angleRangeLength, 2];
+            out4 = [angleRangeLength, 4];
 
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);

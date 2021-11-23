@@ -49,19 +49,27 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             futureState_max = obj.A_prime*initialState + obj.B_prime*obj.maximumAcceleration;
         end
         
-        function steeringReachability = calculateSteeringReachability(obj, pose, v_constant)
+        function steeringReachability = calculateSteeringReachability(obj, pose, s, v)
         % Calcuate reachability for all possible steering angles
             
             steeringAngles = -obj.steerAngle_max:0.01:obj.steerAngle_max;
-            arcLength = v_constant*obj.timeHorizon; % Only for constant velocities
+            
+            [futureState_min, futureState_max] = obj.predictLongitudinalFutureState(s, v);
+            arcLength_min = futureState_min(1) - s;
+            arcLength_max = futureState_max(1) - s;
+            
+            %arcLengthConstantVelocity = v*obj.timeHorizon; 
             turningRadius = obj.wheelBase./tan(steeringAngles);
-            arcAngle = arcLength./turningRadius;
+            arcAngle_min = arcLength_min./turningRadius;
+            arcAngle_max = arcLength_max./turningRadius;
             
-            x_destination = pose(1) + turningRadius.*(sin(pose(3) + arcAngle) - sin(pose(3)));
-            y_destination = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcAngle));
+            x_destination_min = pose(1) + turningRadius.*(sin(pose(3) + arcAngle_min) - sin(pose(3)));
+            y_destination_min = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcAngle_min));
             
+            x_destination_max = pose(1) + turningRadius.*(sin(pose(3) + arcAngle_max) - sin(pose(3)));
+            y_destination_max = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcAngle_max));
             
-            steeringReachability = [x_destination', y_destination'];
+            steeringReachability = [x_destination_min', y_destination_min', x_destination_max', y_destination_max'];
         end
         
 %         function calculateSteeringAngleArc(obj, pose, steeringAngle)

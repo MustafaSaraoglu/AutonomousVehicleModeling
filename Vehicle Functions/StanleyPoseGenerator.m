@@ -26,7 +26,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             trajectoryCartesian = obj.getCurrentTrajectoryCartesian();
             trajectoryToPlot = trajectoryCartesian(:, 1:2);
             
-            steeringReachability = obj.calculateSteeringReachability(pose, velocity);
+            steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
             referencePose = obj.getReferencePoseStanley(pose, trajectoryCartesian); 
             
@@ -57,7 +57,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             out1 = [1 1];
             out2 = [lengthTrajectory, 2];
-            out3 = [angleRangeLength, 2];
+            out3 = [angleRangeLength, 4];
             out4 = [1 3];
             out5 = [1 3];
 
