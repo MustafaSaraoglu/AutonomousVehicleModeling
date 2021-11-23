@@ -31,6 +31,9 @@ classdef PlotDrivingScenario< matlab.System
         % Trajectory
         plotTrajectoryEgo
         plotWPsEgo
+        
+        % Steering Reachability
+        plotReachability
     end
     
     methods(Static)
@@ -72,7 +75,7 @@ classdef PlotDrivingScenario< matlab.System
             obj.plotDiscreteSpace(); 
         end
 
-        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, nextWPsPurePursuit, poseEgo)
+        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, egoReachability, nextWPsPurePursuit, poseEgo)
         % Plot driving scenario
         
              obj.deletePreviousPlots; 
@@ -93,6 +96,9 @@ classdef PlotDrivingScenario< matlab.System
             if size(nextWPsPurePursuit ,2) == 2
                 obj.plotWPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
             end
+            
+            % Steering Reachability
+            obj.plotReachability = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
 
             % Adjust Axis
             x2 = poseEgo(1);
@@ -116,6 +122,9 @@ classdef PlotDrivingScenario< matlab.System
             % Trajectory
             delete(obj.plotTrajectoryEgo);
             delete(obj.plotWPsEgo);
+            
+            % Steering Reachability
+            delete(obj.plotReachability);
         end
         
         function plotRoad(obj, roadTrajectory, laneWidth)

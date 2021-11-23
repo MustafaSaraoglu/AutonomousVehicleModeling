@@ -5,6 +5,8 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
     properties(Nontunable)
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
+        wheelBase % Wheel base ego vehicle [m]
+        steerAngle_max % Maximum steering angle [rad]
         
         durationToLeftLane % Time for lane changing [s]
         durationToRightLane % Time for overtaking [s]
@@ -297,6 +299,17 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
             
             ID_nextPrediction = sum((obj.counter+1)*obj.fractionTimeHorizon  >= obj.currentTrajectoryFrenet(:, 3)); % ID for next predicted time
             obj.predictedTrajectory = obj.currentTrajectoryFrenet(ID_nextPrediction, :); 
+        end
+        
+        function steeringReachability = calculateSteeringReachability(obj, pose, v_constant)
+        % Calcuate reachability for all possible steering angles
+            
+            delta = -obj.steerAngle_max:0.01:obj.steerAngle_max;
+            deltaS = v_constant*obj.timeHorizon; % Only for constant velocities
+            
+            x_destination = pose(1) + obj.wheelBase./tan(delta).*(sin(pose(3) + deltaS.*tan(delta)./obj.wheelBase) - sin(pose(3)));
+            y_destination = pose(2) + obj.wheelBase./tan(delta).*(cos(pose(3)) - cos(pose(3) + deltaS.*tan(delta)./obj.wheelBase));
+            steeringReachability = [x_destination', y_destination'];
         end
         
         function d_destination = getLateralDestination(obj, currentLane)

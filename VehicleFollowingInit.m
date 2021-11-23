@@ -10,7 +10,7 @@ v_max = 30; % Maximum allowed longitudinal velocity [m/s]
 a_min = -3; % Minimum allowed longitudinal acceleration [m/s^2]
 a_max = 2; % Maximum allowed longitudinal acceleration [m/s^2]
 
-steerAngle_max = pi/4; % Maximum allowed steering angle [rad]
+steerAngle_max = pi/8; % Maximum allowed steering angle [rad]
 angularVelocity_max = 0.1; % Maximum angular velocity [rad/s]
 
 %% Road
@@ -23,7 +23,7 @@ laneWidth = 3.7; % lane width [m]
 %                      0      0   0;
 %                      0      0   0];
                
-% Curved Road
+% % Curved Road
 roadTrajectory =    [s_min  0        0;
                      s_max  0       -s_max;
                      pi/2   s_min   -s_max;
@@ -64,6 +64,8 @@ wheelBaseEgo = 3; % Wheel base [m]
 % detection [m]
 radiusEgo = sqrt((dimensionsEgo(1)/2)^2 + (dimensionsEgo(2)/2)^2); 
 
+minimumTurningRadiusEgo = wheelBaseEgo/tan(steerAngle_max); % Minimum turning radius [m]
+
 sEgo_0 = 0; % Initial Frenet s-coordinate [m]
 dEgo_0 = 0; % Initial Frenet d-coordinate [m]
 
@@ -86,7 +88,7 @@ numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
 Ts = 0.01; % Sampling time [s]
-timeHorizon = 2; % Time horizon for trajectory genereation [s]
+timeHorizon = 1; % Time horizon for trajectory genereation [s]
 partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
 
 % Gains for PID controller
