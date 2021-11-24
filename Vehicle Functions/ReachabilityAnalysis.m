@@ -6,6 +6,9 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         maximumAcceleration % Maximum longitudinal acceleration [m/s^2]
         emergencyAcceleration % Acceleration for emergency break [m/s^2]
         
+        minimumVelocity % Minimum longitudinal velocity [m/s]
+        maximumVelocity % Maximum longitudinal velocity [m/s]
+        
         wheelBase % Wheel base vehicle [m]
         steerAngle_max % Maximum steering angle [rad]
          
@@ -55,13 +58,14 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             
             initialState = [s_0; v_0];
             futureState = obj.A_prime*initialState + obj.B_prime*acceleration;
-            if futureState(2) < 0
-                % Account for the -speed error in the prediction and
-                % correct the position value and set predicted speed to 0
-                
+            if futureState(2) < 0 
                 futureState(2) = 0;
                 t_stop = -v_0/acceleration; % v(t) = 0 = acc*t + v_0 if acc = const.
-                futureState(1) = s_0 + v_0*t_stop/2;
+                futureState(1) = s_0 + 0.5*v_0*t_stop;
+            elseif futureState(2) > obj.maximumVelocity
+                futureState(2) = obj.maximumVelocity;
+                t_v_max = (obj.maximumVelocity - v_0)/acceleration; % v(t) = v_max = acc*t + v_0 if acc = const.
+                futureState(1) = s_0 + obj.maximumVelocity*obj.timeHorizon - 0.5*(obj.maximumVelocity - v_0)*t_v_max;
             end
         end
         
