@@ -22,7 +22,8 @@ classdef LongitudinalReachability < ReachabilityAnalysis
         function [sFuture_min, sFuture_max] = stepImpl(obj, v_0, s_0)
         % Return minimum and maximum predicted future s
             
-            [futureState_min, futureState_max] = obj.predictLongitudinalFutureState(s_0, v_0);
+            futureState_min = obj.predictLongitudinalFutureState(s_0, v_0, obj.minimumAcceleration);
+            futureState_max = obj.predictLongitudinalFutureState(s_0, v_0, obj.maximumAcceleration);
             
             sFuture_min = futureState_min(1);
             sFuture_max = futureState_max(1);

@@ -40,7 +40,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             out1 = [obj.numberWaypoints, 2];
             out2 = [1 1];
             out3 = [lengthTrajectory, 2];
-            out4 = [numberPointsSteering, 8];
+            out4 = [numberPointsSteering, 10];
 
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);

@@ -57,7 +57,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             out1 = [1 1];
             out2 = [lengthTrajectory, 2];
-            out3 = [numberPointsSteering, 8];
+            out3 = [numberPointsSteering, 10];
             out4 = [1 3];
             out5 = [1 3];
 

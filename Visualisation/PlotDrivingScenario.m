@@ -33,10 +33,11 @@ classdef PlotDrivingScenario< matlab.System
         plotWPsEgo
         
         % Ego Reachability
-        plotEgoReachabilityMin
-        plotEgoReachabilityMax
+        plotEgoReachabilityMinBoundary
+        plotEgoReachabilityMaxBoundary
         plotEgoReachabilityRightBoundary
         plotEgoReachabilityLeftBoundary
+        plotEgoReachabilityEmergencyBoundary
     end
     
     methods(Static)
@@ -81,7 +82,7 @@ classdef PlotDrivingScenario< matlab.System
         function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, egoReachability, nextWPsPurePursuit, poseEgo)
         % Plot driving scenario
         
-             obj.deletePreviousPlots; 
+            obj.deletePreviousPlots; 
         
             % Vehicle Lead
             [obj.plotLead, obj.plotLocationLead] = obj.plotVehicle(poseLead, obj.wheelBaseLead, obj.dimensionsLead, [0, 204/255, 204/255], 'o');
@@ -101,10 +102,11 @@ classdef PlotDrivingScenario< matlab.System
             end
             
             % Ego Reachability
-            obj.plotEgoReachabilityMin = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
-            obj.plotEgoReachabilityMax = plot(egoReachability(:, 3), egoReachability(:, 4), 'Color', [51/255, 102/255, 0]);
+            obj.plotEgoReachabilityMinBoundary = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
+            obj.plotEgoReachabilityMaxBoundary = plot(egoReachability(:, 3), egoReachability(:, 4), 'Color', [51/255, 102/255, 0]);
             obj.plotEgoReachabilityRightBoundary = plot(egoReachability(:, 5), egoReachability(:, 6), 'Color', [51/255, 102/255, 0]);
             obj.plotEgoReachabilityLeftBoundary = plot(egoReachability(:, 7), egoReachability(:, 8), 'Color', [51/255, 102/255, 0]);
+            obj.plotEgoReachabilityEmergencyBoundary = plot(egoReachability(:, 9), egoReachability(:, 10), 'Color', [153/255, 0, 0]);
 
             % Adjust Axis
             x2 = poseEgo(1);
@@ -130,10 +132,11 @@ classdef PlotDrivingScenario< matlab.System
             delete(obj.plotWPsEgo);
             
             % Ego Reachability
-            delete(obj.plotEgoReachabilityMin);
-            delete(obj.plotEgoReachabilityMax);
+            delete(obj.plotEgoReachabilityMinBoundary);
+            delete(obj.plotEgoReachabilityMaxBoundary);
             delete(obj.plotEgoReachabilityRightBoundary);
             delete(obj.plotEgoReachabilityLeftBoundary);
+            delete(obj.plotEgoReachabilityEmergencyBoundary);
         end
         
         function plotRoad(obj, roadTrajectory, laneWidth)

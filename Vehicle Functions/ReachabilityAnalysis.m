@@ -49,23 +49,20 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             obj.numberPointsSteering = 2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max))); % Consider steering angle range and time horizon
         end
         
-        function [futureState_min, futureState_max] = predictLongitudinalFutureState(obj, s_0, v_0)
-        % Predict future state (longitudinal displacement, longitudinal velocity) according to 
-        % longitudinal reachability analysis for a constant minimum and maximum acceleration
+        function futureState = predictLongitudinalFutureState(obj, s_0, v_0, acceleration)
+        % Predict longitudinal future state (longitudinal displacement, longitudinal velocity) 
+        % according to an itnitial state and a constant acceleration
             
             initialState = [s_0; v_0];
-        
-            futureState_min = obj.A_prime*initialState + obj.B_prime*obj.minimumAcceleration;
-            if futureState_min(2) < 0
+            futureState = obj.A_prime*initialState + obj.B_prime*acceleration;
+            if futureState(2) < 0
                 % Account for the -speed error in the prediction and
                 % correct the position value and set predicted speed to 0
                 
-                futureState_min(2) = 0;
-                t_stop = -v_0/obj.minimumAcceleration; % v(t) = 0 = acc*t + v_0 if acc = const.
-                futureState_min(1) = s_0 + v_0*t_stop/2;
+                futureState(2) = 0;
+                t_stop = -v_0/acceleration; % v(t) = 0 = acc*t + v_0 if acc = const.
+                futureState(1) = s_0 + v_0*t_stop/2;
             end
-            
-            futureState_max = obj.A_prime*initialState + obj.B_prime*obj.maximumAcceleration;
         end
         
         function steeringReachability = calculateSteeringReachability(obj, pose, s, v)
@@ -74,10 +71,14 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             % TODO: cclockwise variable instead of radii < 0
             steeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
             turningRadii = obj.wheelBase./tan(steeringAngles);
-            [longitudinalFutureState_min, longitudinalFutureState_max] = obj.predictLongitudinalFutureState(s, v);
+            
+            longitudinalFutureState_min = obj.predictLongitudinalFutureState(s, v, obj.minimumAcceleration);
+            longitudinalFutureState_max = obj.predictLongitudinalFutureState(s, v, obj.maximumAcceleration);
+            longitudinalFutureState_emergency = obj.predictLongitudinalFutureState(s, v, obj.emergencyAcceleration);
             
             destinations_minBoundary = obj.predictFutureDestinations(pose, turningRadii, longitudinalFutureState_min(1)-s);
             destinations_maxBoundary = obj.predictFutureDestinations(pose, turningRadii, longitudinalFutureState_max(1)-s);
+            destinations_emergencyBoundary = obj.predictFutureDestinations(pose, turningRadii, longitudinalFutureState_emergency(1)-s);
            
             arcLengths =  linspace(longitudinalFutureState_min(1), longitudinalFutureState_max(1), obj.numberPointsSteering) - s;
             turningRadius_minimum = obj.wheelBase./tan(obj.steerAngle_max);
@@ -86,7 +87,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             destinations_leftBoundary = obj.predictFutureDestinations(pose, turningRadius_minimum, arcLengths);
             
             steeringReachability = [destinations_minBoundary, destinations_maxBoundary, ...
-                                    destinations_rightBoundary, destinations_leftBoundary];
+                                    destinations_rightBoundary, destinations_leftBoundary, destinations_emergencyBoundary];
         end
         
 
