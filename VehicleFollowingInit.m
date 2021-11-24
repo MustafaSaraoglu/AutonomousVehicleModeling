@@ -9,6 +9,7 @@ v_max = 30; % Maximum allowed longitudinal velocity [m/s]
 
 a_min = -3; % Minimum allowed longitudinal acceleration [m/s^2]
 a_max = 2; % Maximum allowed longitudinal acceleration [m/s^2]
+a_emergency = -5; % Longitudinal acceleration for emergency brek [m/s^2]
 
 steerAngle_max = pi/8; % Maximum allowed steering angle [rad]
 angularVelocity_max = 0.1; % Maximum angular velocity [rad/s]

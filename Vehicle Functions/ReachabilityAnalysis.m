@@ -2,8 +2,9 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
 % Superclass for reachability analysis
 
      properties(Nontunable)
-        minimumAcceleration % Minimum longitudinal acceleration
-        maximumAcceleration % Maximum longitudinal acceleration
+        minimumAcceleration % Minimum longitudinal acceleration [m/s^2]
+        maximumAcceleration % Maximum longitudinal acceleration [m/s^2]
+        emergencyAcceleration % Acceleration for emergency break [m/s^2]
         
         wheelBase % Wheel base vehicle [m]
         steerAngle_max % Maximum steering angle [rad]
@@ -39,7 +40,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
             
-            obj.k = obj.timeHorizon/obj.Ts - 1; % -1 because state(k+1) should be equal to time horizon
+            obj.k = obj.timeHorizon/obj.Ts - 1; % -1 because time of state(k+1) should be equal to time horizon
             
             obj.A_prime = obj.calculateAPrime(obj.k);
             obj.B_prime = obj.calculateBPrime(obj.k);
