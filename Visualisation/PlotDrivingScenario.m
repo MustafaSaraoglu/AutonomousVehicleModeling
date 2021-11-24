@@ -15,29 +15,7 @@ classdef PlotDrivingScenario< matlab.System
 
     % Pre-computed constants
     properties(Access = private)
-        
-        % Different plots in the figure
-        
-        % Vehicles
-        plotLead
-        plotLocationLead
-        plotLeadFuture_min
-        plotLocationLeadFuture_min
-        plotLeadFuture_max
-        plotLocationLeadFuture_max
-        plotEgo
-        plotLocationEgo
-        
-        % Trajectory
-        plotTrajectoryEgo
-        plotWPsEgo
-        
-        % Ego Reachability
-        plotEgoReachabilityMinBoundary
-        plotEgoReachabilityMaxBoundary
-        plotEgoReachabilityRightBoundary
-        plotEgoReachabilityLeftBoundary
-        plotEgoReachabilityEmergencyBoundary
+        plots2update % Plots to update at every time step
     end
     
     methods(Static)
@@ -85,28 +63,28 @@ classdef PlotDrivingScenario< matlab.System
             obj.deletePreviousPlots; 
         
             % Vehicle Lead
-            [obj.plotLead, obj.plotLocationLead] = obj.plotVehicle(poseLead, obj.wheelBaseLead, obj.dimensionsLead, [0, 204/255, 204/255], 'o');
+            [obj.plots2update.vehicles.Lead, obj.plots2update.vehicles.LocationLead] = obj.plotVehicle(poseLead, obj.wheelBaseLead, obj.dimensionsLead, [0, 204/255, 204/255], 'o');
             plot(poseLead(1), poseLead(2), '.', 'Color', 'cyan'); % Traces
             % Future predictions
-            [obj.plotLeadFuture_min, obj.plotLocationLeadFuture_min] = obj.plotVehicle(poseLeadFuture_min, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
-            [obj.plotLeadFuture_max, obj.plotLocationLeadFuture_max] = obj.plotVehicle(poseLeadFuture_max, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
+            [obj.plots2update.vehicles.LeadFuture_min, obj.plots2update.vehicles.LocationLeadFuture_min] = obj.plotVehicle(poseLeadFuture_min, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
+            [obj.plots2update.vehicles.LeadFuture_max, obj.plots2update.vehicles.LocationLeadFuture_max] = obj.plotVehicle(poseLeadFuture_max, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
 
             % Vehicle Ego
-            [obj.plotEgo, obj.plotLocationEgo] = obj.plotVehicle(poseEgo, obj.wheelBaseEgo, obj.dimensionsEgo, 'red', 'o');
+            [obj.plots2update.vehicles.Ego, obj.plots2update.vehicles.LocationEgo] = obj.plotVehicle(poseEgo, obj.wheelBaseEgo, obj.dimensionsEgo, 'red', 'o');
             plot(poseEgo(1), poseEgo(2), '.', 'Color', 'red'); 
             
             % Trajectory
-            obj.plotTrajectoryEgo = plot(egoTrajectory(:, 1), egoTrajectory(:, 2), 'Color', 'green');
+            obj.plots2update.trajectory.TrajectoryEgo = plot(egoTrajectory(:, 1), egoTrajectory(:, 2), 'Color', 'green');
             if size(nextWPsPurePursuit ,2) == 2
-                obj.plotWPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
+                obj.plots2update.trajectory.WPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
             end
             
             % Ego Reachability
-            obj.plotEgoReachabilityMinBoundary = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
-            obj.plotEgoReachabilityMaxBoundary = plot(egoReachability(:, 3), egoReachability(:, 4), 'Color', [51/255, 102/255, 0]);
-            obj.plotEgoReachabilityRightBoundary = plot(egoReachability(:, 5), egoReachability(:, 6), 'Color', [51/255, 102/255, 0]);
-            obj.plotEgoReachabilityLeftBoundary = plot(egoReachability(:, 7), egoReachability(:, 8), 'Color', [51/255, 102/255, 0]);
-            obj.plotEgoReachabilityEmergencyBoundary = plot(egoReachability(:, 9), egoReachability(:, 10), 'Color', [153/255, 0, 0]);
+            obj.plots2update.reachability.EgoReachabilityMinBoundary = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
+            obj.plots2update.reachability.EgoReachabilityMaxBoundary = plot(egoReachability(:, 3), egoReachability(:, 4), 'Color', [51/255, 102/255, 0]);
+            obj.plots2update.reachability.EgoReachabilityRightBoundary = plot(egoReachability(:, 5), egoReachability(:, 6), 'Color', [51/255, 102/255, 0]);
+            obj.plots2update.reachability.EgoReachabilityLeftBoundary = plot(egoReachability(:, 7), egoReachability(:, 8), 'Color', [51/255, 102/255, 0]);
+            obj.plots2update.reachability.EgoReachabilityEmergencyBoundary = plot(egoReachability(:, 9), egoReachability(:, 10), 'Color', [153/255, 0, 0]);
 
             % Adjust Axis
             x2 = poseEgo(1);
@@ -117,26 +95,17 @@ classdef PlotDrivingScenario< matlab.System
         function deletePreviousPlots(obj)
         % Delete plots (cars, trajectory, etc.) from the previous iteration
             
-            % Vehicles
-            delete(obj.plotLead);
-            delete(obj.plotLocationLead);
-            delete(obj.plotLeadFuture_min);
-            delete(obj.plotLocationLeadFuture_min);
-            delete(obj.plotLeadFuture_max);
-            delete(obj.plotLocationLeadFuture_max);
-            delete(obj.plotEgo);
-            delete(obj.plotLocationEgo);
-            
-            % Trajectory
-            delete(obj.plotTrajectoryEgo);
-            delete(obj.plotWPsEgo);
-            
-            % Ego Reachability
-            delete(obj.plotEgoReachabilityMinBoundary);
-            delete(obj.plotEgoReachabilityMaxBoundary);
-            delete(obj.plotEgoReachabilityRightBoundary);
-            delete(obj.plotEgoReachabilityLeftBoundary);
-            delete(obj.plotEgoReachabilityEmergencyBoundary);
+            if isempty(obj.plots2update)
+                return
+            end
+            plotCategories= fieldnames(obj.plots2update);
+            for category = 1:numel(plotCategories)
+                plotStruct = obj.plots2update.(plotCategories{category});
+                plots = fieldnames(plotStruct);
+                for plot = 1:numel(plots)
+                    delete(plotStruct.(plots{plot}))
+                end
+            end
         end
         
         function plotRoad(obj, roadTrajectory, laneWidth)
