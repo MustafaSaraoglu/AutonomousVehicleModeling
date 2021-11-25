@@ -26,19 +26,6 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         numberPointsSteering  % Number of points for steering reachability
     end
     
-    methods(Static)
-        function destinations = predictFutureDestinations(pose, turningRadius, arcLength)
-        % Predict points for future destinations according to truning radius and arc length
-            
-            arcAngle = arcLength./turningRadius;
-        
-            x_destination = pose(1) + turningRadius.*(sin(pose(3) + arcAngle) - sin(pose(3)));
-            y_destination = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcAngle));
-            
-            destinations = [x_destination', y_destination'];
-        end
-    end
-
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
@@ -48,7 +35,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             obj.A_prime = obj.calculateAPrime(obj.k);
             obj.B_prime = obj.calculateBPrime(obj.k);
             
-            % Needs to be even number TODO: why?
+            % Needs to be even number TODO: why? Probably because of division by 0/'Inf*0= NaN' -> Fixed
             obj.numberPointsSteering = 2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max))); % Consider steering angle range and time horizon
         end
         
@@ -71,27 +58,46 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         
         function steeringReachability = calculateSteeringReachability(obj, pose, s, v)
         % Calcuate reachability for all possible steering angles
-            
-            % TODO: cclockwise variable instead of radii < 0
-            steeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
-            turningRadii = obj.wheelBase./tan(steeringAngles);
-            
+                        
             longitudinalFutureState_min = obj.predictLongitudinalFutureState(s, v, obj.minimumAcceleration);
             longitudinalFutureState_max = obj.predictLongitudinalFutureState(s, v, obj.maximumAcceleration);
             longitudinalFutureState_emergency = obj.predictLongitudinalFutureState(s, v, obj.emergencyAcceleration);
             
-            destinations_minBoundary = obj.predictFutureDestinations(pose, turningRadii, longitudinalFutureState_min(1)-s);
-            destinations_maxBoundary = obj.predictFutureDestinations(pose, turningRadii, longitudinalFutureState_max(1)-s);
-            destinations_emergencyBoundary = obj.predictFutureDestinations(pose, turningRadii, longitudinalFutureState_emergency(1)-s);
+            steeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
+            
+            destinations_minBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_min(1)-s);
+            destinations_maxBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_max(1)-s);
+            destinations_emergencyBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_emergency(1)-s);
            
             arcLengths =  linspace(longitudinalFutureState_min(1), longitudinalFutureState_max(1), obj.numberPointsSteering) - s;
-            turningRadius_minimum = obj.wheelBase./tan(obj.steerAngle_max);
             
-            destinations_rightBoundary = obj.predictFutureDestinations(pose, -turningRadius_minimum, arcLengths);
-            destinations_leftBoundary = obj.predictFutureDestinations(pose, turningRadius_minimum, arcLengths);
+            destinations_rightBoundary = obj.predictFutureDestinations(pose, -obj.steerAngle_max, arcLengths);
+            destinations_leftBoundary = obj.predictFutureDestinations(pose, obj.steerAngle_max, arcLengths);
             
             steeringReachability = [destinations_minBoundary, destinations_maxBoundary, ...
                                     destinations_rightBoundary, destinations_leftBoundary, destinations_emergencyBoundary];
+        end
+        
+        function destinations = predictFutureDestinations(obj, pose, steeringAngle, arcLength)
+        % Predict points for future destinations according to steering angle and arc length
+            
+            % TODO: cclockwise variable instead of radii < 0
+            turningRadius = obj.wheelBase./tan(steeringAngle);
+            
+            x_destination = pose(1) + turningRadius.*(sin(pose(3) + arcLength./turningRadius) - sin(pose(3)));
+            y_destination = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcLength./turningRadius));
+            
+            % TODO: Find more elegant way to work with either min/max boundary[varying steering angle; constant arc length] 
+            % or right/left boundary[constant steering angle; varying arc length]
+            if isinf(turningRadius) % right/left boundary[constant steering angle; varying arc length]
+                x_destination = pose(1) + arcLength.*cos(pose(3)); % Correct values for infinite turning radius/0 steering angle
+                y_destination = pose(2) + arcLength.*sin(pose(3));
+            elseif any(isinf(turningRadius)) % min/max boundary[varying steering angle; constant arc length]
+                x_destination(isinf(turningRadius)) = pose(1) + arcLength*cos(pose(3));
+                y_destination(isinf(turningRadius)) = pose(2) + arcLength*sin(pose(3));
+            end
+            
+            destinations = [x_destination', y_destination'];
         end
         
 
