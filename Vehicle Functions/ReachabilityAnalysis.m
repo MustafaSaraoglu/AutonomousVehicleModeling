@@ -65,8 +65,8 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             
             steeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
             
-            destinations_minBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_min(1)-s);
-            destinations_maxBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_max(1)-s);
+            destinations_lowerBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_min(1)-s);
+            destinations_upperBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_max(1)-s);
             destinations_emergencyBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_emergency(1)-s);
            
             arcLengths =  linspace(longitudinalFutureState_min(1), longitudinalFutureState_max(1), obj.numberPointsSteering) - s;
@@ -74,7 +74,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             destinations_rightBoundary = obj.predictFutureDestinations(pose, -obj.steerAngle_max, arcLengths);
             destinations_leftBoundary = obj.predictFutureDestinations(pose, obj.steerAngle_max, arcLengths);
             
-            steeringReachability = [destinations_minBoundary, destinations_maxBoundary, ...
+            steeringReachability = [destinations_lowerBoundary, destinations_upperBoundary, ...
                                     destinations_rightBoundary, destinations_leftBoundary, destinations_emergencyBoundary];
         end
         
@@ -87,8 +87,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             x_destination = pose(1) + turningRadius.*(sin(pose(3) + arcLength./turningRadius) - sin(pose(3)));
             y_destination = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcLength./turningRadius));
             
-            % TODO: Find more elegant way to work with either min/max boundary[varying steering angle; constant arc length] 
-            % or right/left boundary[constant steering angle; varying arc length]
+            % TODO: Find more elegant way to work with either min/max boundary or right/left boundary
             if isinf(turningRadius) % right/left boundary[constant steering angle; varying arc length]
                 x_destination = pose(1) + arcLength.*cos(pose(3)); % Correct values for infinite turning radius/0 steering angle
                 y_destination = pose(2) + arcLength.*sin(pose(3));
