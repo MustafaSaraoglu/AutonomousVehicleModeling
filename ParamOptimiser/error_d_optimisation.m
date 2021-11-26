@@ -11,16 +11,15 @@ options = optimoptions('ga');
 % ub = [10, 10, 10, 3.5];
 % MaxGenerations_Data = 10;
 
-% paramsToBeOptimized = [Kp, Ki, Kd, forwardMotionGain] [9.9326, 9.5739, 1.7831, 3.4715] % WITHOUT DEG TO RAD Stanley
-% [9.7639, 8.0739, 0.1865, 1.5419] % WITH DEG TO RAD Stanley
+% paramsToBeOptimized = [Kp, Ki, Kd, forwardMotionGain] [8.7639, 9.3465, 0.1412, 1.6684] fval = 6.5665e-05
 
 %% Without PID
 nvars = 1;
 lb = 1;
-ub = 5;
+ub = 10;
 MaxGenerations_Data = 5;
 
-% paramsToBeOptimized = forwardMotionGain = 1
+% paramsToBeOptimized = forwardMotionGain = 1 fval = 0.0019
 
 %% For reproducibility: https://www.mathworks.com/help/gads/reproducing-your-results-1.html
 rng(1,'twister');
