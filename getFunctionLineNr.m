@@ -22,10 +22,10 @@ function lineNr = getFunctionLineNr(functionName)
         'getReferencePoseStanley', 41;
         
         % PlotDrivingScenario.m
-        'plotVehicle', 50;
-        'deletePreviousPlots', 103;
-        'plotRoad', 121;
-        'plotDiscreteSpace', 159
+        'plotVehicle', 35;
+        'deletePreviousPlots', 95;
+        'plotRoad', 111;
+        'plotDiscreteSpace', 149
         };
     
     referenceFunctions = containers.Map(entries(:, 1)', [entries{:, 2}]);

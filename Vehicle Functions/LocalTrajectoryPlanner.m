@@ -1,4 +1,4 @@
-classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.Propagates & matlab.system.mixin.SampleTime & matlab.system.mixin.CustomIcon
+classdef LocalTrajectoryPlanner < ReachabilityAnalysis
 % LocalTrajectoryPlanner Superclass for generating necessary inputs for 
 % the lateral controllers.
     
@@ -8,9 +8,7 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
         
         durationToLeftLane % Time for lane changing [s]
         durationToRightLane % Time for overtaking [s]
-        timeHorizon % Time horizon for trajectory genereation [s]
         partsTimeHorizon % Divide time horizon into partsTimeHorizon equal parts
-        Ts % Sampling time for trajectory generation [s]
     end
     
     % Pre-computed constants
@@ -51,6 +49,8 @@ classdef LocalTrajectoryPlanner < matlab.System & handle & matlab.system.mixin.P
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
+            setupImpl@ReachabilityAnalysis(obj) 
+            
             obj.laneChangeCmds = ...
                 containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight'}, [0, 1, -1]);
             

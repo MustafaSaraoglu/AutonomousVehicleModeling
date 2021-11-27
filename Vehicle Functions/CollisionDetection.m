@@ -46,19 +46,20 @@ classdef CollisionDetection < matlab.System
     end
 
     methods(Access = protected)
-        function collisionDetected = stepImpl(obj, poseLead, poseEgo)
+        function isCollided = stepImpl(obj, poseLead, poseEgo)
         % Check whether a collision between two vehicles is detected
-            collisionDetected = false; 
+            isCollided = false; 
             
             centerPointEgo = getVehicleCenterPoint(poseEgo, obj.wheelBaseEgo);
             centerPointLead = getVehicleCenterPoint(poseLead, obj.wheelBaseLead);
             
             % Only check for collision if vehicles are close 
             euclidianDistance = obj.calculateEuclidianDistance(centerPointEgo, centerPointLead);
-            if euclidianDistance <= obj.radiusEgo + obj.radiusLead
+            checkForCollision = euclidianDistance <= obj.radiusEgo + obj.radiusLead;
+            if checkForCollision
                 [~, ~, HitboxEgo] = createRectangleVehicle(centerPointEgo, poseEgo(3), obj.dimensionsEgo);
                 [~, ~, HitboxLead] = createRectangleVehicle(centerPointLead, poseLead(3), obj.dimensionsLead);
-                collisionDetected = obj.checkIntersection(HitboxLead, HitboxEgo);
+                isCollided = obj.checkIntersection(HitboxLead, HitboxEgo);
             end
         end
         

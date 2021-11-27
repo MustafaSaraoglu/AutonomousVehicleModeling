@@ -1,10 +1,6 @@
 classdef StanleyPoseGenerator < LocalTrajectoryPlanner
 % Provide reference pose for Stanely Lateral Controller
     
-    properties(Nontunable)
-        wheelBase % Wheel base vehicle
-    end
-    
     methods(Static)
         function [closestPoint, idxInTrajectory] = getClosestPointOnTrajectory(point, trajectory)
         % Calculate which point on a trajectory is closest to a given point
@@ -20,7 +16,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [d_ref, trajectoryToPlot, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, currentLane, velocity)
+        function [d_ref, trajectoryToPlot, steeringReachability, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, currentLane, velocity)
         % Return the reference lateral position, the reference trajectory to plot, the reference pose and the current pose  
             
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
@@ -29,6 +25,8 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             obj.planFrenetTrajectory(changeLaneCmd, false, currentLane, s, d, pose(3), velocity);
             trajectoryCartesian = obj.getCurrentTrajectoryCartesian();
             trajectoryToPlot = trajectoryCartesian(:, 1:2);
+            
+            steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
             referencePose = obj.getReferencePoseStanley(pose, trajectoryCartesian); 
             
@@ -52,47 +50,52 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             referencePoseCartesian = [referencePositionCartesian, rad2deg(refOrientationCartesian)]; % Degree for MATLAB Stanley Controller
         end
         
-        function [out1, out2, out3, out4] = getOutputSizeImpl(obj)
+        function [out1, out2, out3, out4, out5] = getOutputSizeImpl(obj)
             % Return size for each output port
             lengthTrajectory = obj.timeHorizon/obj.Ts + 1;
+            numberPointsSteering =  2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max)));
             
             out1 = [1 1];
-            out2 = [lengthTrajectory 2];
-            out3 = [1 3];
+            out2 = [lengthTrajectory, 2];
+            out3 = [numberPointsSteering, 10];
             out4 = [1 3];
+            out5 = [1 3];
 
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);
         end
 
-        function [out1, out2, out3, out4] = getOutputDataTypeImpl(~)
+        function [out1, out2, out3, out4, out5] = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out1 = "double";
             out2 = "double";
             out3 = "double";
             out4 = "double";
+            out5 = "double";
 
             % Example: inherit data type from first input port
             % out = propagatedInputDataType(obj,1);
         end
 
-        function [out1, out2, out3, out4] = isOutputComplexImpl(~)
+        function [out1, out2, out3, out4, out5] = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out1 = false;
             out2 = false;
             out3 = false;
             out4 = false;
+            out5 = false;
 
             % Example: inherit complexity from first input port
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function [out1, out2, out3, out4] = isOutputFixedSizeImpl(~)
+        function [out1, out2, out3, out4, out5] = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out1 = true;
             out2 = true;
             out3 = true;
             out4 = true;
+            out5 = true;
 
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
