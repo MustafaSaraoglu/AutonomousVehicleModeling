@@ -57,7 +57,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         end
         
         function steeringReachability = calculateSteeringReachability(obj, pose, s, v)
-        % Calcuate reachability for all possible steering angles
+        % Calcuate reachability for all possible steering angles and different accelerations
                         
             longitudinalFutureState_min = obj.predictLongitudinalFutureState(s, v, obj.minimumAcceleration);
             longitudinalFutureState_max = obj.predictLongitudinalFutureState(s, v, obj.maximumAcceleration);

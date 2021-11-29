@@ -25,7 +25,10 @@ function lineNr = getFunctionLineNr(functionName)
         'plotVehicle', 35;
         'deletePreviousPlots', 95;
         'plotRoad', 111;
-        'plotDiscreteSpace', 149
+        'plotDiscreteSpace', 149;
+        
+        % ReachabilityAnalysis.m
+        'calculateSteeringReachability', 59;
         };
     
     referenceFunctions = containers.Map(entries(:, 1)', [entries{:, 2}]);
