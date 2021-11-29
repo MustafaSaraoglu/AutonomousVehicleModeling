@@ -80,6 +80,8 @@ yEgo_0 = positionEgo_0(2);
 
 vEgo_0 = 15; % Initial longitudinal velocity [m/s]
 
+vEgo_ref = vEgo_0; % Reference longitudinal velocity [m/s]
+
 %% Lateral Control
 % Lane Changing maneuver
 durationToLeftLane = 5; % Time for lane changing (to left lane) [s]
