@@ -30,7 +30,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             referencePose = obj.getReferencePoseStanley(pose, trajectoryCartesian); 
             
-            [~, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, 1); % d_ref according to current pose and not according to front axle
+            [~, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, 1); % d_ref according to current pose and not according to front axle
             
             pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Stanley Lateral Controller
             poseOut = pose'; % MATLAB Stanley Lateral Controller input is [1x3]
@@ -44,6 +44,12 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             [referencePositionCartesian, idx] = obj.getClosestPointOnTrajectory(centerFrontAxle', trajectoryCartesian(:, 1:2));
             
             % Using slope of the curve
+            % TODO: This is only temporary solution
+            if idx == 1
+                idx = idx + 1;
+            elseif idx == size(trajectoryCartesian, 1)
+                idx = idx - 1;
+            end
             delta_position = (trajectoryCartesian(idx+1, 1:2) - trajectoryCartesian(idx-1, 1:2))'; % [delta_x; delta_y]
             refOrientationCartesian = atan2(delta_position(2), delta_position(1));
             

@@ -80,7 +80,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             if replan
                 [~, roadOrientation] = Frenet2Cartesian(s, d, obj.RoadTrajectory);
-                d_dot = v_average*tan(currentOrientation - roadOrientation); % TODO: Recheck formula
+                d_dot = v_average*tan(currentOrientation - roadOrientation); % TODO: Recheck formula, probably wrong!
                 d_destination = obj.getLateralDestination(currentLane);
                 
                 obj.currentTrajectoryFrenet = obj.reCalculateTrajectory(s, d, d_dot, d_destination, obj.timeHorizon, v_average);
@@ -195,7 +195,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             % Calculate trajectory for whole maneuver
             t_discrete = 0:obj.Ts:durationManeuver; 
             
-            s_trajectory = s_current + v_average*t_discrete;
+            s_trajectory = s_current + v_average*t_discrete; % TODO: Check: s along the road, what if acceleration?
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
             time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
             
@@ -261,10 +261,14 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, time];
         end
         
-        function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, numberWPs)
+        function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, v, numberWPs)
         % Get the next waypoint(s) for current trajectory according to current s in Frenet coordinates
-        
-            ID_nextWP = sum(s >= obj.currentTrajectoryFrenet(:, 1)) + 1;
+            
+            if v == 0
+                ID_nextWP = sum(s > obj.currentTrajectoryFrenet(:, 1)) + 1; % > to avoid index exceeds array bounds
+            else
+                ID_nextWP = sum(s >= obj.currentTrajectoryFrenet(:, 1)) + 1; 
+            end
             
             numberWPsMax = size(obj.currentTrajectoryFrenet(ID_nextWP:end, 1), 1);
             if (numberWPs <= 0) || (numberWPs > numberWPsMax)
@@ -287,7 +291,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     replan = (abs(error_s_d(1)) > 1) || (abs(error_s_d(2)) > 0.1);
                 end 
                 
-                obj.setTrajectoryPrediction();
+%                 obj.setTrajectoryPrediction(); % TODO: Check again
                 obj.counter = obj.counter + 1;
             end
         end

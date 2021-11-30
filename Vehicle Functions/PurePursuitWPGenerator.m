@@ -23,7 +23,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
-            [s_ref, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, obj.numberWaypoints);
+            [s_ref, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, obj.numberWaypoints);
             
             [referencePositionCartesian, ~] = Frenet2Cartesian(s_ref, d_ref, obj.RoadTrajectory);
             
