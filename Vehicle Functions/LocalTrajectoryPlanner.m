@@ -240,9 +240,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 % TODO: Also possible to use v from reachability according to acceleration profile (a ~= const.)
                 for k = 1:length(d_dot_trajectory) % Numerical integration
                     v_trajectory(k) = v;
-                    nextState = obj.predictLongitudinalFutureState(s_prime, v, acceleration, 0); % Prediction just for next time step
-                    s_prime = nextState(1);
-                    v = nextState(2);
+                    [s_prime, v] = obj.predictLongitudinalFutureState(s_prime, v, acceleration, 0); % Prediction just for next time step
                 end
             end
 

@@ -12,10 +12,10 @@ function lineNr = getFunctionLineNr(functionName)
         'updateCurrentTrajectory', 110;
         'calculateTrajectoryToAdd', 142;
         'calculateLaneChangingTrajectory', 178;
-        'calculateStraightTrajectory', 260;
-        'getCurrentTrajectoryCartesian', 272;
-        'getNextFrenetTrajectoryWaypoints', 281;
-        'calculateTrajectoryError', 300;
+        'calculateStraightTrajectory', 258;
+        'getCurrentTrajectoryCartesian', 270;
+        'getNextFrenetTrajectoryWaypoints', 279;
+        'calculateTrajectoryError', 298;
         
         % StanleyPoseGenerator.m
         'getClosestPointOnTrajectory', 5;
@@ -28,7 +28,7 @@ function lineNr = getFunctionLineNr(functionName)
         'plotDiscreteSpace', 110;
         
         % ReachabilityAnalysis.m
-        'calculateSteeringReachability', 59;
+        'calculateSteeringReachability', 60;
         };
     
     referenceFunctions = containers.Map(entries(:, 1)', [entries{:, 2}]);
