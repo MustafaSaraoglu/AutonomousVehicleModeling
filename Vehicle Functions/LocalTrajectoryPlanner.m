@@ -58,7 +58,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.lanes = ...
                 containers.Map({'RightLane', 'ToLeftLane', 'LeftLane', 'ToRightLane'}, [0, 0.5, 1, -0.5]);
             
-            % +1 because planned trajectory contains current Waypoint at current time
+            % +1 because planned trajectory contains current waypoint at current time
             obj.trajectoryReferenceLength = obj.timeHorizon/obj.Ts + 1; 
             
             obj.currentTrajectoryFrenet = zeros(obj.trajectoryReferenceLength, 4);
