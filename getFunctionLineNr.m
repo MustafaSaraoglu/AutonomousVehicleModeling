@@ -22,10 +22,10 @@ function lineNr = getFunctionLineNr(functionName)
         'getReferencePoseStanley', 41;
         
         % PlotDrivingScenario.m
-        'plotVehicle', 35;
-        'deletePreviousPlots', 95;
-        'plotRoad', 111;
-        'plotDiscreteSpace', 149;
+        'plotVehicle', 23;
+        'deletePreviousPlots', 85;
+        'plotRoadLine', 101;
+        'plotDiscreteSpace', 110;
         
         % ReachabilityAnalysis.m
         'calculateSteeringReachability', 59;
