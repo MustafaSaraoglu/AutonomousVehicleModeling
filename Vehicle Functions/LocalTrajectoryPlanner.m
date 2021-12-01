@@ -175,7 +175,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             laneChangingTrajectoryFrenet = obj.calculateLaneChangingTrajectory(s, d, d_destination, durationManeuver, v);
         end
         
-        function laneChangingTrajectoryFrenet = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, v)
+        function laneChangingTrajectoryFrenet = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, v_current)
         % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
@@ -210,14 +210,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
             d_dot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
-            s_dot_trajectory = sqrt(v^2 - d_dot_trajectory.^2); % Also possible to use v from reachability for acceleration profile if v != const.
-            
-            s_trajectory = zeros(1, length(t_discrete)); % TODO: Check: s along the road, what if acceleration?
-            s = s_current;
-            for k = 1:length(t_discrete) % Numerical integration
-                s_trajectory(k) = s;
-                s = s + s_dot_trajectory(k)*obj.Ts;
-            end
+
+            [s_trajectory, s_dot_trajectory] = obj.calculateS_Trajectory(s_current, v_current, 0, d_dot_trajectory); % Constant speed
+            [s_trajectory_minAcc, ~] = obj.calculateS_Trajectory(s_current, v_current, obj.minimumAcceleration, d_dot_trajectory); 
+            [s_trajectory_maxAcc, ~] = obj.calculateS_Trajectory(s_current, v_current, obj.maximumAcceleration, d_dot_trajectory); 
             
             [~, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
             orientation = atan2(d_dot_trajectory, s_dot_trajectory)' + roadOrientation;
@@ -225,7 +221,41 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
             
             laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', orientation, time'];
+            
+            [laneChangingPointsCartesian_minAcc, ~] = Frenet2Cartesian(s_trajectory_minAcc', d_trajectory', obj.RoadTrajectory);
+            [laneChangingPointsCartesian_maxAcc, ~] = Frenet2Cartesian(s_trajectory_maxAcc', d_trajectory', obj.RoadTrajectory);
+            plot(laneChangingPointsCartesian_minAcc(:, 1), laneChangingPointsCartesian_minAcc(:,2), '--', 'Color', 'green');
+            plot(laneChangingPointsCartesian_maxAcc(:, 1), laneChangingPointsCartesian_maxAcc(:,2), '--', 'Color', 'green');
         end 
+        
+        function [s_trajectory, s_dot_trajectory] = calculateS_Trajectory(obj, s_0, v_0, acceleration, d_dot_trajectory)
+        % Calculate s and s_dot trajectory according to kinematic bicycle speed profile
+        
+            v_trajectory = v_0*ones(1, length(d_dot_trajectory));
+            
+            % Future prediction v
+            if acceleration ~= 0 % v changes over time
+                s_prime = s_0; % % Coordinate going along the lane changing curve
+                v = v_0;
+                % TODO: Also possible to use v from reachability according to acceleration profile (a ~= const.)
+                for k = 1:length(d_dot_trajectory) % Numerical integration
+                    v_trajectory(k) = v;
+                    nextState = obj.predictLongitudinalFutureState(s_prime, v, acceleration, 0); % Prediction just for next time step
+                    s_prime = nextState(1);
+                    v = nextState(2);
+                end
+            end
+
+            s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
+            
+            % Future prediction s along the road
+            s_trajectory = zeros(1, length(d_dot_trajectory)); % TODO: Check: s along the road, what if acceleration?
+            s = s_0;
+            for k = 1:length(d_dot_trajectory) % Numerical integration
+                s_trajectory(k) = s;
+                s = s + s_dot_trajectory(k)*obj.Ts;
+            end
+        end
         
         function straightTrajectoryFrenet = calculateStraightTrajectory(obj, s_last, t_last, d_destination, a, v, duartion)
         % Calculate straight trajectory staying on the same lane
@@ -278,7 +308,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     replan = (abs(error_s_d(1)) > 1) || (abs(error_s_d(2)) > 0.1);
                 end 
                 
-                obj.setTrajectoryPrediction();
+%                 obj.setTrajectoryPrediction(); TODO: Check again later
                 obj.counter = obj.counter + 1;
             end
         end
