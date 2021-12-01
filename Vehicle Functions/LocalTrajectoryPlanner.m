@@ -195,8 +195,17 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             % Calculate trajectory for whole maneuver
             t_discrete = 0:obj.Ts:durationManeuver; 
             
-            s_trajectory = s_current + v_average*t_discrete; % TODO: Check: s along the road, what if acceleration?
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
+            d_dot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
+            s_dot_trajectory = sqrt(v_average^2 - d_dot_trajectory.^2); % Also possible to use v from reachability for acceleration profile if v != const.
+            
+            s_trajectory = zeros(1, length(t_discrete)); % TODO: Check: s along the road, what if acceleration?
+            s = s_current;
+            for k = 1:length(t_discrete) % Numerical integration
+                s_trajectory(k) = s;
+                s = s + s_dot_trajectory(k)*obj.Ts;
+            end
+            
             time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
             
             laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', time'];
