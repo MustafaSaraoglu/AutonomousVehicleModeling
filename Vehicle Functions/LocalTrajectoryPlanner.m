@@ -69,25 +69,25 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.predictedTrajectory = [];
         end
         
-        function trajectoryFrenet = planFrenetTrajectory(obj, changeLaneCmd, replan, currentLane, s, d, currentOrientation, v_average)
+        function trajectoryFrenet = planFrenetTrajectory(obj, changeLaneCmd, replan, currentLane, s, d, a, v)
         % Plan trajectory for the next obj.timeHorizon seconds in Frenet coordinates
             
             lengthDifference = 0; % Difference in length between current trajectory and reference trajectory
             if changeLaneCmd 
-                laneChangingTrajectoryFrenet = obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, v_average); 
+                laneChangingTrajectoryFrenet = obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, v); 
                 lengthDifference = obj.divideLaneChangingTrajectory(laneChangingTrajectoryFrenet);
             end
             
             if replan
-                [~, roadOrientation] = Frenet2Cartesian(s, d, obj.RoadTrajectory);
-                d_dot = v_average*tan(currentOrientation - roadOrientation); % TODO: Recheck formula, probably wrong!
-                d_destination = obj.getLateralDestination(currentLane);
-                
-                obj.currentTrajectoryFrenet = obj.reCalculateTrajectory(s, d, d_dot, d_destination, obj.timeHorizon, v_average);
-                obj.setTrajectoryPrediction();
+%                 [~, roadOrientation] = Frenet2Cartesian(s, d, obj.RoadTrajectory);
+%                 d_dot = v*tan(currentOrientation - roadOrientation); % TODO: Recheck formula, probably wrong!
+%                 d_destination = obj.getLateralDestination(currentLane);
+%                 
+%                 obj.currentTrajectoryFrenet = obj.reCalculateTrajectory(s, d, d_dot, d_destination, obj.timeHorizon, v);
+%                 obj.setTrajectoryPrediction();
             end
             
-            obj.updateCurrentTrajectory(s, currentLane, v_average, lengthDifference);
+            obj.updateCurrentTrajectory(s, currentLane, a, v, lengthDifference);
             
             trajectoryFrenet = obj.currentTrajectoryFrenet;
         end
@@ -107,16 +107,19 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
         end
         
-        function updateCurrentTrajectory(obj, s_current, currentLane, v_average, lengthDifference)
+        function updateCurrentTrajectory(obj, s_current, currentLane, a, v, lengthDifference)
         % Remove passed waypoints and add new ones, always keep the same trajectory length
             
             ID_current = sum(s_current >= obj.currentTrajectoryFrenet(:, 1));
         
             if (ID_current > 1) || lengthDifference 
                 obj.currentTrajectoryFrenet = obj.currentTrajectoryFrenet(ID_current:end, :);
+                if isempty(obj.residualLaneChangingTrajectory) % No updates for lane changing
+                    obj.updateTrajectoryTime();
+                end
                 pointsToAdd = ID_current - 1 + lengthDifference;
                 
-                addTrajectory = obj.calculateTrajectoryToAdd(currentLane, v_average, pointsToAdd);
+                addTrajectory = obj.calculateTrajectoryToAdd(currentLane, a, v, pointsToAdd);
 
                 obj.currentTrajectoryFrenet = [obj.currentTrajectoryFrenet; addTrajectory];
             end
@@ -126,7 +129,15 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
         end
         
-        function addTrajectory = calculateTrajectoryToAdd(obj, currentLane, v_average, pointsToAdd)
+        function updateTrajectoryTime(obj)
+        % Update time stamps for planned trajectory to synchronize with current time
+            
+            currentTime = get_param('VehicleFollowing', 'SimulationTime');
+            timeStamps = currentTime:obj.Ts:currentTime+obj.Ts*(size(obj.currentTrajectoryFrenet, 1)-1);
+            obj.currentTrajectoryFrenet(:, 3) = timeStamps';
+        end
+        
+        function addTrajectory = calculateTrajectoryToAdd(obj, currentLane, a, v, pointsToAdd)
         % Calculate trajectory that needs to be added to the current trajectory in order to get the correct reference trajectory length 
             
             s_lastElement = obj.currentTrajectoryFrenet(end, 1);
@@ -135,13 +146,13 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         
             if isempty(obj.residualLaneChangingTrajectory)
                 durationToAdd = pointsToAdd*obj.Ts;
-                addTrajectory = obj.calculateStraightTrajectory(s_lastElement, t_lastElement, d_destination, v_average, durationToAdd);
+                addTrajectory = obj.calculateStraightTrajectory(s_lastElement, t_lastElement, d_destination, a, v, durationToAdd);
             elseif pointsToAdd >= size(obj.residualLaneChangingTrajectory, 1)
                 addTrajectory = obj.residualLaneChangingTrajectory;
 
                 durationToAdd = (pointsToAdd - size(obj.residualLaneChangingTrajectory, 1))*obj.Ts;
 
-                addTrajectory = [addTrajectory; obj.calculateStraightTrajectory(s_lastElement, t_lastElement, d_destination, v_average, durationToAdd)];
+                addTrajectory = [addTrajectory; obj.calculateStraightTrajectory(s_lastElement, t_lastElement, d_destination, a, v, durationToAdd)];
                 obj.residualLaneChangingTrajectory = [];
             else
                 addTrajectory = obj.residualLaneChangingTrajectory(1:pointsToAdd, :);
@@ -149,7 +160,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
         end
         
-        function laneChangingTrajectoryFrenet = calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, v_average)
+        function laneChangingTrajectoryFrenet = calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, v)
         % Calculate the lane changing maneuver either to the left or right lane
             
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeft')
@@ -159,10 +170,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 d_destination = 0;
                 durationManeuver = obj.durationToRightLane;
             end
-            laneChangingTrajectoryFrenet = obj.calculateLaneChangingTrajectory(s, d, d_destination, durationManeuver, v_average);
+            laneChangingTrajectoryFrenet = obj.calculateLaneChangingTrajectory(s, d, d_destination, durationManeuver, v);
         end
         
-        function laneChangingTrajectoryFrenet = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, v_average)
+        function laneChangingTrajectoryFrenet = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, v)
         % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
@@ -197,7 +208,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
             d_dot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
-            s_dot_trajectory = sqrt(v_average^2 - d_dot_trajectory.^2); % Also possible to use v from reachability for acceleration profile if v != const.
+            s_dot_trajectory = sqrt(v^2 - d_dot_trajectory.^2); % Also possible to use v from reachability for acceleration profile if v != const.
             
             s_trajectory = zeros(1, length(t_discrete)); % TODO: Check: s along the road, what if acceleration?
             s = s_current;
@@ -211,51 +222,11 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', time'];
         end 
         
-        function newTrajectoryFrenet = reCalculateTrajectory(obj, s_current, d_currnet, d_dot_current, d_destination, durationManeuver, v_average)
-        % Recalculate minimum jerk trajectory 
-            
-            % Initial conditions
-            t_i = 0; % Start at 0 (relative time frame)
-                    
-            d_i =         [1  t_i   t_i^2   t_i^3    t_i^4      t_i^5]; % d_initial = d_current 
-            d_dot_i =     [0  1     2*t_i   3*t_i^2  4*t_i^3    5*t_i^4]; % d_dot_current
-            d_ddot_i =    [0  0     2       6*t_i    12*t_i^2   20*t_i^3]; %  0
-
-            % Final conditions
-            t_f = durationManeuver; % time to finish maneuver
-
-            d_f =         [1  t_f   t_f^2   t_f^3    t_f^4      t_f^5]; % d_destination
-            d_dot_f =     [0  1     2*t_f   3*t_f^2  4*t_f^3    5*t_f^4]; % 0
-            d_ddot_f =    [0  0     2       6*t_f    12*t_f^2   20*t_f^3]; % 0
-
-            A = [d_i; d_dot_i; d_ddot_i; d_f; d_dot_f; d_ddot_f];
-
-            B = [d_currnet; d_dot_current; 0; d_destination; 0; 0];
-
-            X = linsolve(A,B);
-
-            obj.a0 = X(1);
-            obj.a1 = X(2); 
-            obj.a2 = X(3);
-            obj.a3 = X(4);
-            obj.a4 = X(5);
-            obj.a5 = X(6);
-            
-            % Calculate trajectory for whole maneuver
-            t_discrete = 0:obj.Ts:durationManeuver; 
-            
-            s_trajectory = s_current + v_average*t_discrete;
-            d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
-            time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
-            
-            newTrajectoryFrenet = [s_trajectory', d_trajectory', time'];
-        end  
-        
-        function straightTrajectoryFrenet = calculateStraightTrajectory(obj, s_last, t_last, d_destination, v_average, duartion)
+        function straightTrajectoryFrenet = calculateStraightTrajectory(obj, s_last, t_last, d_destination, a, v, duartion)
         % Calculate straight trajectory staying on the same lane
         
             t_discrete = obj.Ts:obj.Ts:duartion; 
-            s_trajectory = s_last + v_average*t_discrete;
+            s_trajectory = s_last + v*t_discrete + 0.5*a*t_discrete.^2;
             d_trajectory = d_destination*ones(1, length(t_discrete));
             time = t_last + t_discrete;
             
@@ -296,11 +267,11 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             replan = false;
             if get_param('VehicleFollowing', 'SimulationTime') > obj.counter*obj.fractionTimeHorizon
                 if ~isempty(obj.predictedTrajectory)
-                    error_s_d = obj.predictedTrajectory(1:2) - [s, d]; 
+                    error_s_d = obj.predictedTrajectory(1:2) - [s, d];
                     replan = (abs(error_s_d(1)) > 1) || (abs(error_s_d(2)) > 0.1);
                 end 
                 
-%                 obj.setTrajectoryPrediction(); % TODO: Check again
+                obj.setTrajectoryPrediction();
                 obj.counter = obj.counter + 1;
             end
         end
