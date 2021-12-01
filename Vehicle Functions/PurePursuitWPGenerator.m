@@ -17,9 +17,8 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planFrenetTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
-            trajectoryCartesian = obj.getCurrentTrajectoryCartesian();
-            trajectoryToPlot = trajectoryCartesian(:, 1:2);
+            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
+            trajectoryToPlot = obj.currentTrajectoryCartesian(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             

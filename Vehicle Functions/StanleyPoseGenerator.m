@@ -22,13 +22,12 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planFrenetTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
-            trajectoryCartesian = obj.getCurrentTrajectoryCartesian();
-            trajectoryToPlot = trajectoryCartesian(:, 1:2);
+            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
+            trajectoryToPlot = obj.currentTrajectoryCartesian(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
-            referencePose = obj.getReferencePoseStanley(pose, trajectoryCartesian); 
+            referencePose = obj.getReferencePoseStanley(pose); 
             
             [~, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, 1); % d_ref according to current pose and not according to front axle
             
@@ -36,22 +35,13 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             poseOut = pose'; % MATLAB Stanley Lateral Controller input is [1x3]
         end
         
-        function referencePoseCartesian = getReferencePoseStanley(obj, pose, trajectoryCartesian)
+        function referencePoseCartesian = getReferencePoseStanley(obj, pose)
         % Get the reference pose for Stanley in Cartesian coordinates    
             
             % Reference is the center of the front axle
             centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
-            [referencePositionCartesian, idx] = obj.getClosestPointOnTrajectory(centerFrontAxle', trajectoryCartesian(:, 1:2));
-            
-            % Using slope of the curve
-            % TODO: This is only temporary solution
-            if idx == 1
-                idx = idx + 1;
-            elseif idx == size(trajectoryCartesian, 1)
-                idx = idx - 1;
-            end
-            delta_position = (trajectoryCartesian(idx+1, 1:2) - trajectoryCartesian(idx-1, 1:2))'; % [delta_x; delta_y]
-            refOrientationCartesian = atan2(delta_position(2), delta_position(1));
+            [referencePositionCartesian, idx] = obj.getClosestPointOnTrajectory(centerFrontAxle', obj.currentTrajectoryCartesian(:, 1:2));
+            refOrientationCartesian = obj.currentTrajectoryCartesian(idx, 3);
             
             referencePoseCartesian = [referencePositionCartesian, rad2deg(refOrientationCartesian)]; % Degree for MATLAB Stanley Controller
         end

@@ -31,7 +31,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         
         laneChangeCmds % Possible commands for lane changing
 
-        currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates [s, d, time]
+        currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates [s, d, orientation, time]
+        currentTrajectoryCartesian % Planned trajectory in Cartesian coordinates [x, y, orientation, time]
         
         fractionTimeHorizon % Fraction of time horizon when divided into partsTimeHorizon equal parts
         counter % Counter to stop at correct simulation time
@@ -60,7 +61,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             % +1 because planned trajectory contains current Waypoint at current time
             obj.trajectoryReferenceLength = obj.timeHorizon/obj.Ts + 1; 
             
-            obj.currentTrajectoryFrenet = zeros(obj.trajectoryReferenceLength, 3);
+            obj.currentTrajectoryFrenet = zeros(obj.trajectoryReferenceLength, 4);
+            obj.currentTrajectoryCartesian = zeros(obj.trajectoryReferenceLength, 4);
             
             obj.residualLaneChangingTrajectory = [];
             
@@ -69,8 +71,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.predictedTrajectory = [];
         end
         
-        function trajectoryFrenet = planFrenetTrajectory(obj, changeLaneCmd, replan, currentLane, s, d, a, v)
-        % Plan trajectory for the next obj.timeHorizon seconds in Frenet coordinates
+        function planTrajectory(obj, changeLaneCmd, replan, currentLane, s, d, a, v)
+        % Plan trajectory for the next obj.timeHorizon seconds in Frenet and Cartesian coordinates
             
             lengthDifference = 0; % Difference in length between current trajectory and reference trajectory
             if changeLaneCmd 
@@ -88,8 +90,6 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
             
             obj.updateCurrentTrajectory(s, currentLane, a, v, lengthDifference);
-            
-            trajectoryFrenet = obj.currentTrajectoryFrenet;
         end
         
         function lengthDifference = divideLaneChangingTrajectory(obj, laneChangingTrajectory)
@@ -124,6 +124,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 obj.currentTrajectoryFrenet = [obj.currentTrajectoryFrenet; addTrajectory];
             end
             
+            obj.currentTrajectoryCartesian = obj.getCurrentTrajectoryCartesian();
+            
             if size(obj.currentTrajectoryFrenet, 1) ~= obj.trajectoryReferenceLength 
                 error('Trajectory length is incorrect'); % For debugging
             end
@@ -134,7 +136,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             currentTime = get_param('VehicleFollowing', 'SimulationTime');
             timeStamps = currentTime:obj.Ts:currentTime+obj.Ts*(size(obj.currentTrajectoryFrenet, 1)-1);
-            obj.currentTrajectoryFrenet(:, 3) = timeStamps';
+            obj.currentTrajectoryFrenet(:, 4) = timeStamps';
         end
         
         function addTrajectory = calculateTrajectoryToAdd(obj, currentLane, a, v, pointsToAdd)
@@ -217,9 +219,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 s = s + s_dot_trajectory(k)*obj.Ts;
             end
             
+            [~, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
+            orientation = atan2(d_dot_trajectory, s_dot_trajectory)' + roadOrientation;
+            
             time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
             
-            laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', time'];
+            laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', orientation, time'];
         end 
         
         function straightTrajectoryFrenet = calculateStraightTrajectory(obj, s_last, t_last, d_destination, a, v, duartion)
@@ -228,17 +233,19 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             t_discrete = obj.Ts:obj.Ts:duartion; 
             s_trajectory = s_last + v*t_discrete + 0.5*a*t_discrete.^2;
             d_trajectory = d_destination*ones(1, length(t_discrete));
+            [~, orientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory); % d_dot = 0 -> atan2(d_dot_trajectory, s_dot_trajectory) = 0
             time = t_last + t_discrete;
             
-            straightTrajectoryFrenet = [s_trajectory', d_trajectory', time']; 
+            straightTrajectoryFrenet = [s_trajectory', d_trajectory', orientation, time']; 
         end
         
         function currentTrajectoryCartesian = getCurrentTrajectoryCartesian(obj)
-        % Return current trajectory in Cartesian coordinates [x, y, time]
+        % Return current trajectory in Cartesian coordinates [x, y, orientation, time]
             
             [currentTrajectoryCartesianNoTimeStamps, ~] = Frenet2Cartesian(obj.currentTrajectoryFrenet(:, 1), obj.currentTrajectoryFrenet(:, 2), obj.RoadTrajectory);
-            time = obj.currentTrajectoryFrenet(:, 3);
-            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, time];
+            orientation = obj.currentTrajectoryFrenet(:, 3);
+            time = obj.currentTrajectoryFrenet(:, 4);
+            currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, orientation, time];
         end
         
         function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, v, numberWPs)
@@ -279,7 +286,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         function setTrajectoryPrediction(obj)
         % Set prediction for the future position according to the planned trajectory in the next fractionTimeHorizon seconds
             
-            ID_nextPrediction = sum((obj.counter+1)*obj.fractionTimeHorizon  >= obj.currentTrajectoryFrenet(:, 3)); % ID for next predicted time
+            ID_nextPrediction = sum((obj.counter+1)*obj.fractionTimeHorizon  >= obj.currentTrajectoryFrenet(:, 4)); % ID for next predicted time
             obj.predictedTrajectory = obj.currentTrajectoryFrenet(ID_nextPrediction, :); 
         end
         
