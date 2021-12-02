@@ -23,7 +23,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             replan = obj.calculateTrajectoryError(s, d);
             obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
-            trajectoryToPlot = obj.currentTrajectoryCartesian(:, 1:2);
+            trajectoryToPlot = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
@@ -41,11 +41,11 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             % Reference is the center of the front axle
             centerFrontAxle = getVehicleFrontAxleCenterPoint(pose, obj.wheelBase);
             
-            if ~isempty(obj.laneChangingPointsCartesian)
-                [referencePositionCartesian, idxReference] = obj.getClosestPointOnTrajectory(centerFrontAxle, obj.laneChangingPointsCartesian(:, 1:2));
-                refOrientation = obj.laneChangingPointsCartesian(idxReference, 3);
-                if idxReference >= size(obj.laneChangingPointsCartesian, 1)
-                    obj.laneChangingPointsCartesian = [];
+            if ~isempty(obj.laneChangingTrajectoryCartesian)
+                [referencePositionCartesian, idxReference] = obj.getClosestPointOnTrajectory(centerFrontAxle, obj.laneChangingTrajectoryCartesian(:, 1:2));
+                refOrientation = obj.laneChangingTrajectoryCartesian(idxReference, 3);
+                if idxReference >= size(obj.laneChangingTrajectoryCartesian, 1)
+                    obj.laneChangingTrajectoryCartesian = [];
                 end
             else
                 [s, ~] = Cartesian2Frenet(obj.RoadTrajectory, centerFrontAxle); % Projection of font axle positon on current Frenet reference trajectory
@@ -63,7 +63,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             numberPointsSteering =  2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max)));
             
             out1 = [1 1];
-            out2 = [lengthTrajectory, 2];
+            out2 = [1 2];
             out3 = [numberPointsSteering, 10];
             out4 = [1 3];
             out5 = [1 3];

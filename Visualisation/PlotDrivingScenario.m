@@ -64,7 +64,7 @@ classdef PlotDrivingScenario< matlab.System
             plot(poseEgo(1), poseEgo(2), '.', 'Color', 'red'); 
             
             % Trajectory
-            obj.plots2update.trajectory.TrajectoryEgo = plot(egoTrajectory(:, 1), egoTrajectory(:, 2), 'Color', 'green');
+            obj.plots2update.trajectory.TrajectoryEgo = plot(egoTrajectory(1), egoTrajectory(2), '*', 'Color', 'green');
             if size(nextWPsPurePursuit ,2) == 2
                 obj.plots2update.trajectory.WPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
             end

@@ -38,8 +38,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         counter % Counter to stop at correct simulation time
         predictedTrajectory % Store future trajectory predictions for replanning
         
-        laneChangingPointsFrenet
-        laneChangingPointsCartesian
+        laneChangingTrajectoryFrenet % Planned trajectory for lane changing in Frenet coordinates [s, d, s_curve, time] (s_curve = coordinate along the lane changing curve)
+        laneChangingTrajectoryCartesian % Planned trajectory for lane changing in Cartesian coordinates [x, y, orientation, time]
+        futurePosition % Preedicted future position according to time horizon
+        plannedTrajectory % Planned Trajectory
     end
     
     methods
@@ -76,11 +78,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         
         function planTrajectory(obj, changeLaneCmd, replan, currentLane, s, d, a, v)
         % Plan trajectory for the next obj.timeHorizon seconds in Frenet and Cartesian coordinates
-            
-            lengthDifference = 0; % Difference in length between current trajectory and reference trajectory
+
             if changeLaneCmd 
-                laneChangingTrajectoryFrenet = obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, v); 
-                lengthDifference = obj.divideLaneChangingTrajectory(laneChangingTrajectoryFrenet);
+                obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, v); 
             end
             
             if replan
@@ -92,7 +92,39 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
 %                 obj.setTrajectoryPrediction();
             end
             
-            obj.updateCurrentTrajectory(s, currentLane, a, v, lengthDifference);
+            % obj.updateCurrentTrajectory(s, currentLane, a, v, lengthDifference);
+            obj.predictFuturePosition(s, v, a, currentLane);
+        end
+        
+        function predictFuturePosition(obj, s_current, v_current, a_current, currentLane)
+        % Predict future position in a specified time horizon
+            
+            [s_future, ~] = obj.predictLongitudinalFutureState(s_current, v_current, a_current, obj.k_timeHorizon);
+        
+            if ~isempty(obj.laneChangingTrajectoryFrenet) && ~isempty(obj.laneChangingTrajectoryCartesian)
+                distance_future = s_future - s_current;
+                
+                % Get future s_curve value
+                ID_currentWP = sum(s_current >= obj.laneChangingTrajectoryFrenet(:, 1));
+                s_curve_future = obj.laneChangingTrajectoryFrenet(ID_currentWP, 3) + distance_future;
+                
+                % Get future s and d value from lane changing trajectory using future s_curve value 
+                ID_futureWP = sum(s_curve_future >= obj.laneChangingTrajectoryFrenet(:, 3));
+                if ID_futureWP >= size(obj.laneChangingTrajectoryFrenet, 1)
+                    % Simplification: Predict position on destination lane not considering lane changing trajectory anymore
+                    d_future = obj.getLateralDestination(currentLane); 
+                else
+                    s_future = obj.laneChangingTrajectoryFrenet(ID_futureWP, 1);
+                    d_future = obj.laneChangingTrajectoryFrenet(ID_futureWP, 2);
+                end
+            else
+                d_future = obj.getLateralDestination(currentLane);
+            end
+            
+            futureTime = get_param('VehicleFollowing', 'SimulationTime') + obj.timeHorizon;
+            [futurePos, ~] = Frenet2Cartesian(s_future, d_future, obj.RoadTrajectory);
+            obj.futurePosition = [futurePos, futureTime]; % [x, y, time]
+            obj.plannedTrajectory = [obj.plannedTrajectory; obj.futurePosition];
         end
         
         function lengthDifference = divideLaneChangingTrajectory(obj, laneChangingTrajectory)
@@ -165,7 +197,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
         end
         
-        function laneChangingTrajectoryFrenet = calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, v)
+        function calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, v)
         % Calculate the lane changing maneuver either to the left or right lane
             
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeft')
@@ -175,10 +207,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 d_destination = 0;
                 durationManeuver = obj.durationToRightLane;
             end
-            laneChangingTrajectoryFrenet = obj.calculateLaneChangingTrajectory(s, d, d_destination, durationManeuver, v);
+            obj.calculateLaneChangingTrajectory(s, d, d_destination, durationManeuver, v);
         end
         
-        function laneChangingTrajectoryFrenet = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, v_current)
+        function calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_destination, durationManeuver, v_current)
         % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
@@ -214,18 +246,17 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
             d_dot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
 
-            [s_trajectory, s_dot_trajectory] = obj.calculateS_Trajectory(s_current, v_current, 0, d_dot_trajectory); % Constant speed
-            [s_trajectory_minAcc, ~] = obj.calculateS_Trajectory(s_current, v_current, obj.minimumAcceleration, d_dot_trajectory); 
-            [s_trajectory_maxAcc, ~] = obj.calculateS_Trajectory(s_current, v_current, obj.maximumAcceleration, d_dot_trajectory); 
+            [s_trajectory, s_curve_trajectory, s_dot_trajectory] = obj.calculateS_Trajectory(s_current, v_current, 0, d_dot_trajectory); % Constant speed
+            [s_trajectory_minAcc, ~, ~] = obj.calculateS_Trajectory(s_current, v_current, obj.minimumAcceleration, d_dot_trajectory); 
+            [s_trajectory_maxAcc, ~, ~] = obj.calculateS_Trajectory(s_current, v_current, obj.maximumAcceleration, d_dot_trajectory); 
             
             [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
             orientation = atan2(d_dot_trajectory, s_dot_trajectory)' + roadOrientation;
             
             time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
             
-            laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', orientation, time'];
-            obj.laneChangingPointsFrenet = [s_trajectory', d_trajectory', time'];
-            obj.laneChangingPointsCartesian = [laneChangingPositionCartesian, orientation, time'];
+            obj.laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', s_curve_trajectory', time'];
+            obj.laneChangingTrajectoryCartesian = [laneChangingPositionCartesian, orientation, time'];
             
             [laneChangingPointsCartesian_minAcc, ~] = Frenet2Cartesian(s_trajectory_minAcc', d_trajectory', obj.RoadTrajectory);
             [laneChangingPointsCartesian_maxAcc, ~] = Frenet2Cartesian(s_trajectory_maxAcc', d_trajectory', obj.RoadTrajectory);
@@ -233,20 +264,20 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             plot(laneChangingPointsCartesian_maxAcc(:, 1), laneChangingPointsCartesian_maxAcc(:,2), '--', 'Color', 'green');
         end 
         
-        function [s_trajectory, s_dot_trajectory] = calculateS_Trajectory(obj, s_0, v_0, acceleration, d_dot_trajectory)
-        % Calculate s and s_dot trajectory according to kinematic bicycle speed profile
-        
-            v_trajectory = v_0*ones(1, length(d_dot_trajectory));
+        function [s_trajectory, s_curve_trajectory, s_dot_trajectory] = calculateS_Trajectory(obj, s_0, v_0, acceleration, d_dot_trajectory)
+        % Calculate s, s_curve_trajectory and s_dot trajectory according to kinematic bicycle speed profile
             
-            % Future prediction v
-            if acceleration ~= 0 % v changes over time
-                s_prime = s_0; % % Coordinate going along the lane changing curve
-                v = v_0;
-                % TODO: Also possible to use v from reachability according to acceleration profile (a ~= const.)
-                for k = 1:length(d_dot_trajectory) % Numerical integration
-                    v_trajectory(k) = v;
-                    [s_prime, v] = obj.predictLongitudinalFutureState(s_prime, v, acceleration, 0); % Prediction just for next time step
-                end
+            v_trajectory = zeros(1, length(d_dot_trajectory));
+            s_curve_trajectory = zeros(1, length(d_dot_trajectory));
+            
+            % Future prediction s_curve, v
+            s_curve = s_0; % Coordinate going along the lane changing curve
+            v = v_0;
+            % TODO: Also possible to use v from reachability according to acceleration profile (a ~= const.)
+            for k = 1:length(d_dot_trajectory) % Numerical integration
+                v_trajectory(k) = v;
+                s_curve_trajectory(k) = s_curve;
+                [s_curve, v] = obj.predictLongitudinalFutureState(s_curve, v, acceleration, 0); % Prediction just for next time step
             end
 
             s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
@@ -260,11 +291,11 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
         end
         
-        function straightTrajectoryFrenet = calculateStraightTrajectory(obj, s_last, t_last, d_destination, a, v, duartion)
+        function straightTrajectoryFrenet = calculateStraightTrajectory(obj, s_current, t_last, d_destination, a, v, duration)
         % Calculate straight trajectory staying on the same lane
         
-            t_discrete = obj.Ts:obj.Ts:duartion; 
-            s_trajectory = s_last + v*t_discrete + 0.5*a*t_discrete.^2;
+            t_discrete = obj.Ts:obj.Ts:duration; 
+            s_trajectory = s_current + v*t_discrete + 0.5*a*t_discrete.^2;
             d_trajectory = d_destination*ones(1, length(t_discrete));
             [~, orientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory); % d_dot = 0 -> atan2(d_dot_trajectory, s_dot_trajectory) = 0
             time = t_last + t_discrete;
@@ -284,20 +315,20 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, v, currentLane, numberWPs)
         % Get the next waypoint(s) for current trajectory according to current s in Frenet coordinates
             
-            if ~isempty(obj.laneChangingPointsFrenet)
-                ID_nextWP = sum(s >= obj.laneChangingPointsFrenet(:, 1)) + 1;
+            if ~isempty(obj.laneChangingTrajectoryFrenet)
+                ID_nextWP = sum(s >= obj.laneChangingTrajectoryFrenet(:, 1)) + 1;
                 
-                if ID_nextWP >= size(obj.laneChangingPointsFrenet, 1)
-                    obj.laneChangingPointsFrenet = [];
+                if ID_nextWP >= size(obj.laneChangingTrajectoryFrenet, 1)
+                    obj.laneChangingTrajectoryFrenet = [];
                     [s_ref, d_ref] = obj.getNextRoadTrajectoryWaypoints(s, v, currentLane, numberWPs);
                     return
                 end
                 
                 % Add points from lane changing points
-                numberResidualLaneChangingPoints = size(obj.laneChangingPointsFrenet, 1) - (ID_nextWP-1);
+                numberResidualLaneChangingPoints = size(obj.laneChangingTrajectoryFrenet, 1) - (ID_nextWP-1);
                 numberPointsFromLaneChanging = min(numberResidualLaneChangingPoints, numberWPs);
-                s_ref = obj.laneChangingPointsFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 1);
-                d_ref = obj.laneChangingPointsFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 2);
+                s_ref = obj.laneChangingTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 1);
+                d_ref = obj.laneChangingTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 2);
                 
                 % Add points from road trajectory if necessary
                 numberPointsFromRoadTrajectory = numberWPs - numberPointsFromLaneChanging;
