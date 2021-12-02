@@ -8,6 +8,6 @@ function centerFrontAxle = getVehicleFrontAxleCenterPoint(poseRearAxle, wheelBas
     x_centerFrontAxle = x_RearAxle + wheelBase*cos(yaw);
     y_centerFrontAxle = y_RearAxle + wheelBase*sin(yaw);
     
-    centerFrontAxle = [x_centerFrontAxle; y_centerFrontAxle];
+    centerFrontAxle = [x_centerFrontAxle, y_centerFrontAxle];
 end
 

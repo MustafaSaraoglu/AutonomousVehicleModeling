@@ -37,6 +37,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         fractionTimeHorizon % Fraction of time horizon when divided into partsTimeHorizon equal parts
         counter % Counter to stop at correct simulation time
         predictedTrajectory % Store future trajectory predictions for replanning
+        
+        laneChangingPointsFrenet
+        laneChangingPointsCartesian
     end
     
     methods
@@ -215,12 +218,14 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             [s_trajectory_minAcc, ~] = obj.calculateS_Trajectory(s_current, v_current, obj.minimumAcceleration, d_dot_trajectory); 
             [s_trajectory_maxAcc, ~] = obj.calculateS_Trajectory(s_current, v_current, obj.maximumAcceleration, d_dot_trajectory); 
             
-            [~, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
+            [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
             orientation = atan2(d_dot_trajectory, s_dot_trajectory)' + roadOrientation;
             
             time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
             
             laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', orientation, time'];
+            obj.laneChangingPointsFrenet = [s_trajectory', d_trajectory', time'];
+            obj.laneChangingPointsCartesian = [laneChangingPositionCartesian, orientation, time'];
             
             [laneChangingPointsCartesian_minAcc, ~] = Frenet2Cartesian(s_trajectory_minAcc', d_trajectory', obj.RoadTrajectory);
             [laneChangingPointsCartesian_maxAcc, ~] = Frenet2Cartesian(s_trajectory_maxAcc', d_trajectory', obj.RoadTrajectory);
@@ -276,23 +281,41 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             currentTrajectoryCartesian = [currentTrajectoryCartesianNoTimeStamps, orientation, time];
         end
         
-        function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, v, numberWPs)
+        function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, v, currentLane, numberWPs)
         % Get the next waypoint(s) for current trajectory according to current s in Frenet coordinates
             
-            if v == 0
-                ID_nextWP = sum(s > obj.currentTrajectoryFrenet(:, 1)) + 1; % > to avoid index exceeds array bounds
+            if ~isempty(obj.laneChangingPointsFrenet)
+                ID_nextWP = sum(s >= obj.laneChangingPointsFrenet(:, 1)) + 1;
+                
+                if ID_nextWP >= size(obj.laneChangingPointsFrenet, 1)
+                    obj.laneChangingPointsFrenet = [];
+                    [s_ref, d_ref] = obj.getNextRoadTrajectoryWaypoints(s, v, currentLane, numberWPs);
+                    return
+                end
+                
+                % Add points from lane changing points
+                numberResidualLaneChangingPoints = size(obj.laneChangingPointsFrenet, 1) - (ID_nextWP-1);
+                numberPointsFromLaneChanging = min(numberResidualLaneChangingPoints, numberWPs);
+                s_ref = obj.laneChangingPointsFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 1);
+                d_ref = obj.laneChangingPointsFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 2);
+                
+                % Add points from road trajectory if necessary
+                numberPointsFromRoadTrajectory = numberWPs - numberPointsFromLaneChanging;
+                if numberPointsFromRoadTrajectory > 0
+                    [s_add, d_add] = obj.getNextRoadTrajectoryWaypoints(s_ref(end), v, currentLane, numberPointsFromRoadTrajectory);
+                    s_ref = [s_ref; s_add];
+                    d_ref = [d_ref; d_add];
+                end
             else
-                ID_nextWP = sum(s >= obj.currentTrajectoryFrenet(:, 1)) + 1; 
+                [s_ref, d_ref] = obj.getNextRoadTrajectoryWaypoints(s, v, currentLane, numberWPs);
             end
+        end
+        
+        function [s_ref, d_ref] = getNextRoadTrajectoryWaypoints(obj, s, v, currentLane, numberPoints)
+        % Get next waypoints for staying on the same lane and following the road trajectory
             
-            numberWPsMax = size(obj.currentTrajectoryFrenet(ID_nextWP:end, 1), 1);
-            if (numberWPs <= 0) || (numberWPs > numberWPsMax)
-                fprintf('Number of Waypoints must be greater than 0 and smaller than %d \n', numberWPsMax);
-                error('Number of waypoints is not valid');
-            end
-            
-            s_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 1);
-            d_ref = obj.currentTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberWPs-1), 2);
+            s_ref = s + linspace(v*obj.Ts, numberPoints*v*obj.Ts, numberPoints)';
+            d_ref = obj.getLateralDestination(currentLane)*ones(numberPoints, 1);
         end
         
         function replan = calculateTrajectoryError(obj, s, d)
