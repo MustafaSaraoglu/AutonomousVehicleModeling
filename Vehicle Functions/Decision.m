@@ -1,6 +1,6 @@
 classdef Decision < matlab.System
 % Select driving mode and decide if to execute lane changing maneuver
-%
+
 % Driving Mode
 %   1 = FreeDrive
 %   2 = VehicleFollowing
@@ -11,11 +11,10 @@ classdef Decision < matlab.System
 %   1 = Command to start changing to left lane
 %  -1 = Command to start changing to right lane
 % Current Lane
-%   0 = On the left lane
-%   0.5 = Going to the right lane
-%   1 = On the right lane
-%  -0.5 = Going to the left lane
-
+%   0 = On the right lane
+%   0.5 = Going to the left lane
+%   1 = On the left lane
+%  -0.5 = Going to the right lane
 
     properties(Nontunable)
         LaneWidth % Width of road lane [m]
