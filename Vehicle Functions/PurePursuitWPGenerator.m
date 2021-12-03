@@ -77,5 +77,12 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
         end
+        
+%         function sts = getSampleTimeImpl(obj)
+%             % Define sample time type and parameters
+% 
+%             % Example: specify discrete sample time
+%             sts = obj.createSampleTime("Type", "Discrete", "SampleTime", obj.Ts);
+%         end      
     end
 end
