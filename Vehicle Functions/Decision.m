@@ -5,6 +5,7 @@ classdef Decision < matlab.System
 %   1 = FreeDrive
 %   2 = VehicleFollowing
 %   3 = EmergencyBrake
+%   4 = LaneChanging
 % Change Lane Cmd
 %   0 = Command to follow current trajectory (straight/lane change)
 %   1 = Command to start changing to left lane
@@ -40,13 +41,15 @@ classdef Decision < matlab.System
         currentLane % Current lane state
         
         laneChangeCmds % Possible commands for lane changing
+        
+        isCompletedOvertaking % Indicate if overtaking is completed
     end
 
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
             obj.drivingModes = ...
-                containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
+                containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake', 'LaneChanging'}, [1, 2, 3, 4]);
             obj.currentDrivingMode = obj.drivingModes('FreeDrive');
 
             obj.toEmergency = 10;
@@ -63,6 +66,8 @@ classdef Decision < matlab.System
             
             obj.laneChangeCmds = ...
                 containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight'}, [0, 1, -1]);
+            
+            obj.isCompletedOvertaking = false;
         end
         
         function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
@@ -99,6 +104,7 @@ classdef Decision < matlab.System
                 case obj.lanes('ToRightLane')
                     if abs(0 - dEgo) < obj.tolerance % Reached right lane
                         obj.currentLane = obj.lanes('RightLane');
+                        obj.isCompletedOvertaking = true;
                     end
             end
             
@@ -108,10 +114,14 @@ classdef Decision < matlab.System
         function drivingMode = selectDrivingMode(obj, deltaS)
         % Select driving mode according to transition conditions
             
-            % FreeDrive while lane changing maneuver or if leading vehicle
-            % was overtaken
-            if obj.currentLane ~= obj.lanes('RightLane') || deltaS < 0
+            if obj.isCompletedOvertaking
                 obj.currentDrivingMode = obj.drivingModes('FreeDrive');
+                drivingMode = obj.currentDrivingMode;
+                return
+            end
+        
+            if obj.currentLane ~= obj.lanes('RightLane')
+                obj.currentDrivingMode = obj.drivingModes('LaneChanging');
                 drivingMode = obj.currentDrivingMode;
                 return
             end
