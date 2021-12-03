@@ -19,6 +19,7 @@ classdef Decision < matlab.System
     properties(Nontunable)
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
+        Ts % Sample time
     end
     
     % Pre-computed constants
@@ -33,6 +34,7 @@ classdef Decision < matlab.System
         FreeDriveToFollow
         
         s_threshold % Relative distance threshold to start lane changing maneuver
+        tolerance % Accepted tolerance to reach destination lane
         
         lanes % Possible lane states
         currentLane % Current lane state
@@ -53,6 +55,7 @@ classdef Decision < matlab.System
             obj.FreeDriveToFollow = 39;
             
             obj.s_threshold = 40; % Constant threshold
+            obj.tolerance = 0.05;
             
             obj.lanes = ...
                 containers.Map({'RightLane', 'ToLeftLane', 'LeftLane', 'ToRightLane'}, [0, 0.5, 1, -0.5]);
@@ -85,7 +88,7 @@ classdef Decision < matlab.System
                         obj.currentLane = obj.lanes('ToLeftLane');
                     end
                 case obj.lanes('ToLeftLane')
-                    if dEgo >= obj.LaneWidth % Reached left lane
+                    if abs(obj.LaneWidth - dEgo) < obj.tolerance % Reached left lane
                         obj.currentLane = obj.lanes('LeftLane');
                     end
                 case obj.lanes('LeftLane')
@@ -94,7 +97,7 @@ classdef Decision < matlab.System
                         obj.currentLane = obj.lanes('ToRightLane');
                     end
                 case obj.lanes('ToRightLane')
-                    if dEgo <= 0 % Reached right lane
+                    if abs(0 - dEgo) < obj.tolerance % Reached right lane
                         obj.currentLane = obj.lanes('RightLane');
                     end
             end
@@ -175,5 +178,12 @@ classdef Decision < matlab.System
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
         end 
+        
+%         function sts = getSampleTimeImpl(obj)
+%             % Define sample time type and parameters
+% 
+%             % Example: specify discrete sample time
+%             sts = obj.createSampleTime("Type", "Discrete", "SampleTime", obj.Ts);
+%         end      
     end
 end
