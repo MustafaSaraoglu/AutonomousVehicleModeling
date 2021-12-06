@@ -12,6 +12,7 @@ function lineNr = getFunctionLineNr(functionName)
         'updateCurrentTrajectory', 110;
         'calculateTrajectoryToAdd', 142;
         'calculateLaneChangingTrajectory', 178;
+        'calculate_s_trajectory', 227;
         'calculateStraightTrajectory', 258;
         'getCurrentTrajectoryCartesian', 270;
         'getNextFrenetTrajectoryWaypoints', 279;
