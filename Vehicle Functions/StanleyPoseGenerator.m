@@ -1,14 +1,5 @@
 classdef StanleyPoseGenerator < LocalTrajectoryPlanner
 % Provide reference pose for Stanely Lateral Controller
-    
-    methods(Static)
-        function [closestPoint, idxInTrajectory] = getClosestPointOnTrajectory(point, trajectory)
-        % Calculate which point on a trajectory is closest to a given point
-            
-            [~, idxInTrajectory] = min(sum((trajectory - point).^2, 2));
-            closestPoint = trajectory(idxInTrajectory, :);
-        end
-    end
 
     methods(Access = protected)
         function setupImpl(obj)
@@ -113,5 +104,14 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
 %             % Example: specify discrete sample time
 %             sts = obj.createSampleTime("Type", "Discrete", "SampleTime", obj.Ts);
 %         end      
+    end
+    
+    methods(Static)
+        function [closestPoint, idxInTrajectory] = getClosestPointOnTrajectory(point, trajectory)
+        % Calculate which point on a trajectory is closest to a given point
+            
+            [~, idxInTrajectory] = min(sum((trajectory - point).^2, 2));
+            closestPoint = trajectory(idxInTrajectory, :);
+        end
     end
 end

@@ -18,19 +18,6 @@ classdef PlotDrivingScenario< matlab.System
     properties(Access = private)
         plots2update % Plots to update at every time step
     end
-    
-    methods(Static)        
-        function [plotVehicle, plotVehicleLocation] = plotVehicle(poseRearAxle, wheelBase, dim, color, originRepresentation)
-        % Plot vehicle
-
-            centerPoint = getVehicleCenterPoint(poseRearAxle, wheelBase);
-
-            [corners_x, corners_y, ~] = createRectangleVehicle(centerPoint, poseRearAxle(3), dim);
-
-            plotVehicle = plot(corners_x, corners_y, 'Color', color); % Vehicle rectangle
-            plotVehicleLocation = plot(poseRearAxle(1), poseRearAxle(2), originRepresentation, 'Color', color); % Vehicle location
-        end
-    end
 
     methods(Access = protected)
         function setupImpl(obj)
@@ -125,5 +112,18 @@ classdef PlotDrivingScenario< matlab.System
             sts = obj.createSampleTime("Type", "Discrete", ...
                 "SampleTime", 0.1); % For faster plotting
         end   
+    end
+    
+    methods(Static)        
+        function [plotVehicle, plotVehicleLocation] = plotVehicle(poseRearAxle, wheelBase, dim, color, originRepresentation)
+        % Plot vehicle
+
+            centerPoint = getVehicleCenterPoint(poseRearAxle, wheelBase);
+
+            [corners_x, corners_y, ~] = createRectangleVehicle(centerPoint, poseRearAxle(3), dim);
+
+            plotVehicle = plot(corners_x, corners_y, 'Color', color); % Vehicle rectangle
+            plotVehicleLocation = plot(poseRearAxle(1), poseRearAxle(2), originRepresentation, 'Color', color); % Vehicle location
+        end
     end
 end
