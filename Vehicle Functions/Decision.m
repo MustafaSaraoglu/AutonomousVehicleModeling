@@ -1,24 +1,25 @@
 classdef Decision < matlab.System
 % Select driving mode and decide if to execute lane changing maneuver
-%
+
 % Driving Mode
 %   1 = FreeDrive
 %   2 = VehicleFollowing
 %   3 = EmergencyBrake
+%   4 = LaneChanging
 % Change Lane Cmd
 %   0 = Command to follow current trajectory (straight/lane change)
 %   1 = Command to start changing to left lane
 %  -1 = Command to start changing to right lane
 % Current Lane
-%   0 = On the left lane
-%   0.5 = Going to the right lane
-%   1 = On the right lane
-%  -0.5 = Going to the left lane
-
+%   0 = On the right lane
+%   0.5 = Going to the left lane
+%   1 = On the left lane
+%  -0.5 = Going to the right lane
 
     properties(Nontunable)
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
+        Ts % Sample time
     end
     
     % Pre-computed constants
@@ -33,18 +34,21 @@ classdef Decision < matlab.System
         FreeDriveToFollow
         
         s_threshold % Relative distance threshold to start lane changing maneuver
+        tolerance % Accepted tolerance to reach destination lane
         
         lanes % Possible lane states
         currentLane % Current lane state
         
         laneChangeCmds % Possible commands for lane changing
+        
+        isCompletedOvertaking % Indicate if overtaking is completed
     end
 
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
             obj.drivingModes = ...
-                containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
+                containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake', 'LaneChanging'}, [1, 2, 3, 4]);
             obj.currentDrivingMode = obj.drivingModes('FreeDrive');
 
             obj.toEmergency = 10;
@@ -53,6 +57,7 @@ classdef Decision < matlab.System
             obj.FreeDriveToFollow = 39;
             
             obj.s_threshold = 40; % Constant threshold
+            obj.tolerance = 0.05;
             
             obj.lanes = ...
                 containers.Map({'RightLane', 'ToLeftLane', 'LeftLane', 'ToRightLane'}, [0, 0.5, 1, -0.5]);
@@ -60,6 +65,8 @@ classdef Decision < matlab.System
             
             obj.laneChangeCmds = ...
                 containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight'}, [0, 1, -1]);
+            
+            obj.isCompletedOvertaking = false;
         end
         
         function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, deltaS, vLead, vEgo)
@@ -85,7 +92,7 @@ classdef Decision < matlab.System
                         obj.currentLane = obj.lanes('ToLeftLane');
                     end
                 case obj.lanes('ToLeftLane')
-                    if dEgo >= obj.LaneWidth % Reached left lane
+                    if abs(obj.LaneWidth - dEgo) < obj.tolerance % Reached left lane
                         obj.currentLane = obj.lanes('LeftLane');
                     end
                 case obj.lanes('LeftLane')
@@ -94,8 +101,9 @@ classdef Decision < matlab.System
                         obj.currentLane = obj.lanes('ToRightLane');
                     end
                 case obj.lanes('ToRightLane')
-                    if dEgo <= 0 % Reached right lane
+                    if abs(0 - dEgo) < obj.tolerance % Reached right lane
                         obj.currentLane = obj.lanes('RightLane');
+                        obj.isCompletedOvertaking = true;
                     end
             end
             
@@ -105,10 +113,14 @@ classdef Decision < matlab.System
         function drivingMode = selectDrivingMode(obj, deltaS)
         % Select driving mode according to transition conditions
             
-            % FreeDrive while lane changing maneuver or if leading vehicle
-            % was overtaken
-            if obj.currentLane ~= obj.lanes('RightLane') || deltaS < 0
+            if obj.isCompletedOvertaking
                 obj.currentDrivingMode = obj.drivingModes('FreeDrive');
+                drivingMode = obj.currentDrivingMode;
+                return
+            end
+        
+            if obj.currentLane ~= obj.lanes('RightLane')
+                obj.currentDrivingMode = obj.drivingModes('LaneChanging');
                 drivingMode = obj.currentDrivingMode;
                 return
             end
@@ -175,5 +187,12 @@ classdef Decision < matlab.System
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
         end 
+        
+%         function sts = getSampleTimeImpl(obj)
+%             % Define sample time type and parameters
+% 
+%             % Example: specify discrete sample time
+%             sts = obj.createSampleTime("Type", "Discrete", "SampleTime", obj.Ts);
+%         end      
     end
 end

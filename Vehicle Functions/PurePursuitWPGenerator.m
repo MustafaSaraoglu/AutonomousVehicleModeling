@@ -11,18 +11,18 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [nextWPs, d_ref, trajectoryToPlot, steeringReachability] = stepImpl(obj, pose, changeLaneCmd, currentLane, acceleration, velocity)
+        function [nextWPs, d_ref, futurePosition, steeringReachability] = stepImpl(obj, pose, changeLaneCmd, currentLane, acceleration, velocity)
         % Return the reference waypoints necessary for Pure Pursuit, the reference lateral positon and the reference trajectory to plot
 
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
             replan = obj.calculateTrajectoryError(s, d);
             obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
-            trajectoryToPlot = obj.currentTrajectoryCartesian(:, 1:2);
+            futurePosition = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
-            [s_ref, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, obj.numberWaypoints);
+            [s_ref, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, currentLane, obj.numberWaypoints);
             
             [referencePositionCartesian, ~] = Frenet2Cartesian(s_ref, d_ref, obj.RoadTrajectory);
             
@@ -33,12 +33,11 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
         
         function [out1, out2, out3, out4] = getOutputSizeImpl(obj)
             % Return size for each output port
-            lengthTrajectory = obj.timeHorizon/obj.Ts + 1;
             numberPointsSteering =  2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max)));
             
             out1 = [obj.numberWaypoints, 2];
             out2 = [1 1];
-            out3 = [lengthTrajectory, 2];
+            out3 = [1 2];
             out4 = [numberPointsSteering, 10];
 
             % Example: inherit size from first input port
@@ -77,5 +76,12 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
         end
+        
+%         function sts = getSampleTimeImpl(obj)
+%             % Define sample time type and parameters
+% 
+%             % Example: specify discrete sample time
+%             sts = obj.createSampleTime("Type", "Discrete", "SampleTime", obj.Ts);
+%         end      
     end
 end

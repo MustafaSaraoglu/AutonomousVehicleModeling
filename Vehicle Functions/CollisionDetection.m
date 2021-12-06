@@ -9,41 +9,6 @@ classdef CollisionDetection < matlab.System
         wheelBaseLead % Wheel base lead vehicle
         radiusLead % Radius around lead vehicle rectangle representation
     end
-    
-    methods(Static)    
-        function euclidianDistance = calculateEuclidianDistance(P1, P2)
-        % Calculate Euclidian distance between two points P1(x1, y1) and P2(x2, y2)
-            
-            euclidianDistance = sqrt((P2(1) - P1(1))^2 + (P2(2) - P2(2))^2);
-        end
-        
-        % FROM MOBATSim
-        function CollisionFlag = checkIntersection(BoxA, BoxB)
-            % Check if there is an intersection between two rectangle hitboxes
-            CornersAx = transpose(BoxA(1,:));
-            CornersAy = transpose(BoxA(2,:));
-            CornersBx = transpose(BoxB(1,:));
-            CornersBy = transpose(BoxB(2,:));
-            
-            in = inpolygon(CornersAx,CornersAy,CornersBx,CornersBy);
-            
-            if max(in) > 0
-                CollisionFlag = true;
-                return;
-            else
-                in = inpolygon(CornersBx,CornersBy,CornersAx,CornersAy);
-                if max(in) > 0
-                    CollisionFlag = true;
-                    % To plot the collision scene
-                    %plot(CornersAx,CornersAy,CornersBx,CornersBy)
-                    return;
-                else
-                    CollisionFlag = false;
-                    return;
-                end 
-            end
-        end
-    end
 
     methods(Access = protected)
         function isCollided = stepImpl(obj, poseLead, poseEgo)
@@ -93,6 +58,41 @@ classdef CollisionDetection < matlab.System
 
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
+        end
+    end
+    
+    methods(Static)    
+        function euclidianDistance = calculateEuclidianDistance(P1, P2)
+        % Calculate Euclidian distance between two points P1(x1, y1) and P2(x2, y2)
+            
+            euclidianDistance = sqrt((P2(1) - P1(1))^2 + (P2(2) - P2(2))^2);
+        end
+        
+        % FROM MOBATSim
+        function CollisionFlag = checkIntersection(BoxA, BoxB)
+            % Check if there is an intersection between two rectangle hitboxes
+            CornersAx = transpose(BoxA(1,:));
+            CornersAy = transpose(BoxA(2,:));
+            CornersBx = transpose(BoxB(1,:));
+            CornersBy = transpose(BoxB(2,:));
+            
+            in = inpolygon(CornersAx,CornersAy,CornersBx,CornersBy);
+            
+            if max(in) > 0
+                CollisionFlag = true;
+                return;
+            else
+                in = inpolygon(CornersBx,CornersBy,CornersAx,CornersAy);
+                if max(in) > 0
+                    CollisionFlag = true;
+                    % To plot the collision scene
+                    %plot(CornersAx,CornersAy,CornersBx,CornersBy)
+                    return;
+                else
+                    CollisionFlag = false;
+                    return;
+                end 
+            end
         end
     end
 end

@@ -18,19 +18,6 @@ classdef PlotDrivingScenario< matlab.System
     properties(Access = private)
         plots2update % Plots to update at every time step
     end
-    
-    methods(Static)        
-        function [plotVehicle, plotVehicleLocation] = plotVehicle(poseRearAxle, wheelBase, dim, color, originRepresentation)
-        % Plot vehicle
-
-            centerPoint = getVehicleCenterPoint(poseRearAxle, wheelBase);
-
-            [corners_x, corners_y, ~] = createRectangleVehicle(centerPoint, poseRearAxle(3), dim);
-
-            plotVehicle = plot(corners_x, corners_y, 'Color', color); % Vehicle rectangle
-            plotVehicleLocation = plot(poseRearAxle(1), poseRearAxle(2), originRepresentation, 'Color', color); % Vehicle location
-        end
-    end
 
     methods(Access = protected)
         function setupImpl(obj)
@@ -47,7 +34,7 @@ classdef PlotDrivingScenario< matlab.System
             obj.plotDiscreteSpace(); 
         end
 
-        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, egoReachability, nextWPsPurePursuit, poseEgo)
+        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, positionEgoFuture, egoReachability, nextWPsPurePursuit, poseEgo)
         % Plot driving scenario
         
             obj.deletePreviousPlots; 
@@ -62,9 +49,9 @@ classdef PlotDrivingScenario< matlab.System
             % Vehicle Ego
             [obj.plots2update.vehicles.Ego, obj.plots2update.vehicles.LocationEgo] = obj.plotVehicle(poseEgo, obj.wheelBaseEgo, obj.dimensionsEgo, 'red', 'o');
             plot(poseEgo(1), poseEgo(2), '.', 'Color', 'red'); 
+            obj.plots2update.vehicles.EgoFuture = plot(positionEgoFuture(1), positionEgoFuture(2), '*', 'Color', 'green');
             
             % Trajectory
-            obj.plots2update.trajectory.TrajectoryEgo = plot(egoTrajectory(:, 1), egoTrajectory(:, 2), 'Color', 'green');
             if size(nextWPsPurePursuit ,2) == 2
                 obj.plots2update.trajectory.WPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
             end
@@ -125,5 +112,18 @@ classdef PlotDrivingScenario< matlab.System
             sts = obj.createSampleTime("Type", "Discrete", ...
                 "SampleTime", 0.1); % For faster plotting
         end   
+    end
+    
+    methods(Static)        
+        function [plotVehicle, plotVehicleLocation] = plotVehicle(poseRearAxle, wheelBase, dim, color, originRepresentation)
+        % Plot vehicle
+
+            centerPoint = getVehicleCenterPoint(poseRearAxle, wheelBase);
+
+            [corners_x, corners_y, ~] = createRectangleVehicle(centerPoint, poseRearAxle(3), dim);
+
+            plotVehicle = plot(corners_x, corners_y, 'Color', color); % Vehicle rectangle
+            plotVehicleLocation = plot(poseRearAxle(1), poseRearAxle(2), originRepresentation, 'Color', color); % Vehicle location
+        end
     end
 end
