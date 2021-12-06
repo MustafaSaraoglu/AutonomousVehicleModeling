@@ -22,7 +22,7 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
+            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity, pose);
             trajectoryToPlot = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
