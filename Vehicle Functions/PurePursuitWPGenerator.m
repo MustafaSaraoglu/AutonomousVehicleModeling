@@ -11,14 +11,14 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [nextWPs, d_ref, trajectoryToPlot, steeringReachability] = stepImpl(obj, pose, changeLaneCmd, currentLane, acceleration, velocity)
+        function [nextWPs, d_ref, futurePosition, steeringReachability] = stepImpl(obj, pose, changeLaneCmd, currentLane, acceleration, velocity)
         % Return the reference waypoints necessary for Pure Pursuit, the reference lateral positon and the reference trajectory to plot
 
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity, pose);
-            trajectoryToPlot = obj.futurePosition(:, 1:2);
+            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
+            futurePosition = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
@@ -33,7 +33,6 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
         
         function [out1, out2, out3, out4] = getOutputSizeImpl(obj)
             % Return size for each output port
-            lengthTrajectory = obj.timeHorizon/obj.Ts + 1;
             numberPointsSteering =  2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max)));
             
             out1 = [obj.numberWaypoints, 2];

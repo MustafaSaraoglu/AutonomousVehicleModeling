@@ -16,14 +16,14 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [d_ref, trajectoryToPlot, steeringReachability, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, currentLane, acceleration, velocity)
+        function [d_ref, futurePosition, steeringReachability, referencePose, poseOut] = stepImpl(obj, pose, changeLaneCmd, currentLane, acceleration, velocity)
         % Return the reference lateral position, the reference trajectory to plot, the reference pose and the current pose  
             
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity, pose);
-            trajectoryToPlot = obj.futurePosition(:, 1:2);
+            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
+            futurePosition = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
@@ -59,7 +59,6 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
         
         function [out1, out2, out3, out4, out5] = getOutputSizeImpl(obj)
             % Return size for each output port
-            lengthTrajectory = obj.timeHorizon/obj.Ts + 1;
             numberPointsSteering =  2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max)));
             
             out1 = [1 1];

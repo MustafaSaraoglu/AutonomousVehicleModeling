@@ -47,7 +47,7 @@ classdef PlotDrivingScenario< matlab.System
             obj.plotDiscreteSpace(); 
         end
 
-        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, egoReachability, nextWPsPurePursuit, poseEgo)
+        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, positionEgoFuture, egoReachability, nextWPsPurePursuit, poseEgo)
         % Plot driving scenario
         
             obj.deletePreviousPlots; 
@@ -62,9 +62,9 @@ classdef PlotDrivingScenario< matlab.System
             % Vehicle Ego
             [obj.plots2update.vehicles.Ego, obj.plots2update.vehicles.LocationEgo] = obj.plotVehicle(poseEgo, obj.wheelBaseEgo, obj.dimensionsEgo, 'red', 'o');
             plot(poseEgo(1), poseEgo(2), '.', 'Color', 'red'); 
+            obj.plots2update.vehicles.EgoFuture = plot(positionEgoFuture(1), positionEgoFuture(2), '*', 'Color', 'green');
             
             % Trajectory
-            obj.plots2update.trajectory.TrajectoryEgo = plot(egoTrajectory(1), egoTrajectory(2), '*', 'Color', 'green');
             if size(nextWPsPurePursuit ,2) == 2
                 obj.plots2update.trajectory.WPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
             end
