@@ -7,6 +7,7 @@ classdef PlotDrivingScenario< matlab.System
         dimensionsEgo % Dimensions (length, width) ego vehicle [[m]; [m]]
         wheelBaseEgo % Wheel base ego vehicle [m]
         
+        s_max % Maximum allowed longitudinal postion [m]
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
         
@@ -16,32 +17,6 @@ classdef PlotDrivingScenario< matlab.System
     % Pre-computed constants
     properties(Access = private)
         plots2update % Plots to update at every time step
-    end
-    
-    methods(Static)
-        function lineOffset = plotRoadLine(x_line, y_line, lineNr, lineOffset, laneWidth)
-        % Plot current road line, return offset for next line
-
-            lineRepresentation = '-';
-            if lineNr == 2 % Dashed for middle line
-                lineRepresentation = '--';
-            end
-
-            plot(x_line, y_line, lineRepresentation, 'Color', 'black');
-
-            lineOffset = lineOffset + laneWidth; % Next line
-        end
-        
-        function [plotVehicle, plotVehicleLocation] = plotVehicle(poseRearAxle, wheelBase, dim, color, originRepresentation)
-        % Plot vehicle
-
-            centerPoint = getVehicleCenterPoint(poseRearAxle, wheelBase);
-
-            [corners_x, corners_y, ~] = createRectangleVehicle(centerPoint, poseRearAxle(3), dim);
-
-            plotVehicle = plot(corners_x, corners_y, 'Color', color); % Vehicle rectangle
-            plotVehicleLocation = plot(poseRearAxle(1), poseRearAxle(2), originRepresentation, 'Color', color); % Vehicle location
-        end
     end
 
     methods(Access = protected)
@@ -53,11 +28,13 @@ classdef PlotDrivingScenario< matlab.System
             grid on;
             axis equal;
             hold on;
-            obj.plotRoad(obj.RoadTrajectory, obj.LaneWidth);
+            obj.plotRoadLine(-obj.LaneWidth/2, '-'); % Right
+            obj.plotRoadLine(obj.LaneWidth/2, '--'); % Center
+            obj.plotRoadLine(3*obj.LaneWidth/2, '-'); % Left
             obj.plotDiscreteSpace(); 
         end
 
-        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, egoTrajectory, egoReachability, nextWPsPurePursuit, poseEgo)
+        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, positionEgoFuture, egoReachability, nextWPsPurePursuit, poseEgo)
         % Plot driving scenario
         
             obj.deletePreviousPlots; 
@@ -72,9 +49,9 @@ classdef PlotDrivingScenario< matlab.System
             % Vehicle Ego
             [obj.plots2update.vehicles.Ego, obj.plots2update.vehicles.LocationEgo] = obj.plotVehicle(poseEgo, obj.wheelBaseEgo, obj.dimensionsEgo, 'red', 'o');
             plot(poseEgo(1), poseEgo(2), '.', 'Color', 'red'); 
+            obj.plots2update.vehicles.EgoFuture = plot(positionEgoFuture(1), positionEgoFuture(2), '*', 'Color', 'green');
             
             % Trajectory
-            obj.plots2update.trajectory.TrajectoryEgo = plot(egoTrajectory(:, 1), egoTrajectory(:, 2), 'Color', 'green');
             if size(nextWPsPurePursuit ,2) == 2
                 obj.plots2update.trajectory.WPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
             end
@@ -108,42 +85,13 @@ classdef PlotDrivingScenario< matlab.System
             end
         end
         
-        function plotRoad(obj, roadTrajectory, laneWidth)
-        % Plot road
-
-            route = roadTrajectory([1, 2],[1, 3]).*[1, -1; 1, -1];
-            radian = roadTrajectory(3, 1);
-            startPoint = route(1, :);
-            endPoint = route(2, :);
-
-            lineOffset = -laneWidth/2; % Offset for each line: Start with lower line
-
-            if radian == 0 % Straight road
-                route_Vector = endPoint - startPoint;
-                routeUnitVector = route_Vector/norm(route_Vector);% unit vector of the route_vector
-                routeNormalUnitVector = [-routeUnitVector(2), routeUnitVector(1)]; % Route normal unit vector
-
-                for lineNr = 1:3 % For lower, middle and upper line
-                    startLine = startPoint + lineOffset*routeNormalUnitVector;
-                    endLine = endPoint + lineOffset*routeNormalUnitVector;
-
-                    lineOffset = obj.plotRoadLine([startLine(1), endLine(1)], [startLine(2), endLine(2)], lineNr, lineOffset, laneWidth);
-                end
-            else % Curved road
-                rotationCenter = roadTrajectory(3, [2, 3]).*[1, -1]; 
-                startPointVector = startPoint - rotationCenter;
-                routeRadius = norm(startPointVector); 
-                startPointVectorAng = atan2(startPointVector(2),startPointVector(1)); 
-
-                angles = startPointVectorAng:radian/(0.2*routeRadius*radian/pi):startPointVectorAng+radian; % Discretise angles from start to end point
-
-                for lineNr = 1:3 % For lower, middle and upper line
-                    x_arc = rotationCenter(1) + (routeRadius-lineOffset)*cos(angles);
-                    y_arc = rotationCenter(2) + (routeRadius-lineOffset)*sin(angles);
-
-                    lineOffset = obj.plotRoadLine(x_arc, y_arc, lineNr, lineOffset, laneWidth);
-                end  
-            end
+        function plotRoadLine(obj, d, lineRepresentation)
+        % Plot road line according to lateral position
+            
+            s = 0:0.1:obj.s_max;
+            d = d*ones(1, length(s));
+            [lanePoints, ~] = Frenet2Cartesian(s', d', obj.RoadTrajectory);
+            plot(lanePoints(:, 1), lanePoints(:, 2), lineRepresentation, 'Color', 'black')
         end
         
         function plotDiscreteSpace(obj)
@@ -164,5 +112,18 @@ classdef PlotDrivingScenario< matlab.System
             sts = obj.createSampleTime("Type", "Discrete", ...
                 "SampleTime", 0.1); % For faster plotting
         end   
+    end
+    
+    methods(Static)        
+        function [plotVehicle, plotVehicleLocation] = plotVehicle(poseRearAxle, wheelBase, dim, color, originRepresentation)
+        % Plot vehicle
+
+            centerPoint = getVehicleCenterPoint(poseRearAxle, wheelBase);
+
+            [corners_x, corners_y, ~] = createRectangleVehicle(centerPoint, poseRearAxle(3), dim);
+
+            plotVehicle = plot(corners_x, corners_y, 'Color', color); % Vehicle rectangle
+            plotVehicleLocation = plot(poseRearAxle(1), poseRearAxle(2), originRepresentation, 'Color', color); % Vehicle location
+        end
     end
 end

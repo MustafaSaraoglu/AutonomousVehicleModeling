@@ -18,10 +18,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
 
     % Pre-computed constants
     properties(Access = protected)
-        k % Number of discrete time steps according to specified time horizon
-        
-        A_prime % Modified A-Matrix for reachability analysis
-        B_prime % Modified B-Matrix for reachability analysis
+        k_timeHorizon % Number of discrete time steps according to specified time horizon
         
         numberPointsSteering  % Number of points for steering reachability
     end
@@ -30,21 +27,22 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
             
-            obj.k = obj.timeHorizon/obj.Ts - 1; % -1 because time of state(k+1) should be equal to time horizon
-            
-            obj.A_prime = obj.calculateAPrime(obj.k);
-            obj.B_prime = obj.calculateBPrime(obj.k);
+            obj.k_timeHorizon = obj.timeHorizon/obj.Ts - 1; % -1 because time of state(k+1) should be equal to time horizon (timeHorizon = (k+1)*Ts)
             
             % Needs to be even number TODO: why? Probably because of division by 0/'Inf*0= NaN' -> Fixed
             obj.numberPointsSteering = 2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max))); % Consider steering angle range and time horizon
         end
         
-        function futureState = predictLongitudinalFutureState(obj, s_0, v_0, acceleration)
+        function [s_future, v_future] = predictLongitudinalFutureState(obj, s_0, v_0, acceleration, k)
         % Predict longitudinal future state (longitudinal displacement, longitudinal velocity) 
-        % according to an itnitial state and a constant acceleration
+        % according to an itnitial state and a constant acceleration in k+1 time steps
             
             initialState = [s_0; v_0];
-            futureState = obj.A_prime*initialState + obj.B_prime*acceleration;
+            
+            A_prime = obj.calculateAPrime(k);
+            B_prime = obj.calculateBPrime(k);
+            
+            futureState = A_prime*initialState + B_prime*acceleration;
             if futureState(2) < 0 
                 futureState(2) = 0;
                 t_stop = -v_0/acceleration; % v(t) = 0 = acc*t + v_0 if acc = const.
@@ -54,22 +52,25 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
                 t_v_max = (obj.maximumVelocity - v_0)/acceleration; % v(t) = v_max = acc*t + v_0 if acc = const.
                 futureState(1) = s_0 + obj.maximumVelocity*obj.timeHorizon - 0.5*(obj.maximumVelocity - v_0)*t_v_max;
             end
+            
+            s_future = futureState(1);
+            v_future = futureState(2);
         end
         
         function steeringReachability = calculateSteeringReachability(obj, pose, s, v)
         % Calcuate reachability for all possible steering angles and different accelerations
                         
-            longitudinalFutureState_min = obj.predictLongitudinalFutureState(s, v, obj.minimumAcceleration);
-            longitudinalFutureState_max = obj.predictLongitudinalFutureState(s, v, obj.maximumAcceleration);
-            longitudinalFutureState_emergency = obj.predictLongitudinalFutureState(s, v, obj.emergencyAcceleration);
+            [s_future_min, ~] = obj.predictLongitudinalFutureState(s, v, obj.minimumAcceleration, obj.k_timeHorizon);
+            [s_future_max, ~] = obj.predictLongitudinalFutureState(s, v, obj.maximumAcceleration, obj.k_timeHorizon);
+            [s_future_emergency, ~] = obj.predictLongitudinalFutureState(s, v, obj.emergencyAcceleration, obj.k_timeHorizon);
             
             steeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
             
-            destinations_lowerBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_min(1)-s);
-            destinations_upperBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_max(1)-s);
-            destinations_emergencyBoundary = obj.predictFutureDestinations(pose, steeringAngles, longitudinalFutureState_emergency(1)-s);
+            destinations_lowerBoundary = obj.predictFutureDestinations(pose, steeringAngles, s_future_min-s);
+            destinations_upperBoundary = obj.predictFutureDestinations(pose, steeringAngles, s_future_max-s);
+            destinations_emergencyBoundary = obj.predictFutureDestinations(pose, steeringAngles, s_future_emergency-s);
            
-            arcLengths =  linspace(longitudinalFutureState_min(1), longitudinalFutureState_max(1), obj.numberPointsSteering) - s;
+            arcLengths =  linspace(s_future_min, s_future_max, obj.numberPointsSteering) - s;
             
             destinations_rightBoundary = obj.predictFutureDestinations(pose, -obj.steerAngle_max, arcLengths);
             destinations_leftBoundary = obj.predictFutureDestinations(pose, obj.steerAngle_max, arcLengths);

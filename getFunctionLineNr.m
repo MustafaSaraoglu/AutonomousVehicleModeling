@@ -7,28 +7,29 @@ function lineNr = getFunctionLineNr(functionName)
         'discretiseContinuousSpace', 105;
     
         % LocalTrajectoryPlanner.m
-        'planFrenetTrajectory', 72;
+        'planTrajectory', 74;
         'divideLaneChangingTrajectory', 95;
         'updateCurrentTrajectory', 110;
-        'calculateTrajectoryToAdd', 129;
-        'calculateLaneChangingTrajectory', 165;
-        'calculateStraightTrajectory', 245;
-        'getCurrentTrajectoryCartesian', 256;
-        'getNextFrenetTrajectoryWaypoints', 264;
-        'calculateTrajectoryError', 279;
+        'calculateTrajectoryToAdd', 142;
+        'calculateLaneChangingTrajectory', 178;
+        'calculate_s_trajectory', 227;
+        'calculateStraightTrajectory', 258;
+        'getCurrentTrajectoryCartesian', 270;
+        'getNextFrenetTrajectoryWaypoints', 279;
+        'calculateTrajectoryError', 298;
         
         % StanleyPoseGenerator.m
-        'getClosestPointOnTrajectory', 9;
-        'getReferencePoseStanley', 41;
+        'getClosestPointOnTrajectory', 5;
+        'getReferencePoseStanley', 38;
         
         % PlotDrivingScenario.m
-        'plotVehicle', 35;
-        'deletePreviousPlots', 95;
-        'plotRoad', 111;
-        'plotDiscreteSpace', 149;
+        'plotVehicle', 23;
+        'deletePreviousPlots', 85;
+        'plotRoadLine', 101;
+        'plotDiscreteSpace', 110;
         
         % ReachabilityAnalysis.m
-        'calculateSteeringReachability', 59;
+        'calculateSteeringReachability', 60;
         };
     
     referenceFunctions = containers.Map(entries(:, 1)', [entries{:, 2}]);
