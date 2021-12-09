@@ -20,19 +20,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         a3
         a4
         a5
-           
-        trajectoryReferenceLength % Number of points for trajectory generation
-        
-        residualLaneChangingTrajectory % Store residual lane changing trajectory if timeHorizon is to small to fit whole trajectory
-        
-        maneuvers % Possible maneuvers
-        
-        lanes % Possible lane states
         
         laneChangeCmds % Possible commands for lane changing
-
-        currentTrajectoryFrenet % Planned trajectory for maneuver in Frenet coordinates [s, d, orientation, time]
-        currentTrajectoryCartesian % Planned trajectory in Cartesian coordinates [x, y, orientation, time]
+        
+        d_destination % Reference lateral destination (right or left lane)
+        
+        trajectoryReferenceLength % Number of points for trajectory generation
         
         fractionTimeHorizon % Fraction of time horizon when divided into partsTimeHorizon equal parts
         counter % Counter to stop at correct simulation time
@@ -57,27 +50,21 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
             setupImpl@ReachabilityAnalysis(obj) 
-            
+
             obj.laneChangeCmds = ...
-                containers.Map({'CmdFollow', 'CmdStartToLeft', 'CmdStartToRight'}, [0, 1, -1]);
+                containers.Map({'CmdIdle', 'CmdStartToLeftLane', 'CmdStartToRightLane'}, [0, 1, -1]);
             
-            obj.lanes = ...
-                containers.Map({'RightLane', 'ToLeftLane', 'LeftLane', 'ToRightLane'}, [0, 0.5, 1, -0.5]);
+            obj.d_destination = 0; % Start on right lane
             
             % +1 because planned trajectory contains current waypoint at current time
             obj.trajectoryReferenceLength = obj.timeHorizon/obj.Ts + 1; 
-            
-            obj.currentTrajectoryFrenet = zeros(obj.trajectoryReferenceLength, 4);
-            obj.currentTrajectoryCartesian = zeros(obj.trajectoryReferenceLength, 4);
-            
-            obj.residualLaneChangingTrajectory = [];
             
             obj.fractionTimeHorizon = obj.timeHorizon/obj.partsTimeHorizon;
             obj.counter = 0;
             obj.predictedTrajectory = [];
         end
         
-        function planTrajectory(obj, changeLaneCmd, replan, currentLane, s, d, a, v)
+        function planTrajectory(obj, changeLaneCmd, replan, s, d, a, v)
         % Plan trajectory for the next obj.timeHorizon seconds in Frenet and Cartesian coordinates
 
             if changeLaneCmd 
@@ -90,21 +77,20 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
             
             % TODO: Do at every simulation time step?
-            obj.predictFuturePosition(s, v, a, currentLane);
+            obj.predictFuturePosition(s, v, a);
         end
         
         function calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, d_dot, d_ddot, v)
         % Calculate the lane changing maneuver either to the left or right lane
             
-            % TODO: Might be simplified using either changeLaneCmd or currentLane
-            if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeft')
-                d_destination = obj.LaneWidth;
+            if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeftLane')
+                obj.d_destination = obj.LaneWidth;
                 durationManeuver = obj.durationToLeftLane;
-            elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRight')
-                d_destination = 0;
+            elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRightLane')
+                obj.d_destination = 0;
                 durationManeuver = obj.durationToRightLane;
             end
-            obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, d_destination, durationManeuver, v);
+            obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, obj.d_destination, durationManeuver, v);
         end
         
         function calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_dot_current, d_ddot_current, d_destination, durationManeuver, v_current)
@@ -189,7 +175,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
         end
         
-        function predictFuturePosition(obj, s_current, v_current, a_current, currentLane)
+        function predictFuturePosition(obj, s_current, v_current, a_current)
         % Predict future position in a specified time horizon
             
             % Future prediction until time horizon for constant acceleration
@@ -210,13 +196,13 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 
                 if ID_futureWP >= size(obj.laneChangingTrajectoryFrenet, 1)
                     % Simplification: Predict position on destination lane not considering lane changing trajectory anymore
-                    d_future = obj.getLateralDestination(currentLane); 
+                    d_future = obj.d_destination; 
                 else
                     s_future = obj.laneChangingTrajectoryFrenet(ID_futureWP, 1);
                     d_future = obj.laneChangingTrajectoryFrenet(ID_futureWP, 2);
                 end
             else % For following the road
-                d_future = obj.getLateralDestination(currentLane);
+                d_future = obj.d_destination;
             end
             
             futureTime = get_param('VehicleFollowing', 'SimulationTime') + obj.timeHorizon;
@@ -224,7 +210,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.futurePosition = [futurePos, futureTime]; % [x, y, time]
         end
         
-        function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, v, currentLane, numberWPs)
+        function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, v, numberWPs)
         % Get the next waypoint(s) for current trajectory according to current s in Frenet coordinates
             
             if ~isempty(obj.laneChangingTrajectoryFrenet)
@@ -233,7 +219,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 
                 if ID_nextWP > size(obj.laneChangingTrajectoryFrenet, 1) % No more lane changing points left
                     obj.laneChangingTrajectoryFrenet = [];
-                    [s_ref, d_ref] = obj.getNextRoadTrajectoryWaypoints(s, v, currentLane, numberWPs);
+                    [s_ref, d_ref] = obj.getNextRoadTrajectoryWaypoints(s, v, numberWPs);
                     return
                 end
                 
@@ -246,20 +232,20 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 % Add points from road trajectory if necessary
                 numberPointsFromRoadTrajectory = numberWPs - numberPointsFromLaneChanging;
                 if numberPointsFromRoadTrajectory > 0
-                    [s_add, d_add] = obj.getNextRoadTrajectoryWaypoints(s_ref(end), v, currentLane, numberPointsFromRoadTrajectory);
+                    [s_add, d_add] = obj.getNextRoadTrajectoryWaypoints(s_ref(end), v, numberPointsFromRoadTrajectory);
                     s_ref = [s_ref; s_add];
                     d_ref = [d_ref; d_add];
                 end
             else
-                [s_ref, d_ref] = obj.getNextRoadTrajectoryWaypoints(s, v, currentLane, numberWPs);
+                [s_ref, d_ref] = obj.getNextRoadTrajectoryWaypoints(s, v, numberWPs);
             end
         end
         
-        function [s_ref, d_ref] = getNextRoadTrajectoryWaypoints(obj, s, v, currentLane, numberPoints)
+        function [s_ref, d_ref] = getNextRoadTrajectoryWaypoints(obj, s, v, numberPoints)
         % Get next waypoints for staying on the same lane and following the road trajectory
             
             s_ref = s + linspace(v*obj.Ts, numberPoints*v*obj.Ts, numberPoints)'; % Linear spacing according to current velocity
-            d_ref = obj.getLateralDestination(currentLane)*ones(numberPoints, 1);
+            d_ref = obj.d_destination*ones(numberPoints, 1);
         end
         
         function replan = calculateTrajectoryError(obj, s, d)
@@ -287,24 +273,6 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             ID_nextPrediction = sum(timeToCheck >= trajectoryTime); % ID for next predicted time
             obj.predictedTrajectory = obj.laneChangingTrajectoryFrenet(ID_nextPrediction, :); 
-        end
-        
-        function d_destination = getLateralDestination(obj, currentLane)
-        % Get the reference lateral destination (either right or left lane)
-        
-            d_destination = 0;
-            if currentLane == obj.lanes('ToLeftLane') || currentLane == obj.lanes('LeftLane')
-                d_destination = obj.LaneWidth;
-            end
-        end
-        
-        function laneCenterReached = isReachedDestinationLane(obj, currentLane)
-        % Return if the vehicle has reached the destination lane
-            
-            laneCenterReached = false;
-            if currentLane == obj.lanes('RightLane') || currentLane == obj.lanes('LeftLane')
-                laneCenterReached = true;
-            end    
         end
     end
 end

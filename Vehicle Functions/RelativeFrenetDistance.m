@@ -7,13 +7,18 @@ classdef RelativeFrenetDistance < matlab.System
     end
     
     methods(Access = protected)
-        function deltaS = stepImpl(obj, poseLead, poseEgo)
+        function delta_s = stepImpl(obj, poseLead, poseEgo)
         % Return relative distance using Frenet coordinate system
         
-            [sEgo, ~] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]); 
-            [sLead, ~] = Cartesian2Frenet(obj.RoadTrajectory, [poseLead(1) poseLead(2)]); 
+            [sEgo, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]); 
+            [sLead, dLead] = Cartesian2Frenet(obj.RoadTrajectory, [poseLead(1) poseLead(2)]); 
             
-            deltaS = sLead - sEgo;
+            delta_s = sLead - sEgo;
+            
+            % TODO: Find more general formulation to decide what is vehicle in front
+            if abs(dEgo - dLead) >= 0.5 || delta_s < 0 % Maybe better according to vehicles' dimensions
+                delta_s = 999;
+            end   
         end
         
         function out = getOutputSizeImpl(~)

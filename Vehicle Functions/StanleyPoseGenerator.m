@@ -13,20 +13,20 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
+            obj.planTrajectory(changeLaneCmd, replan, s, d, acceleration, velocity);
             futurePosition = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
-            referencePose = obj.getReferencePoseStanley(pose, currentLane); 
+            referencePose = obj.getReferencePoseStanley(pose); 
             
-            [~, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, currentLane, 1); % d_ref according to current pose and not according to front axle
+            [~, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, 1); % d_ref according to current pose and not according to front axle
             
             pose(3) = rad2deg(pose(3)); % Conversion necessary for MATLAB Stanley Lateral Controller
             poseOut = pose'; % MATLAB Stanley Lateral Controller input is [1x3]
         end
         
-        function referencePoseCartesian = getReferencePoseStanley(obj, pose, currentLane)
+        function referencePoseCartesian = getReferencePoseStanley(obj, pose)
         % Get the reference pose for Stanley in Cartesian coordinates    
             
             % Reference is the center of the front axle
@@ -40,9 +40,8 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
                 end
             else
                 [s, ~] = Cartesian2Frenet(obj.RoadTrajectory, centerFrontAxle); % Projection of font axle positon on current Frenet reference trajectory
-                d_destination = obj.getLateralDestination(currentLane);
                 
-                [referencePositionCartesian, refOrientation] = Frenet2Cartesian(s, d_destination, obj.RoadTrajectory);
+                [referencePositionCartesian, refOrientation] = Frenet2Cartesian(s, obj.d_destination, obj.RoadTrajectory);
             end
             
             referencePoseCartesian = [referencePositionCartesian, rad2deg(refOrientation)]; % Degree for MATLAB Stanley Controller

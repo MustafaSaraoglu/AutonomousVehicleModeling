@@ -17,12 +17,12 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planTrajectory(changeLaneCmd, replan, currentLane, s, d, acceleration, velocity);
+            obj.planTrajectory(changeLaneCmd, replan, s, d, acceleration, velocity);
             futurePosition = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
-            [s_ref, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, currentLane, obj.numberWaypoints);
+            [s_ref, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, obj.numberWaypoints);
             
             [referencePositionCartesian, ~] = Frenet2Cartesian(s_ref, d_ref, obj.RoadTrajectory);
             
