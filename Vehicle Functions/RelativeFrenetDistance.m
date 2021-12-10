@@ -16,7 +16,7 @@ classdef RelativeFrenetDistance < matlab.System
             delta_s = sLead - sEgo;
             
             % TODO: Find more general formulation to decide what is vehicle in front
-            if abs(dEgo - dLead) >= 0.5 || delta_s < 0 % Maybe better according to vehicles' dimensions
+            if abs(dEgo - dLead) >= 0.1 || delta_s < 0 % Maybe better according to vehicles' dimensions
                 delta_s = 999;
             end   
         end

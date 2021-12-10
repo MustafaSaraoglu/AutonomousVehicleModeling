@@ -19,16 +19,16 @@ laneWidth = 3.7; % lane width [m]
 
 % Road trajectory according to MOBATSim map format
 % Straight Road
-% roadTrajectory =    [s_min  0   0;
-%                      s_max  0   0;
-%                      0      0   0;
-%                      0      0   0];
+roadTrajectory =    [s_min  0   0;
+                     s_max  0   0;
+                     0      0   0;
+                     0      0   0];
                
 % % Curved Road
-roadTrajectory =    [s_min  0        0;
-                     s_max  0       -s_max;
-                     pi/2   s_min   -s_max;
-                     -1     -1      -1]; 
+% roadTrajectory =    [s_min  0        0;
+%                      s_max  0       -s_max;
+%                      pi/2   s_min   -s_max;
+%                      -1     -1      -1]; 
 
 % Double lane
 d_min = -laneWidth/2; % Right lateral lane boundary [m]
@@ -78,11 +78,15 @@ dEgo_0 = 0; % Initial Frenet d-coordinate [m]
 xEgo_0 = positionEgo_0(1);
 yEgo_0 = positionEgo_0(2);
 
-vEgo_0 = 15; % Initial longitudinal velocity [m/s]
+vEgo_0 = 20; % Initial longitudinal velocity [m/s]
 
 vEgo_ref = vEgo_0; % Reference longitudinal velocity [m/s]
 
 %% Lateral Control
+% Hardcoded conditions
+isOccupiedLeft = false;
+isOccupiedRight = false;
+
 % Lane Changing maneuver
 durationToLeftLane = 5; % Time for lane changing (to left lane) [s]
 durationToRightLane = 5; % Time for overtaking (to right lane) [s]

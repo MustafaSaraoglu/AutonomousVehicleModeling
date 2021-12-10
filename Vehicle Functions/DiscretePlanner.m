@@ -109,8 +109,14 @@ classdef DiscretePlanner < matlab.System
                         obj.currentState = obj.states('RightLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleInFrontVeryFar(delta_s) || not(obj.isLeftLaneOccupied())
+                    if obj.isVehicleInFrontVeryFar(delta_s) && obj.isLeftLaneOccupied()
                         obj.currentState = obj.states('RightLane_FreeDrive');
+                    end
+                    
+                    if obj.isVehicleInFrontClose(delta_s) && obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isLeftLaneOccupied()) 
+                        obj.currentState = obj.states('ToLeftLane_FreeDrive');
+                        
+                        changeLaneCmd = obj.laneChangeCmds('CmdStartToLeftLane');
                     end
                     
                 case obj.states('RightLane_EmergencyBrake')
@@ -323,6 +329,7 @@ classdef DiscretePlanner < matlab.System
     end
     
     methods(Static)
+        % TODO: Decide what is vehicle in front
         function isClose = isVehicleInFrontClose(distanceToFrontVehicle)
             isClose = distanceToFrontVehicle <= 40;
         end
@@ -348,13 +355,13 @@ classdef DiscretePlanner < matlab.System
             isSlower = v2Overtake < vEgo;
         end
         
-        
+        % TODO: Find correct conditions
         function isOccupied = isLeftLaneOccupied()
-            isOccupied = false;
+            isOccupied = evalin('base', 'isOccupiedLeft');
         end
         
         function isOccupied = isRightLaneOccupied()
-            isOccupied = false;
+            isOccupied = evalin('base', 'isOccupiedRight');
         end
         
         
