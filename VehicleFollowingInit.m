@@ -85,7 +85,6 @@ vEgo_ref = vEgo_0; % Reference longitudinal velocity [m/s]
 %% Lateral Control
 % Hardcoded conditions
 isOccupiedLeft = false;
-isOccupiedRight = false;
 
 % Lane Changing maneuver
 durationToLeftLane = 5; % Time for lane changing (to left lane) [s]

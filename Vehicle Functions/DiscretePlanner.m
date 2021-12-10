@@ -75,62 +75,70 @@ classdef DiscretePlanner < matlab.System
             obj.toleranceReachLane = 0.05;
         end
         
-        function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, delta_s, vLead, vEgo)
+        function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, poseLead, vLead, vEgo)
         % Return lane change command, the current lane state and the current driving mode (see system description)
         
-            [~, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
+            [sEgo, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
+            [sLead, dLead] = Cartesian2Frenet(obj.RoadTrajectory, [poseLead(1) poseLead(2)]);
             
-            [drivingMode, currentLane, changeLaneCmd] = obj.makeDecision(delta_s, dEgo, vEgo, vLead);
+            [drivingMode, currentLane, changeLaneCmd] = obj.makeDecision(sEgo, dEgo, vEgo, sLead, dLead, vLead);
         end
         
-        function [drivingMode, currentLane, changeLaneCmd] = makeDecision(obj, delta_s, dEgo, vEgo, vLead)
+        function [drivingMode, currentLane, changeLaneCmd] = makeDecision(obj, sEgo, dEgo, vEgo, sLead, dLead, vLead)
         % Make decision about driving mode and whether to change lane    
             
+            delta_s = sLead - sEgo;
+            delta_s_frontVehicle = delta_s;
+            % TODO: Find more general formulation to decide what is vehicle in front
+            if abs(dEgo - dLead) >= 0.1 || delta_s_frontVehicle < 0 % Maybe better according to vehicles' dimensions
+                delta_s_frontVehicle = 999;
+            end   
+        
             changeLaneCmd = obj.laneChangeCmds('CmdIdle');
         
             switch obj.currentState % TODO: Change to elseif after checking only one statement can be true
                 case obj.states('RightLane_FreeDrive')
-                    if obj.isVehicleInFrontClose(delta_s) && not(obj.isVehicleInFrontVeryClose(delta_s)) && obj.isLeftLaneOccupied()
+                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) && obj.isLeftLaneOccupied()
                         obj.currentState = obj.states('RightLane_VehicleFollowing');
                     end
                     
-                    if obj.isVehicleInFrontVeryClose(delta_s) && obj.isLeftLaneOccupied()
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && obj.isLeftLaneOccupied()
                         obj.currentState = obj.states('RightLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleInFrontClose(delta_s) && obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isLeftLaneOccupied())
+                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isLeftLaneOccupied())
                         obj.currentState = obj.states('ToLeftLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToLeftLane');
                     end
                     
                 case obj.states('RightLane_VehicleFollowing')
-                    if obj.isVehicleInFrontVeryClose(delta_s) && obj.isLeftLaneOccupied()
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && obj.isLeftLaneOccupied()
                         obj.currentState = obj.states('RightLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleInFrontVeryFar(delta_s) && obj.isLeftLaneOccupied()
+                    if obj.isVehicleInFrontVeryFar(delta_s_frontVehicle) && obj.isLeftLaneOccupied()
                         obj.currentState = obj.states('RightLane_FreeDrive');
                     end
                     
-                    if obj.isVehicleInFrontClose(delta_s) && obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isLeftLaneOccupied()) 
+                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isLeftLaneOccupied()) 
                         obj.currentState = obj.states('ToLeftLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToLeftLane');
                     end
                     
                 case obj.states('RightLane_EmergencyBrake')
-                    if obj.isVehicleInFrontFar(delta_s)
+                    if obj.isVehicleInFrontFar(delta_s_frontVehicle)
                         obj.currentState = obj.states('RightLane_VehicleFollowing');
                     end
                     
                 case obj.states('ToLeftLane_FreeDrive')
-                    if obj.isVehicleInFrontClose(delta_s) && not(obj.isVehicleInFrontVeryClose(delta_s)) && ...
+                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) && ...
                             not(obj.isReachedLeftLane(dEgo, obj.LaneWidth, obj.toleranceReachLane))
                         obj.currentState = obj.states('ToLeftLane_VehicleFollowing');
                     end
                     
-                    if obj.isVehicleInFrontVeryClose(delta_s) && ...
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && ...
                             not(obj.isReachedLeftLane(dEgo, obj.LaneWidth, obj.toleranceReachLane))
                         obj.currentState = obj.states('ToLeftLane_EmergencyBrake');
                     end
@@ -140,12 +148,12 @@ classdef DiscretePlanner < matlab.System
                     end
                         
                 case obj.states('ToLeftLane_VehicleFollowing')
-                    if obj.isVehicleInFrontVeryClose(delta_s) && ...
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && ...
                             not(obj.isReachedLeftLane(dEgo, obj.LaneWidth, obj.toleranceReachLane)) 
                         obj.currentState = obj.states('ToLeftLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleInFrontVeryFar(delta_s) && ...
+                    if obj.isVehicleInFrontVeryFar(delta_s_frontVehicle) && ...
                             not(obj.isReachedLeftLane(dEgo, obj.LaneWidth, obj.toleranceReachLane))
                         obj.currentState = obj.states('ToLeftLane_FreeDrive');
                     end
@@ -155,7 +163,7 @@ classdef DiscretePlanner < matlab.System
                     end
                     
                 case obj.states('ToLeftLane_EmergencyBrake')
-                    if obj.isVehicleInFrontFar(delta_s) && ...
+                    if obj.isVehicleInFrontFar(delta_s_frontVehicle) && ...
                             not(obj.isReachedLeftLane(dEgo, obj.LaneWidth, obj.toleranceReachLane))
                         obj.currentState = obj.states('ToLeftLane_VehicleFollowing');
                     end
@@ -165,41 +173,41 @@ classdef DiscretePlanner < matlab.System
                     end
                     
                 case obj.states('LeftLane_FreeDrive')
-                    if obj.isVehicleInFrontClose(delta_s) && not(obj.isVehicleInFrontVeryClose(delta_s)) && obj.isRightLaneOccupied()
+                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) && obj.isRightLaneOccupied(delta_s)
                         obj.currentState = obj.states('Left_VehicleFollowing');
                     end
                     
-                    if obj.isVehicleInFrontVeryClose(delta_s) && obj.isRightLaneOccupied()
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && obj.isRightLaneOccupied(delta_s)
                         obj.currentState = obj.states('Left_EmergencyBrake');
                     end
                     
-                    if obj.isVehicle2OverTakeSlower(vEgo, vLead) && not(obj.isRightLaneOccupied())
+                    if obj.isVehicle2OverTakeSlower(vEgo, vLead) && not(obj.isRightLaneOccupied(delta_s))
                         obj.currentState = obj.states('ToRightLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToRightLane');
                     end
                     
                 case obj.states('LeftLane_VehicleFollowing')
-                    if obj.isVehicleInFrontVeryClose(delta_s) && obj.isRightLaneOccupied()
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && obj.isRightLaneOccupied(delta_s)
                         obj.currentState = obj.states('LeftLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleInFrontVeryFar(delta_s) || not(obj.isRightLaneOccupied())
+                    if obj.isVehicleInFrontVeryFar(delta_s_frontVehicle) || not(obj.isRightLaneOccupied(delta_s))
                         obj.currentState = obj.states('LeftLane_FreeDrive');
                     end
                     
                 case obj.states('LeftLane_EmergencyBrake')
-                    if obj.isVehicleInFrontFar(delta_s)
+                    if obj.isVehicleInFrontFar(delta_s_frontVehicle)
                         obj.currentState = obj.states('Left_VehicleFollowing');
                     end
                     
                 case obj.states('ToRightLane_FreeDrive')
-                    if obj.isVehicleInFrontClose(delta_s) && not(obj.isVehicleInFrontVeryClose(delta_s)) && ...
+                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) && ...
                             not(obj.isReachedRightLane(dEgo, obj.toleranceReachLane))
                         obj.currentState = obj.states('ToRightLane_VehicleFollowing');
                     end
                     
-                    if obj.isVehicleInFrontVeryClose(delta_s) && ...
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && ...
                             not(obj.isReachedRightLane(dEgo, obj.toleranceReachLane))
                         obj.currentState = obj.states('ToRightLane_EmergencyBrake');
                     end
@@ -209,12 +217,12 @@ classdef DiscretePlanner < matlab.System
                     end
                     
                 case obj.states('ToRightLane_VehicleFollowing')
-                    if obj.isVehicleInFrontVeryClose(delta_s) && ...
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && ...
                             not(obj.isReachedRightLane(dEgo, obj.toleranceReachLane)) 
                         obj.currentState = obj.states('ToRightLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleInFrontVeryFar(delta_s) && ...
+                    if obj.isVehicleInFrontVeryFar(delta_s_frontVehicle) && ...
                             not(obj.isReachedRightLane(dEgo, obj.toleranceReachLane))
                         obj.currentState = obj.states('ToRightLane_FreeDrive');
                     end
@@ -224,7 +232,7 @@ classdef DiscretePlanner < matlab.System
                     end
 
                 case obj.states('ToRightLane_EmergencyBrake')
-                    if obj.isVehicleInFrontFar(delta_s) && ...
+                    if obj.isVehicleInFrontFar(delta_s_frontVehicle) && ...
                             not(obj.isReachedRightLane(dEgo, obj.toleranceReachLane))
                         obj.currentState = obj.states('ToRightLane_VehicleFollowing');
                     end
@@ -360,8 +368,8 @@ classdef DiscretePlanner < matlab.System
             isOccupied = evalin('base', 'isOccupiedLeft');
         end
         
-        function isOccupied = isRightLaneOccupied()
-            isOccupied = evalin('base', 'isOccupiedRight');
+        function isOccupied = isRightLaneOccupied(distanceToVehicle2Overtake)
+            isOccupied = distanceToVehicle2Overtake > -5;
         end
         
         
