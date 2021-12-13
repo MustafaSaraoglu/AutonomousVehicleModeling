@@ -18,9 +18,11 @@ classdef DiscretePlanner < matlab.System
 %  -1 = Command to start changing to right lane
 
     properties(Nontunable)
+        vEgo_ref % Reference velocity for ego vehicle [m/s]
+        
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
-        Ts % Sample time
+        Ts % Sample time [s]
     end
     
     % Pre-computed constants
@@ -98,30 +100,25 @@ classdef DiscretePlanner < matlab.System
         
             switch obj.currentState % TODO: Change to elseif after checking only one statement can be true
                 case obj.states('RightLane_FreeDrive')
-                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) && obj.isLeftLaneOccupied()
+                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) 
                         obj.currentState = obj.states('RightLane_VehicleFollowing');
                     end
                     
-                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && obj.isLeftLaneOccupied()
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)
                         obj.currentState = obj.states('RightLane_EmergencyBrake');
-                    end
-                    
-                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isLeftLaneOccupied())
-                        obj.currentState = obj.states('ToLeftLane_FreeDrive');
-                        
-                        changeLaneCmd = obj.laneChangeCmds('CmdStartToLeftLane');
                     end
                     
                 case obj.states('RightLane_VehicleFollowing')
-                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && obj.isLeftLaneOccupied()
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) 
                         obj.currentState = obj.states('RightLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleInFrontVeryFar(delta_s_frontVehicle) && obj.isLeftLaneOccupied()
+                    if obj.isVehicleInFrontVeryFar(delta_s_frontVehicle)
                         obj.currentState = obj.states('RightLane_FreeDrive');
                     end
                     
-                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isLeftLaneOccupied()) 
+                    if obj.isVehicleInFrontClose(delta_s_frontVehicle) && not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) && ...
+                            obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isCloseToReferenceSpeed(vEgo, obj.vEgo_ref)) && not(obj.isLeftLaneOccupied()) 
                         obj.currentState = obj.states('ToLeftLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToLeftLane');
@@ -177,23 +174,29 @@ classdef DiscretePlanner < matlab.System
                         obj.currentState = obj.states('Left_VehicleFollowing');
                     end
                     
-                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && obj.isRightLaneOccupied(delta_s)
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)
                         obj.currentState = obj.states('Left_EmergencyBrake');
                     end
                     
-                    if obj.isVehicle2OverTakeSlower(vEgo, vLead) && not(obj.isRightLaneOccupied(delta_s))
+                    if not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) && not(obj.isRightLaneOccupied(delta_s))
                         obj.currentState = obj.states('ToRightLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToRightLane');
                     end
                     
                 case obj.states('LeftLane_VehicleFollowing')
-                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle) && obj.isRightLaneOccupied(delta_s)
+                    if obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)
                         obj.currentState = obj.states('LeftLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleInFrontVeryFar(delta_s_frontVehicle) || not(obj.isRightLaneOccupied(delta_s))
+                    if obj.isVehicleInFrontVeryFar(delta_s_frontVehicle) || obj.isRightLaneOccupied(delta_s)
                         obj.currentState = obj.states('LeftLane_FreeDrive');
+                    end
+                    
+                    if not(obj.isVehicleInFrontVeryClose(delta_s_frontVehicle)) && not(obj.isRightLaneOccupied(delta_s))
+                        obj.currentState = obj.states('ToRightLane_FreeDrive');
+                        
+                        changeLaneCmd = obj.laneChangeCmds('CmdStartToRightLane');
                     end
                     
                 case obj.states('LeftLane_EmergencyBrake')
@@ -338,6 +341,7 @@ classdef DiscretePlanner < matlab.System
     
     methods(Static)
         % TODO: Decide what is vehicle in front
+        % TODO: Close in dynamic sense not fixed constant
         function isClose = isVehicleInFrontClose(distanceToFrontVehicle)
             isClose = distanceToFrontVehicle <= 40;
         end
@@ -356,11 +360,15 @@ classdef DiscretePlanner < matlab.System
         
         
         function isSlower = isVehicleInFrontSlower(vEgo, vLead)
-            isSlower = vLead < vEgo;
+            isSlower = vEgo - vLead >= -0.1; % Some tolerance
         end
         
         function isSlower = isVehicle2OverTakeSlower(vEgo, v2Overtake)
             isSlower = v2Overtake < vEgo;
+        end
+        
+        function isClose = isCloseToReferenceSpeed(vEgo, vEgo_ref)
+            isClose = vEgo >= 0.95*vEgo_ref;
         end
         
         % TODO: Find correct conditions
