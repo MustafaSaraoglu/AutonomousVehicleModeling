@@ -3,6 +3,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
 % the lateral controllers.
     
     properties(Nontunable)
+        vEgo_ref % Reference speed for ego vehicle [m/s]
+        
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
         
@@ -129,9 +131,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
             d_dot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
 
-            [s_trajectory, s_curve_trajectory, s_dot_trajectory] = obj.calculate_s_trajectory(s_current, v_current, 0, d_dot_trajectory); % Constant speed
-            [s_trajectory_minAcc, ~, ~] = obj.calculate_s_trajectory(s_current, v_current, obj.minimumAcceleration, d_dot_trajectory); 
-            [s_trajectory_maxAcc, ~, ~] = obj.calculate_s_trajectory(s_current, v_current, obj.maximumAcceleration, d_dot_trajectory); 
+            [s_trajectory, s_curve_trajectory, s_dot_trajectory] = obj.calculate_s_trajectory(s_current, v_current, obj.vEgo_ref, obj.maximumAcceleration, d_dot_trajectory); % Free Drive
+            [s_trajectory_minAcc, ~, ~] = obj.calculate_s_trajectory(s_current, v_current, obj.maximumVelocity, obj.minimumAcceleration, d_dot_trajectory); 
+            [s_trajectory_maxAcc, ~, ~] = obj.calculate_s_trajectory(s_current, v_current, obj.maximumVelocity, obj.maximumAcceleration, d_dot_trajectory); 
             
             [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
             orientation = atan2(d_dot_trajectory, s_dot_trajectory)' + roadOrientation;
@@ -144,11 +146,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             % Only to plot trajectory for possible minimum and maximum acceleration, might be removed
             [laneChangingPointsCartesian_minAcc, ~] = Frenet2Cartesian(s_trajectory_minAcc', d_trajectory', obj.RoadTrajectory);
             [laneChangingPointsCartesian_maxAcc, ~] = Frenet2Cartesian(s_trajectory_maxAcc', d_trajectory', obj.RoadTrajectory);
+            plot(obj.laneChangingTrajectoryCartesian(:, 1), obj.laneChangingTrajectoryCartesian(:,2), 'Color', 'green');
             plot(laneChangingPointsCartesian_minAcc(:, 1), laneChangingPointsCartesian_minAcc(:,2), '--', 'Color', 'green');
             plot(laneChangingPointsCartesian_maxAcc(:, 1), laneChangingPointsCartesian_maxAcc(:,2), '--', 'Color', 'green');
         end 
         
-        function [s_trajectory, s_curve_trajectory, s_dot_trajectory] = calculate_s_trajectory(obj, s_0, v_0, acceleration, d_dot_trajectory)
+        function [s_trajectory, s_curve_trajectory, s_dot_trajectory] = calculate_s_trajectory(obj, s_0, v_0, v_max, acceleration, d_dot_trajectory)
         % Calculate s, s_curve_trajectory and s_dot trajectory according to kinematic bicycle speed profile
             
             v_trajectory = zeros(1, length(d_dot_trajectory));
@@ -161,7 +164,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             for k = 1:length(d_dot_trajectory) % Numerical integration
                 v_trajectory(k) = v;
                 s_curve_trajectory(k) = s_curve;
-                [s_curve, v] = obj.predictLongitudinalFutureState(s_curve, v, acceleration, 0); % Prediction just for next time step
+                [s_curve, v] = obj.predictLongitudinalFutureState(s_curve, v, v_max, acceleration, 0); % Prediction just for next time step
             end
 
             s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
@@ -179,7 +182,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         % Predict future position in a specified time horizon
             
             % Future prediction until time horizon for constant acceleration
-            [s_future, ~] = obj.predictLongitudinalFutureState(s_current, v_current, a_current, obj.k_timeHorizon); 
+            [s_future, ~] = obj.predictLongitudinalFutureState(s_current, v_current, obj.maximumVelocity, a_current, obj.k_timeHorizon); 
         
             if ~isempty(obj.laneChangingTrajectoryFrenet) && ~isempty(obj.laneChangingTrajectoryCartesian) % For lane changing
                 distance_future = s_future - s_current;
