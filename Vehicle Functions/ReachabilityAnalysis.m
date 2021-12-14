@@ -85,6 +85,16 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             % TODO: cclockwise variable instead of radii < 0
             turningRadius = obj.wheelBase./tan(steeringAngle);
             
+            isAngleOverLimit = abs(arcLength./turningRadius) > pi; % Limit space to constant angle
+            
+            if any(isAngleOverLimit) 
+                if length(arcLength) > 1 % right/left boundary[constant steering angle; varying arc length]
+                    arcLength(isAngleOverLimit) = ones(1, length(arcLength(isAngleOverLimit)))*turningRadius*pi;
+                else % min/max boundary[varying steering angle; constant arc length]
+                    turningRadius(isAngleOverLimit) = sign(turningRadius(isAngleOverLimit))*arcLength/pi;
+                end
+            end
+            
             x_destination = pose(1) + turningRadius.*(sin(pose(3) + arcLength./turningRadius) - sin(pose(3)));
             y_destination = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcLength./turningRadius));
             
