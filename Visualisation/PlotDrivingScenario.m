@@ -66,7 +66,7 @@ classdef PlotDrivingScenario< matlab.System
             % Adjust Axis
             x2 = poseEgo(1);
             y2 = poseEgo(2);
-            axis([x2-40, x2+40, y2-20, y2+20]); % Camera following V2 as ego vehicle
+            axis([x2-80, x2+80, y2-40, y2+40]); % Camera following V2 as ego vehicle
         end
         
         function deletePreviousPlots(obj)
