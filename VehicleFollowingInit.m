@@ -94,7 +94,7 @@ numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
 Ts = 0.01; % Sampling time [s]
-timeHorizon = 1; % Time horizon for trajectory genereation [s]
+timeHorizon = 5; % Time horizon for trajectory genereation [s]
 partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
 
 % Gains for PID controller
@@ -103,6 +103,10 @@ Ki = 9.3465;
 Kd = 0.1412;
 
 forwardMotionGain = 1.6684; % Position gain of forward motion for Stanley
+
+if timeHorizon < durationToLeftLane || timeHorizon < durationToRightLane
+    error('Time horizon must be greater than or equal to duration to change lane.');
+end
 
 %% Space Discretisation
 cell_length = 5; % Cell length in s-coordinate [m]
