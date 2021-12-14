@@ -182,7 +182,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         % Predict future position in a specified time horizon
             
             % Future prediction until time horizon for constant acceleration
-            [s_future, ~] = obj.predictLongitudinalFutureState(s_current, v_current, obj.maximumVelocity, a_current, obj.k_timeHorizon); 
+            % TODO: Limit by reference velocity or maximum allowed velocity?
+            [s_future, ~] = obj.predictLongitudinalFutureState(s_current, v_current, obj.vEgo_ref, a_current, obj.k_timeHorizon); 
         
             if ~isempty(obj.laneChangingTrajectoryFrenet) && ~isempty(obj.laneChangingTrajectoryCartesian) % For lane changing
                 distance_future = s_future - s_current;
