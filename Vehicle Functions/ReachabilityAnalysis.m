@@ -49,7 +49,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             elseif futureState(2) > v_max
                 futureState(2) = v_max;
                 t_v_max = (v_max - v_0)/acceleration; % v(t) = v_max = acc*t + v_0 if acc = const.
-                futureState(1) = s_0 + v_max*obj.timeHorizon - 0.5*(v_max - v_0)*t_v_max;
+                futureState(1) = s_0 + v_max*(k+1)*obj.Ts - 0.5*(v_max - v_0)*t_v_max;
             end
             
             s_future = futureState(1);
