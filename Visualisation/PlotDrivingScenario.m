@@ -7,7 +7,6 @@ classdef PlotDrivingScenario< matlab.System
         dimensionsEgo % Dimensions (length, width) ego vehicle [[m]; [m]]
         wheelBaseEgo % Wheel base ego vehicle [m]
         
-        s_max % Maximum allowed longitudinal postion [m]
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
         
@@ -88,7 +87,23 @@ classdef PlotDrivingScenario< matlab.System
         function plotRoadLine(obj, d, lineRepresentation)
         % Plot road line according to lateral position
             
-            s = 0:0.1:obj.s_max;
+            route = obj.RoadTrajectory([1, 2],[1, 3]).*[1, -1; 1, -1];
+            radian = obj.RoadTrajectory(3, 1);
+            startPoint = route(1, :);
+
+            if radian == 0 % Straight road
+                endPoint = route(2, :);
+                route_Vector = endPoint - startPoint;
+
+                routeLength = norm(route_Vector);
+            else % Curved road
+                rotationCenter = obj.RoadTrajectory(3, [2, 3]).*[1, -1]; 
+                startPointVector = startPoint - rotationCenter;
+                routeRadius = norm(startPointVector); 
+
+                routeLength = abs(radian*routeRadius);
+            end
+            s = 0:0.1:routeLength;
             d = d*ones(1, length(s));
             [lanePoints, ~] = Frenet2Cartesian(s', d', obj.RoadTrajectory);
             plot(lanePoints(:, 1), lanePoints(:, 2), lineRepresentation, 'Color', 'black')
