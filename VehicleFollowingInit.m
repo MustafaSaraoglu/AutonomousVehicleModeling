@@ -1,9 +1,6 @@
 % Initialisation of VehicleFollowing.slx model
 
 %% Constraints
-s_min = 0; % Minimum allowed longitudinal postion [m]
-s_max = 1000; % Maximum allowed longitudinal postion [m]
-
 v_min = 0; % Minimum allowed longitudinal velocity [m/s]
 v_max = 30; % Maximum allowed longitudinal velocity [m/s]
 
@@ -19,20 +16,16 @@ laneWidth = 3.7; % lane width [m]
 
 % Road trajectory according to MOBATSim map format
 % Straight Road
-roadTrajectory =    [s_min  0   0;
-                     s_max  0   0;
+roadTrajectory =    [0      0   0;
+                     1000   0   0;
                      0      0   0;
                      0      0   0];
                
 % % Curved Road
-% roadTrajectory =    [s_min  0        0;
-%                      s_max  0       -s_max;
-%                      pi/2   s_min   -s_max;
-%                      -1     -1      -1]; 
-
-% Double lane
-d_min = -laneWidth/2; % Right lateral lane boundary [m]
-d_max = 3/2*laneWidth; % Left lateral lane boundary [m]       
+% roadTrajectory =    [0        0        0;
+%                      1000     0       -1000;
+%                      pi/2     0       -1000;
+%                      -1       -1      -1];  
 
 %% Leading Vehicle
 % Vehicle's geometry
