@@ -115,12 +115,14 @@ laneCell_width = 3; % Width of right/left lane cell [m]
 
 %% Functions
 function [spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)
+% Divide road into discrete cells using Frenet Coordinates
+
     route = roadTrajectory([1, 2],[1, 3]).*[1, -1; 1, -1];
     radian = roadTrajectory(3, 1);
     startPoint = route(1, :);
-    endPoint = route(2, :);
 
     if radian == 0 % Straight road
+        endPoint = route(2, :);
         route_Vector = endPoint - startPoint;
 
         routeLength = norm(route_Vector);
