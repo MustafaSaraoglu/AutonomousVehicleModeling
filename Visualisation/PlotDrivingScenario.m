@@ -58,6 +58,20 @@ classdef PlotDrivingScenario< matlab.System
             % Ego Reachability
             obj.plots2update.reachability.EgoReachabilityMinBoundary = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
             obj.plots2update.reachability.EgoReachabilityMaxBoundary = plot(egoReachability(:, 3), egoReachability(:, 4), 'Color', [51/255, 102/255, 0]);
+            % Temp: Connect limiting curves to area
+            x_lowerReferenceRight = egoReachability(end, 5);
+            y_lowerReferenceRight = egoReachability(end, 6);
+            x_lowerReferenceLeft = egoReachability(end, 7);
+            y_lowerReferenceLeft = egoReachability(end, 8);
+            if egoReachability(1, 5) == egoReachability(end, 5)
+                x_lowerReferenceRight = egoReachability(1, 1);
+                y_lowerReferenceRight = egoReachability(1, 2);
+                x_lowerReferenceLeft = egoReachability(end, 1);
+                y_lowerReferenceLeft = egoReachability(end, 2);
+            end
+            obj.plots2update.reachability.EgoReachabilityConnectRight = plot([x_lowerReferenceRight, egoReachability(1, 3)], [y_lowerReferenceRight, egoReachability(1, 4)], 'Color', [51/255, 102/255, 0]);
+            obj.plots2update.reachability.EgoReachabilityConnectLeft = plot([x_lowerReferenceLeft, egoReachability(end, 3)], [y_lowerReferenceLeft, egoReachability(end, 4)], 'Color', [51/255, 102/255, 0]);
+            
             obj.plots2update.reachability.EgoReachabilityRightBoundary = plot(egoReachability(:, 5), egoReachability(:, 6), 'Color', [51/255, 102/255, 0]);
             obj.plots2update.reachability.EgoReachabilityLeftBoundary = plot(egoReachability(:, 7), egoReachability(:, 8), 'Color', [51/255, 102/255, 0]);
             obj.plots2update.reachability.EgoReachabilityEmergencyBoundary = plot(egoReachability(:, 9), egoReachability(:, 10), 'Color', [153/255, 0, 0]);
