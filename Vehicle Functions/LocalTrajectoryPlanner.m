@@ -38,6 +38,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         futurePosition % Preedicted future position according to time horizon
 
         timeStartLaneChange % Time when starting lane changing maneuver
+        
+        curvature_max % Maximum allowed curvature
+        
+        a_lateral_max % Maximum allowed lateral acceleration
     end
     
     methods
@@ -64,6 +68,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.fractionTimeHorizon = obj.timeHorizon/obj.partsTimeHorizon;
             obj.counter = 0;
             obj.predictedTrajectory = [];
+            
+            obj.curvature_max = tan(obj.steerAngle_max)/obj.wheelBase;
+            
+            obj.a_lateral_max = 30; % Placeholder
         end
         
         function planTrajectory(obj, changeLaneCmd, replan, s, d, a, v)
@@ -130,15 +138,38 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
             d_dot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
-
-            [s_trajectory, s_curve_trajectory, s_dot_trajectory] = obj.calculate_s_trajectory(s_current, v_current, obj.vEgo_ref, obj.maximumAcceleration, d_dot_trajectory, durationManeuver); % Free Drive
-            [s_trajectory_minAcc, ~, ~] = obj.calculate_s_trajectory(s_current, v_current, obj.maximumVelocity, obj.minimumAcceleration, d_dot_trajectory, durationManeuver); 
-            [s_trajectory_maxAcc, ~, ~] = obj.calculate_s_trajectory(s_current, v_current, obj.maximumVelocity, obj.maximumAcceleration, d_dot_trajectory, durationManeuver); 
+            d_ddot_trajectory = 2*obj.a2 + 6*obj.a3*t_discrete + 12*obj.a4*t_discrete.^2 + 20*obj.a5*t_discrete.^3;
             
-            if durationManeuver < obj.timeHorizon
-                d_trajectory = [d_trajectory, obj.d_destination*ones(1, length(s_trajectory)-length(t_discrete))];
-                d_dot_trajectory = [d_dot_trajectory, zeros(1, length(s_trajectory)-length(t_discrete))];
-                t_discrete = [t_discrete, durationManeuver+obj.Ts:obj.Ts:obj.timeHorizon];
+            % s_curve coordinate going along the lane changing curve
+            % Calculate profile according to FreeDrive 
+            [s_curve_trajectory, v_trajectory] = obj.calculateLongitudinalTrajectory(s_current, v_current, obj.vEgo_ref, obj.maximumAcceleration, length(t_discrete));
+            
+            s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
+            
+            % Future prediction s along the road
+            s_trajectory = zeros(1, length(t_discrete)); % TODO: Check: s along the road, what if acceleration?
+            s = s_current;
+            for k = 1:length(t_discrete) % Numerical integration
+                s_trajectory(k) = s;
+                s = s + s_dot_trajectory(k)*obj.Ts;
+            end
+            
+            if durationManeuver < obj.timeHorizon % Need to add straight trajectory
+                t_straight = durationManeuver+obj.Ts:obj.Ts:obj.timeHorizon; 
+                
+                % Predict one step for durationManeuver+obj.Ts
+                [s_0, v_0] = obj.predictLongitudinalFutureState(s_trajectory(end), v_trajectory(end), obj.vEgo_ref, obj.maximumAcceleration, 0);
+                [s_trajectory_straight, v_trajectory_straight] = obj.calculateLongitudinalTrajectory(s_0, v_0, obj.vEgo_ref, obj.maximumAcceleration, length(t_straight));
+                
+                s_trajectory = [s_trajectory, s_trajectory_straight];
+                s_curve_trajectory = [s_curve_trajectory, s_trajectory_straight]; % For straight trajectory s_curve = s
+                v_trajectory = [v_trajectory, v_trajectory_straight];
+                s_dot_trajectory = [s_dot_trajectory, v_trajectory_straight]; % For straight trajectory s_dot = v
+                
+                d_trajectory = [d_trajectory, obj.d_destination*ones(1, length(t_straight))];
+                d_dot_trajectory = [d_dot_trajectory, zeros(1, length(t_straight))];
+                d_ddot_trajectory =[d_ddot_trajectory, zeros(1, length(t_straight))];
+                t_discrete = [t_discrete, t_straight];
             end
             
             [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
@@ -149,42 +180,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', s_curve_trajectory', time'];
             obj.laneChangingTrajectoryCartesian = [laneChangingPositionCartesian, orientation, time'];
             
-            % Only to plot trajectory for possible minimum and maximum acceleration, might be removed
-            [laneChangingPointsCartesian_minAcc, ~] = Frenet2Cartesian(s_trajectory_minAcc', d_trajectory', obj.RoadTrajectory);
-            [laneChangingPointsCartesian_maxAcc, ~] = Frenet2Cartesian(s_trajectory_maxAcc', d_trajectory', obj.RoadTrajectory);
+            isFeasibleTrajectory = obj.isFeasibleTrajectory(obj.laneChangingTrajectoryCartesian, v_trajectory);
+            
             plot(obj.laneChangingTrajectoryCartesian(:, 1), obj.laneChangingTrajectoryCartesian(:,2), 'Color', 'green');
-            plot(laneChangingPointsCartesian_minAcc(:, 1), laneChangingPointsCartesian_minAcc(:,2), '--', 'Color', 'green');
-            plot(laneChangingPointsCartesian_maxAcc(:, 1), laneChangingPointsCartesian_maxAcc(:,2), '--', 'Color', 'green');
         end 
-        
-        function [s_trajectory, s_curve_trajectory, s_dot_trajectory] = calculate_s_trajectory(obj, s_0, v_0, v_max, acceleration, d_dot_trajectory, durationManeuver)
-        % Calculate s, s_curve_trajectory and s_dot trajectory according to kinematic bicycle speed profile
-
-            % s_curve coordinate going along the lane changing curve
-            [s_curve_trajectory, v_trajectory] = obj.calculateLongitudinalTrajectory(s_0, v_0, v_max, acceleration, length(d_dot_trajectory));
-            
-            s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
-            
-            % Future prediction s along the road
-            s_trajectory = zeros(1, length(d_dot_trajectory)); % TODO: Check: s along the road, what if acceleration?
-            s = s_0;
-            for k = 1:length(d_dot_trajectory) % Numerical integration
-                s_trajectory(k) = s;
-                s = s + s_dot_trajectory(k)*obj.Ts;
-            end
-            
-            if durationManeuver < obj.timeHorizon
-                t_discrete = durationManeuver+obj.Ts:obj.Ts:obj.timeHorizon; 
-                
-                % Predict one step for durationManeuver+obj.Ts
-                [s_0, v_0] = obj.predictLongitudinalFutureState(s_trajectory(end), v_trajectory(end), v_max, acceleration, 0);
-                [s_trajectory_straight, v_trajectory_straight] = obj.calculateLongitudinalTrajectory(s_0, v_0, v_max, acceleration, length(t_discrete));
-                
-                s_trajectory = [s_trajectory, s_trajectory_straight];
-                s_curve_trajectory = [s_curve_trajectory, s_trajectory_straight]; % For straight trajectory s_curve = s
-                s_dot_trajectory = [s_dot_trajectory, v_trajectory_straight]; % For straight trajectory s_dot = v
-            end
-        end
         
         function [s_trajectory, v_trajectory] = calculateLongitudinalTrajectory(obj, s_0, v_0, v_max, acceleration, trajectoryLength)
         % Calculate longitudinal trajectory according to the longitudinal
@@ -201,6 +200,25 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 s_trajectory(k) = s;
                 [s, v] = obj.predictLongitudinalFutureState(s, v, v_max, acceleration, 0); % Prediction just for next time step
             end
+        end
+        
+        function isFeasible = isFeasibleTrajectory(obj, trajectory, velocity_trajectory)
+        % Check if trajectory is feasible accoording to lateral acceleration and trajectory curviture
+            
+            x = trajectory(:, 1);
+            y = trajectory(:, 2);
+            orientation = trajectory(:, 3);
+            
+            delta_orientation = diff(orientation);
+            delta_position = sqrt((diff(x)).^2 + (diff(y)).^2);
+            
+            curvature = delta_orientation./delta_position;
+            a_centrifugal = velocity_trajectory(1:end-1)'.^2.*curvature; % Alternative: Limit by using d_ddot
+            
+            isFeasibleCurviture = ~any(abs(curvature) >= obj.curvature_max);
+            isFeasibleCentrifugalAcceleration = ~any(abs(a_centrifugal) >= obj.a_lateral_max); % Placeholder for a_lateral_max
+            
+            isFeasible = isFeasibleCurviture && isFeasibleCentrifugalAcceleration;
         end
         
         function predictFuturePosition(obj, s_current, v_current, a_current)
