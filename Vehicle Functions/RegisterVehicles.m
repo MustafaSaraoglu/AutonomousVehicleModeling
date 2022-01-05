@@ -7,7 +7,7 @@ classdef RegisterVehicles < matlab.System
     end
 
     methods(Access = protected)
-        function distances2Vehicles = stepImpl(obj, poseEgo, poseOtherVehicles)
+        function distances2Vehicles = stepImpl(obj, poseOtherVehicles, poseEgo)
         % Register s distances of the front and rear vehicles on the same lane and on the other lane
             % distances2Vehicles(1): Distance to front vehicle on the same lane
             % distances2Vehicles(2): Distance to rear vehicle on the same lane
