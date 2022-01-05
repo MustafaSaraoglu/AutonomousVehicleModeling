@@ -77,21 +77,22 @@ classdef DiscretePlanner < matlab.System
             obj.toleranceReachLane = 0.05;
         end
         
-        function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, vehicleDistances, vLead, vEgo)
+        function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, delta_s_surroundingVehicles, v_surroundingVehicles, vEgo)
         % Return lane change command, the current lane state and the current driving mode (see system description)
             
             [~, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
+            vLead = v_surroundingVehicles(1);
            
-            [drivingMode, currentLane, changeLaneCmd] = obj.makeDecision(dEgo, vEgo, vehicleDistances, vLead);
+            [drivingMode, currentLane, changeLaneCmd] = obj.makeDecision(dEgo, vEgo, delta_s_surroundingVehicles, vLead);
         end
         
-        function [drivingMode, currentLane, changeLaneCmd] = makeDecision(obj, dEgo, vEgo, vehicleDistances, vLead)
+        function [drivingMode, currentLane, changeLaneCmd] = makeDecision(obj, dEgo, vEgo, delta_s_surroundingVehicles, vLead)
         % Make decision about driving mode and whether to change lane    
             
-            delta_s_frontSameLane = vehicleDistances(1);
-            delta_s_rearSameLane = vehicleDistances(2);
-            delta_s_frontOtherLane = vehicleDistances(3);
-            delta_s_rearOtherLane = vehicleDistances(4);
+            delta_s_frontSameLane = delta_s_surroundingVehicles(1);
+            delta_s_rearSameLane = delta_s_surroundingVehicles(2);
+            delta_s_frontOtherLane = delta_s_surroundingVehicles(3);
+            delta_s_rearOtherLane = delta_s_surroundingVehicles(4);
         
             changeLaneCmd = obj.laneChangeCmds('CmdIdle');
         
@@ -168,11 +169,11 @@ classdef DiscretePlanner < matlab.System
                     
                 case obj.states('LeftLane_FreeDrive')
                     if obj.isVehicleInFrontClose(delta_s_frontSameLane) && not(obj.isVehicleInFrontVeryClose(delta_s_frontSameLane)) && obj.isRightLaneOccupied(delta_s_rearOtherLane)
-                        obj.currentState = obj.states('Left_VehicleFollowing');
+                        obj.currentState = obj.states('LeftLane_VehicleFollowing');
                     end
                     
                     if obj.isVehicleInFrontVeryClose(delta_s_frontSameLane)
-                        obj.currentState = obj.states('Left_EmergencyBrake');
+                        obj.currentState = obj.states('LeftLane_EmergencyBrake');
                     end
                     
                     if not(obj.isVehicleInFrontVeryClose(delta_s_frontSameLane)) && not(obj.isRightLaneOccupied(delta_s_rearOtherLane))
@@ -198,7 +199,7 @@ classdef DiscretePlanner < matlab.System
                     
                 case obj.states('LeftLane_EmergencyBrake')
                     if obj.isVehicleInFrontFar(delta_s_frontSameLane)
-                        obj.currentState = obj.states('Left_VehicleFollowing');
+                        obj.currentState = obj.states('LeftLane_VehicleFollowing');
                     end
                     
                 case obj.states('ToRightLane_FreeDrive')

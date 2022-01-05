@@ -27,29 +27,6 @@ roadTrajectory =    [0      0   0;
 %                      pi/2     0       -1000;
 %                      -1       -1      -1];  
 
-%% Leading Vehicle
-% Vehicle's geometry
-dimensionsLead = [6; 2];  % Length and width [[m]; [m]]
-wheelBaseLead = 4; % Wheel base [m]
-% Radius of circle around rectangle vehicle representation for collision 
-% detection [m]
-radiusLead = sqrt((dimensionsLead(1)/2)^2 + (dimensionsLead(2)/2)^2); 
-
-sLead_0 = 60; % Initial Frenet s-coordinate [m]
-dLead = 0; % (Initial) Frenet d-coordinate [m]
-
-% Transformation to Cartesian for 3D-Animation
-% xLead_0: Initial x-coordinate [m]
-% yLead_0: Initial y-coordinate [m]
-% yawLead_0: Initial steering angle [rad]
-[positionLead_0, yawLead_0] = Frenet2Cartesian(sLead_0, dLead, roadTrajectory);
-xLead_0 = positionLead_0(1);
-yLead_0 = positionLead_0(2);
-
-vLead_0 = 10; % Initial longitudinal velocity [m/s]
-
-vLead_ref = vLead_0; % Reference longitudinal velocity [m/s]
-
 %% Ego Vehicle
 % Vehicle's geometry
 dimensionsEgo = [4; 2];  % length and width [[m]; [m]]
@@ -75,19 +52,45 @@ vEgo_0 = 20; % Initial longitudinal velocity [m/s]
 
 vEgo_ref = vEgo_0; % Reference longitudinal velocity [m/s]
 
+%% Other Vehicles
+% [dataVehicle1, dataVehicle2, ..., dataVehicleN]
+
+% Vehicles' geometry
+dimensionsOtherVehicles = [6, 4; 2, 2];  % Length and width [[m]; [m]]
+wheelBaseOtherVehicles = [4, 3]; % Wheel base [m]
+% Radius of circle around rectangle vehicle representation for collision 
+% detection [m]
+radiusOtherVehicles = sqrt((dimensionsOtherVehicles(1, :)/2).^2 + (dimensionsOtherVehicles(2, :)/2).^2);
+
+sOtherVehicles_0 = [60, 40]; % Initial Frenet s-coordinate [m]
+dOtherVehicles = [0, laneWidth]; % (Initial) Frenet d-coordinate [m]
+
+% Transformation to Cartesian for 3D-Animation
+% xLead_0: Initial x-coordinate [m]
+% yLead_0: Initial y-coordinate [m]
+% yawLead_0: Initial steering angle [rad]
+[positionOtherVehicles_0, yawOtherVehicles_0] = Frenet2Cartesian(sOtherVehicles_0', dOtherVehicles', roadTrajectory);
+xOtherVehicles_0 = positionOtherVehicles_0(:, 1)';
+yOtherVehicles_0 = positionOtherVehicles_0(:, 2)';
+yawOtherVehicles_0 = yawOtherVehicles_0';
+
+vOtherVehicles_0 = [10, 13]; % Initial longitudinal velocity [m/s]
+
+vOtherVehicles_ref = vOtherVehicles_0; % Reference longitudinal velocity [m/s]
+
 %% Lateral Control
 % Hardcoded conditions
 isOccupiedLeft = false;
 
 % Lane Changing maneuver
-durationToLeftLane = 5; % Time for lane changing (to left lane) [s]
-durationToRightLane = 5; % Time for overtaking (to right lane) [s]
+durationToLeftLane = 2; % Time for lane changing (to left lane) [s]
+durationToRightLane = 2; % Time for overtaking (to right lane) [s]
 
 numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
 Ts = 0.01; % Sampling time [s]
-timeHorizon = 5; % Time horizon for trajectory genereation [s]
+timeHorizon = 3; % Time horizon for trajectory genereation [s]
 partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
 
 % Gains for PID controller

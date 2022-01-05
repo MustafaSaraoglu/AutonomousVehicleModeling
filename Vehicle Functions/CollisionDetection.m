@@ -5,26 +5,34 @@ classdef CollisionDetection < matlab.System
         dimensionsEgo % Dimensions (length, width) ego vehicle
         wheelBaseEgo % Wheel base ego vehicle
         radiusEgo % Radius around ego vehicle rectangle representation
-        dimensionsLead % Dimensions (length, width) lead vehicle
-        wheelBaseLead % Wheel base lead vehicle
-        radiusLead % Radius around lead vehicle rectangle representation
+        dimensionsOtherVehicles % Dimensions (length, width) other vehicles
+        wheelBaseOtherVehicles % Wheel base other vehicles
+        radiusOtherVehicles % Radius around other vehicles rectangle representation
     end
 
     methods(Access = protected)
-        function isCollided = stepImpl(obj, poseLead, poseEgo)
+        function isCollided = stepImpl(obj, poseOtherVehicles, poseEgo)
         % Check whether a collision between two vehicles is detected
+            
             isCollided = false; 
             
             centerPointEgo = getVehicleCenterPoint(poseEgo, obj.wheelBaseEgo);
-            centerPointLead = getVehicleCenterPoint(poseLead, obj.wheelBaseLead);
+            centerPointOtherVehicles = getVehicleCenterPoint(poseOtherVehicles, obj.wheelBaseOtherVehicles);
             
             % Only check for collision if vehicles are close 
-            euclidianDistance = obj.calculateEuclidianDistance(centerPointEgo, centerPointLead);
-            checkForCollision = euclidianDistance <= obj.radiusEgo + obj.radiusLead;
-            if checkForCollision
+            euclidianDistance = obj.calculateEuclidianDistance(centerPointEgo, centerPointOtherVehicles);
+            checkForCollision = euclidianDistance <= obj.radiusEgo + obj.radiusOtherVehicles;
+            if any(checkForCollision)
                 [~, ~, HitboxEgo] = createRectangleVehicle(centerPointEgo, poseEgo(3), obj.dimensionsEgo);
-                [~, ~, HitboxLead] = createRectangleVehicle(centerPointLead, poseLead(3), obj.dimensionsLead);
-                isCollided = obj.checkIntersection(HitboxLead, HitboxEgo);
+                
+                for id_otherVehicle = find(checkForCollision)
+                    [~, ~, HitboxOtherVehicle] = createRectangleVehicle(centerPointOtherVehicles(:, id_otherVehicle), poseOtherVehicles(3, id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle));
+                    isCollided = obj.checkIntersection(HitboxOtherVehicle, HitboxEgo);
+                    
+                    if isCollided
+                        return
+                    end
+                end
             end
         end
         
@@ -64,8 +72,8 @@ classdef CollisionDetection < matlab.System
     methods(Static)    
         function euclidianDistance = calculateEuclidianDistance(P1, P2)
         % Calculate Euclidian distance between two points P1(x1, y1) and P2(x2, y2)
-            
-            euclidianDistance = sqrt((P2(1) - P1(1))^2 + (P2(2) - P2(2))^2);
+
+            euclidianDistance = sqrt((P2(1, :) - P1(1, :)).^2 + (P2(2, :) - P2(2, :)).^2);
         end
         
         % FROM MOBATSim

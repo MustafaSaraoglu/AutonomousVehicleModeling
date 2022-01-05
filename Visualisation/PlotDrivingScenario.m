@@ -2,8 +2,8 @@ classdef PlotDrivingScenario< matlab.System
 % Plot driving scenario
     
     properties(Nontunable)
-        dimensionsLead % Dimensions (length, width) leading vehicle [[m]; [m]]
-        wheelBaseLead % Wheel base leading vehicle [m]
+        dimensionsOtherVehicles % Dimensions (length, width) other vehicles [[m]; [m]]
+        wheelBaseOtherVehicles % Wheel base other vehicles [m]
         dimensionsEgo % Dimensions (length, width) ego vehicle [[m]; [m]]
         wheelBaseEgo % Wheel base ego vehicle [m]
         
@@ -33,18 +33,27 @@ classdef PlotDrivingScenario< matlab.System
             obj.plotDiscreteSpace(); 
         end
 
-        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, positionEgoFuture, egoReachability, nextWPsPurePursuit, poseEgo)
+        function stepImpl(obj, poseOtherVehicles, poseOtherVehiclesFuture, positionEgoFuture, egoReachability, nextWPsPurePursuit, poseEgo)
         % Plot driving scenario
         
             obj.deletePreviousPlots; 
-        
-            % Vehicle Lead
-            [obj.plots2update.vehicles.Lead, obj.plots2update.vehicles.LocationLead] = obj.plotVehicle(poseLead, obj.wheelBaseLead, obj.dimensionsLead, [0, 204/255, 204/255], 'o');
-            plot(poseLead(1), poseLead(2), '.', 'Color', 'cyan'); % Traces
-            % Future predictions
-            [obj.plots2update.vehicles.LeadFuture_min, obj.plots2update.vehicles.LocationLeadFuture_min] = obj.plotVehicle(poseLeadFuture_min, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
-            [obj.plots2update.vehicles.LeadFuture_max, obj.plots2update.vehicles.LocationLeadFuture_max] = obj.plotVehicle(poseLeadFuture_max, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
-
+            
+            % Other Vehicles
+            for id_otherVehicle = 1:size(poseOtherVehicles, 2)
+                % Vehicles
+                fieldVehicleName = append('OtherVehicle', num2str(id_otherVehicle));
+                fieldVehicleLocation = append('LocationOtherVehicle', num2str(id_otherVehicle));
+                [obj.plots2update.vehicles.(fieldVehicleName), obj.plots2update.vehicles.(fieldVehicleLocation)] = obj.plotVehicle(poseOtherVehicles(:, id_otherVehicle), obj.wheelBaseOtherVehicles(id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle), [0, 204/255, 204/255], 'o');
+                plot(poseOtherVehicles(1, id_otherVehicle), poseOtherVehicles(2, id_otherVehicle), '.', 'Color', 'cyan'); % Traces
+                % Future predictions
+                fieldVehicleFutureMinName = append('OtherVehicleFuture_min', num2str(id_otherVehicle));
+                fieldVehicleFutureMinLocation = append('LocationOtherVehicleFuture_min', num2str(id_otherVehicle));
+                fieldVehicleFutureMaxName = append('OtherVehicleFuture_max', num2str(id_otherVehicle));
+                fieldVehicleFutureMaxLocation = append('LocationOtherVehicleFuture_max', num2str(id_otherVehicle));
+                [obj.plots2update.vehicles.(fieldVehicleFutureMinName), obj.plots2update.vehicles.(fieldVehicleFutureMinLocation)] = obj.plotVehicle(poseOtherVehiclesFuture(1:3, id_otherVehicle), obj.wheelBaseOtherVehicles(id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle), [153/255, 1, 1], 'o');
+                [obj.plots2update.vehicles.(fieldVehicleFutureMaxName), obj.plots2update.vehicles.(fieldVehicleFutureMaxLocation)] = obj.plotVehicle(poseOtherVehiclesFuture(4:6, id_otherVehicle), obj.wheelBaseOtherVehicles(id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle), [153/255, 1, 1], 'o');
+            end
+            
             % Vehicle Ego
             [obj.plots2update.vehicles.Ego, obj.plots2update.vehicles.LocationEgo] = obj.plotVehicle(poseEgo, obj.wheelBaseEgo, obj.dimensionsEgo, 'red', 'o');
             plot(poseEgo(1), poseEgo(2), '.', 'Color', 'red'); 
@@ -77,9 +86,9 @@ classdef PlotDrivingScenario< matlab.System
             obj.plots2update.reachability.EgoReachabilityEmergencyBoundary = plot(egoReachability(:, 9), egoReachability(:, 10), 'Color', [153/255, 0, 0]);
 
             % Adjust Axis
-            x2 = poseEgo(1);
-            y2 = poseEgo(2);
-            axis([x2-80, x2+80, y2-40, y2+40]); % Camera following V2 as ego vehicle
+            xEgo = poseEgo(1);
+            yEgo = poseEgo(2);
+            axis([xEgo-80, xEgo+80, yEgo-40, yEgo+40]); % Camera following ego vehicle
         end
         
         function deletePreviousPlots(obj)
