@@ -25,7 +25,7 @@ classdef RegisterVehicles < matlab.System
             delta_d = dOtherVehicles - dEgo;
             
             % Vehicles on the same lane
-            id_sameLane = abs(delta_d) <= 0.1; % Some tolerance
+            id_sameLane = abs(delta_d) < obj.LaneWidth/2; % TODO: Need to change if other vehicles are able to change lane
             [distances2Vehicles(1), distances2Vehicles(2), speedsSurroundingVehicles(1), speedsSurroundingVehicles(2)] = obj.getSurroundingVehicleInformation(id_sameLane, sEgo, sOtherVehicles, speedOtherVehicles);
 
             % Vehicles on the opposite lane
@@ -76,7 +76,7 @@ classdef RegisterVehicles < matlab.System
             
             % Very large default distance if there is no detection
             distanceFront = 999;
-            distanceRear = 999;
+            distanceRear = -999;
             % Default speed -1 if there is no detection 
             speedFront = -1;
             speedRear = -1;
