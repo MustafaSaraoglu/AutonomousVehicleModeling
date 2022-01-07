@@ -35,6 +35,8 @@ classdef DiscretePlanner < matlab.System
         currentState % Current driving state
         
         toleranceReachLane % Accepted tolerance to reach destination lane
+        
+        waitingCounter % Counter to wait some time before recheck for lane changing
     end
 
     methods(Access = protected)
@@ -55,7 +57,7 @@ classdef DiscretePlanner < matlab.System
                 'RightLane_VehicleFollowing', 2;
                 'RightLane_EmergencyBrake', 3;
                 
-                % To Left lane
+                % To left lane
                 'ToLeftLane_FreeDrive', 4;
                 'ToLeftLane_VehicleFollowing', 5;
                 'ToLeftLane_EmergencyBrake', 6;
@@ -65,16 +67,23 @@ classdef DiscretePlanner < matlab.System
                 'LeftLane_VehicleFollowing', 8;
                 'LeftLane_EmergencyBrake', 9;
                 
-                % To Right lane
+                % To right lane
                 'ToRightLane_FreeDrive', 10;
                 'ToRightLane_VehicleFollowing', 11;
-                'ToRightLane_EmergencyBrake', 12
+                'ToRightLane_EmergencyBrake', 12;
+                
+                % Check to other lane
+                'CheckToLeftLane_VehicleFollowing', 13;
+                'CheckToRightLane_FreeDrive', 14;
+                'CheckToRightLane_VehicleFollowing', 15
                 };
             obj.states = containers.Map(stateNames(:, 1)', [stateNames{:, 2}]);
             
             obj.currentState = obj.states('RightLane_FreeDrive');
             
             obj.toleranceReachLane = 0.05;
+            
+            obj.waitingCounter = 0;
         end
         
         function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, delta_s_surroundingVehicles, v_surroundingVehicles, vEgo)
@@ -89,6 +98,10 @@ classdef DiscretePlanner < matlab.System
         function [drivingMode, currentLane, changeLaneCmd] = makeDecision(obj, dEgo, vEgo, delta_s_surroundingVehicles, vLead)
         % Make decision about driving mode and whether to change lane    
             
+            if obj.waitingCounter > 0
+                obj.waitingCounter = obj.waitingCounter - 1;
+            end
+        
             delta_s_frontSameLane = delta_s_surroundingVehicles(1);
             delta_s_rearSameLane = delta_s_surroundingVehicles(2);
             delta_s_frontOtherLane = delta_s_surroundingVehicles(3);
@@ -116,8 +129,10 @@ classdef DiscretePlanner < matlab.System
                     end
                     
                     if obj.isVehicleInFrontClose(delta_s_frontSameLane) && not(obj.isVehicleInFrontVeryClose(delta_s_frontSameLane)) && ...
-                            obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isCloseToReferenceSpeed(vEgo, obj.vEgo_ref)) && not(obj.isOtherLaneOccupied(delta_s_frontOtherLane, delta_s_rearOtherLane)) 
-                        obj.currentState = obj.states('ToLeftLane_FreeDrive');
+                            obj.isVehicleInFrontSlower(vEgo, vLead) && not(obj.isCloseToReferenceSpeed(vEgo, obj.vEgo_ref)) && ...
+                            not(obj.isOtherLaneOccupied(delta_s_frontOtherLane, delta_s_rearOtherLane)) && ...
+                            obj.isWaitingTimeOver(obj.waitingCounter)
+                        obj.currentState = obj.states('CheckToLeftLane_VehicleFollowing');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToLeftLane');
                     end
@@ -125,6 +140,16 @@ classdef DiscretePlanner < matlab.System
                 case obj.states('RightLane_EmergencyBrake')
                     if obj.isVehicleInFrontFar(delta_s_frontSameLane)
                         obj.currentState = obj.states('RightLane_VehicleFollowing');
+                    end
+                    
+                case obj.states('CheckToLeftLane_VehicleFollowing')
+                    if obj.isTrajectoryAccepted()
+                        obj.currentState = obj.states('ToLeftLane_FreeDrive');
+                    end
+                    
+                    if not(obj.isTrajectoryAccepted())
+                        obj.currentState = obj.states('RightLane_VehicleFollowing');
+                        obj.waitingCounter = obj.setWaitingCounter(); 
                     end
                     
                 case obj.states('ToLeftLane_FreeDrive')
@@ -176,8 +201,9 @@ classdef DiscretePlanner < matlab.System
                         obj.currentState = obj.states('LeftLane_EmergencyBrake');
                     end
                     
-                    if not(obj.isVehicleInFrontVeryClose(delta_s_frontSameLane)) && not(obj.isOtherLaneOccupied(delta_s_frontOtherLane, delta_s_rearOtherLane))
-                        obj.currentState = obj.states('ToRightLane_FreeDrive');
+                    if not(obj.isVehicleInFrontVeryClose(delta_s_frontSameLane)) && not(obj.isOtherLaneOccupied(delta_s_frontOtherLane, delta_s_rearOtherLane)) && ...
+                            obj.isWaitingTimeOver(obj.waitingCounter)
+                        obj.currentState = obj.states('CheckToRightLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToRightLane');
                     end
@@ -191,8 +217,9 @@ classdef DiscretePlanner < matlab.System
                         obj.currentState = obj.states('LeftLane_FreeDrive');
                     end
                     
-                    if not(obj.isVehicleInFrontVeryClose(delta_s_frontSameLane)) && not(obj.isOtherLaneOccupied(delta_s_frontOtherLane, delta_s_rearOtherLane))
-                        obj.currentState = obj.states('ToRightLane_FreeDrive');
+                    if not(obj.isVehicleInFrontVeryClose(delta_s_frontSameLane)) && not(obj.isOtherLaneOccupied(delta_s_frontOtherLane, delta_s_rearOtherLane)) && ...
+                            obj.isWaitingTimeOver(obj.waitingCounter)
+                        obj.currentState = obj.states('CheckToRightLane_VehicleFollowing');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToRightLane');
                     end
@@ -200,6 +227,26 @@ classdef DiscretePlanner < matlab.System
                 case obj.states('LeftLane_EmergencyBrake')
                     if obj.isVehicleInFrontFar(delta_s_frontSameLane)
                         obj.currentState = obj.states('LeftLane_VehicleFollowing');
+                    end
+                
+                case obj.states('CheckToRightLane_FreeDrive')
+                    if obj.isTrajectoryAccepted()
+                        obj.currentState = obj.states('ToRightLane_FreeDrive');
+                    end
+                    
+                    if not(obj.isTrajectoryAccepted())
+                        obj.currentState = obj.states('LeftLane_FreeDrive');
+                        obj.waitingCounter = obj.setWaitingCounter(); 
+                    end
+                    
+                case obj.states('CheckToRightLane_VehicleFollowing')
+                    if obj.isTrajectoryAccepted()
+                        obj.currentState = obj.states('ToRightLane_FreeDrive');
+                    end
+                    
+                    if not(obj.isTrajectoryAccepted())
+                        obj.currentState = obj.states('LeftLane_VehicleFollowing');
+                        obj.waitingCounter = obj.setWaitingCounter();
                     end
                     
                 case obj.states('ToRightLane_FreeDrive')
@@ -286,6 +333,15 @@ classdef DiscretePlanner < matlab.System
                 case obj.states('ToRightLane_EmergencyBrake')
                     drivingMode = obj.drivingModes('EmergencyBrake');
                     currentLane = obj.lanes('ToRightLane');
+                case obj.states('CheckToLeftLane_VehicleFollowing')
+                    drivingMode = obj.drivingModes('VehicleFollowing');
+                    currentLane = obj.lanes('RightLane');
+                case obj.states('CheckToRightLane_FreeDrive')
+                    drivingMode = obj.drivingModes('FreeDrive');
+                    currentLane = obj.lanes('LeftLane');
+                case obj.states('CheckToRightLane_VehicleFollowing')
+                    drivingMode = obj.drivingModes('VehicleFollowing');
+                    currentLane = obj.lanes('LeftLane');
             end
         end
         
@@ -380,6 +436,21 @@ classdef DiscretePlanner < matlab.System
         
         function isReached = isReachedRightLane(dEgo, tolerance)
             isReached = (abs(0 - dEgo) < tolerance);
+        end
+        
+        
+        function isOver = isWaitingTimeOver(counter)
+            isOver = counter == 0;
+        end
+        
+        function counter = setWaitingCounter()
+            counter = 1000; % Set counter to wait for next lane change command
+        end
+        
+        function isAccepted = isTrajectoryAccepted()
+            % TODO: Implementation in Simulink without causing algebraic
+            % loop or messing up execution order (witout using base workespace)
+            isAccepted = evalin('base', 'isAcceptedTrajectory');
         end
     end
 end

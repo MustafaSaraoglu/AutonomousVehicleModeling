@@ -11,6 +11,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         durationToLeftLane % Time for lane changing [s]
         durationToRightLane % Time for overtaking [s]
         partsTimeHorizon % Divide time horizon into partsTimeHorizon equal parts
+        
+        discreteCell_length % Length of dicrete cell in s-coordinate [m]
+        spaceDiscretisationMatrix 
     end
     
     % Pre-computed constants
@@ -74,12 +77,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.a_lateral_max = 30; % Placeholder
         end
         
-        function planTrajectory(obj, changeLaneCmd, replan, s, d, a, v)
+        function planTrajectory(obj, changeLaneCmd, replan, s, d, a, v, poseOtherVehicles, poseFutureOtherVehicles)
         % Plan trajectory for the next obj.timeHorizon seconds in Frenet and Cartesian coordinates
-
+            
             if changeLaneCmd 
                 obj.timeStartLaneChange = get_param('VehicleFollowing', 'SimulationTime');
-                obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, v); 
+                obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, v, poseOtherVehicles, poseFutureOtherVehicles); 
             end
             
             if replan
@@ -90,20 +93,72 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.predictFuturePosition(s, v, a);
         end
         
-        function calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, d_dot, d_ddot, v)
-        % Calculate the lane changing maneuver either to the left or right lane
+        function calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, d_dot, d_ddot, v, poseOtherVehicles, poseFutureOtherVehicles)
+        % Calculate lane changing maneuver either to the left or right lane
             
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeftLane')
-                obj.d_destination = obj.LaneWidth;
+                d_goal = obj.LaneWidth;
                 durationManeuver = obj.durationToLeftLane;
             elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRightLane')
-                obj.d_destination = 0;
+                d_goal = 0;
                 durationManeuver = obj.durationToRightLane;
             end
-            obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, obj.d_destination, durationManeuver, v);
+            
+            % Get occupied cells for other vehicles
+            poseFuterOtherVehicles_max = poseFutureOtherVehicles(4:6, :);
+            s_otherVehicles_future = [];
+            d_otherVehicles_future = [];
+            for id_otherVehicle = 1:size(poseOtherVehicles, 2)
+                [s_otherVehicle_current, d_otherVehicle] = Cartesian2Frenet(obj.RoadTrajectory, [poseOtherVehicles(1, id_otherVehicle), poseOtherVehicles(2, id_otherVehicle)]);
+                [s_otherVehicle_max, ~] = Cartesian2Frenet(obj.RoadTrajectory, [poseFuterOtherVehicles_max(1, id_otherVehicle), poseFuterOtherVehicles_max(2, id_otherVehicle)]);
+            
+                if mod(s_otherVehicle_max, obj.discreteCell_length) < mod(s_otherVehicle_current, obj.discreteCell_length)
+                    s_otherVehicle_max = s_otherVehicle_max + obj.discreteCell_length; % To prevent not including discrete cell (s_max, d)
+                end
+                
+                s_future = (s_otherVehicle_current:obj.discreteCell_length:s_otherVehicle_max)';
+                d_future = d_otherVehicle*ones(length(s_future), 1);
+                
+                s_otherVehicles_future = [s_otherVehicles_future; s_future];
+                d_otherVehicles_future = [d_otherVehicles_future; d_future];
+            end
+            occupiedCells_otherVehicles = Continuous2Discrete(obj.spaceDiscretisationMatrix, s_otherVehicles_future, d_otherVehicles_future);
+            
+            cost_min = inf;
+            for durManeuver = 1:0.2:obj.timeHorizon
+                [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, d_goal, durManeuver, v);
+                
+                % Feasibility Check
+                if isFeasibleTrajectory
+                    % TODO: Take vehicles' dimensions into account
+                    occupiedCells_trajectory = Continuous2Discrete(obj.spaceDiscretisationMatrix, trajectoryFrenet(:, 1), trajectoryFrenet(:, 2));
+                    commonCells = intersect(occupiedCells_trajectory, occupiedCells_otherVehicles, 'rows');
+                    isSafeTrajectory = isempty(commonCells);
+
+                    % Safety check
+                    if isSafeTrajectory
+                        
+                        % Cost check
+                        if cost < cost_min
+                            obj.laneChangingTrajectoryFrenet = trajectoryFrenet;
+                            obj.laneChangingTrajectoryCartesian = trajectoryCartesian;
+                            
+                            cost_min = cost;
+                        end
+                    end   
+                end
+            end
+            
+            if ~isempty(obj.laneChangingTrajectoryCartesian)
+                obj.d_destination = d_goal;
+                plot(obj.laneChangingTrajectoryCartesian(:, 1), obj.laneChangingTrajectoryCartesian(:, 2), 'Color', 'green');
+                assignin('base', 'isAcceptedTrajectory', true);
+            else
+               assignin('base', 'isAcceptedTrajectory', false);
+            end
         end
         
-        function calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_dot_current, d_ddot_current, d_destination, durationManeuver, v_current)
+        function [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_dot_current, d_ddot_current, d_destination, durationManeuver, v_current)
         % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
@@ -139,6 +194,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             d_trajectory = obj.a0 + obj.a1*t_discrete + obj.a2*t_discrete.^2 + obj.a3*t_discrete.^3 + obj.a4*t_discrete.^4 + obj.a5*t_discrete.^5;
             d_dot_trajectory = obj.a1 + 2*obj.a2*t_discrete + 3*obj.a3*t_discrete.^2 + 4*obj.a4*t_discrete.^3 + 5*obj.a5*t_discrete.^4;
             d_ddot_trajectory = 2*obj.a2 + 6*obj.a3*t_discrete + 12*obj.a4*t_discrete.^2 + 20*obj.a5*t_discrete.^3;
+            d_dddot_trajectory = 6*obj.a3 + 24*obj.a4*t_discrete + 60*obj.a5*t_discrete.^2;
             
             % s_curve coordinate going along the lane changing curve
             % Calculate profile according to FreeDrive 
@@ -166,23 +222,25 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 v_trajectory = [v_trajectory, v_trajectory_straight];
                 s_dot_trajectory = [s_dot_trajectory, v_trajectory_straight]; % For straight trajectory s_dot = v
                 
-                d_trajectory = [d_trajectory, obj.d_destination*ones(1, length(t_straight))];
+                d_trajectory = [d_trajectory, d_destination*ones(1, length(t_straight))];
                 d_dot_trajectory = [d_dot_trajectory, zeros(1, length(t_straight))];
-                d_ddot_trajectory =[d_ddot_trajectory, zeros(1, length(t_straight))];
+                d_ddot_trajectory = [d_ddot_trajectory, zeros(1, length(t_straight))];
+                d_dddot_trajectory = [d_dddot_trajectory, zeros(1, length(t_straight))];
                 t_discrete = [t_discrete, t_straight];
             end
+            
+            % Cost function according to jerk
+            cost = 0.5*sum(d_dddot_trajectory.^2);
             
             [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
             orientation = atan2(d_dot_trajectory, s_dot_trajectory)' + roadOrientation;
             
             time = get_param('VehicleFollowing', 'SimulationTime') + t_discrete;
             
-            obj.laneChangingTrajectoryFrenet = [s_trajectory', d_trajectory', s_curve_trajectory', time'];
-            obj.laneChangingTrajectoryCartesian = [laneChangingPositionCartesian, orientation, time'];
+            trajectoryFrenet = [s_trajectory', d_trajectory', s_curve_trajectory', time'];
+            trajectoryCartesian = [laneChangingPositionCartesian, orientation, time'];
             
-            isFeasibleTrajectory = obj.isFeasibleTrajectory(obj.laneChangingTrajectoryCartesian, v_trajectory);
-            
-            plot(obj.laneChangingTrajectoryCartesian(:, 1), obj.laneChangingTrajectoryCartesian(:,2), 'Color', 'green');
+            isFeasibleTrajectory = obj.isFeasibleTrajectory(trajectoryCartesian, v_trajectory);
         end 
         
         function [s_trajectory, v_trajectory] = calculateLongitudinalTrajectory(obj, s_0, v_0, v_max, acceleration, trajectoryLength)

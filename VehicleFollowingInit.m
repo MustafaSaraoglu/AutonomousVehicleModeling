@@ -79,8 +79,7 @@ vOtherVehicles_0 = [10, 13]; % Initial longitudinal velocity [m/s]
 vOtherVehicles_ref = vOtherVehicles_0; % Reference longitudinal velocity [m/s]
 
 %% Lateral Control
-% Hardcoded conditions
-isOccupiedLeft = false;
+isAcceptedTrajectory = false; % Check whether lane changing trajectory is accepted
 
 % Lane Changing maneuver
 durationToLeftLane = 2; % Time for lane changing (to left lane) [s]
@@ -90,7 +89,7 @@ numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
 Ts = 0.01; % Sampling time [s]
-timeHorizon = 3; % Time horizon for trajectory genereation [s]
+timeHorizon = 5; % Time horizon for trajectory genereation [s]
 partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
 
 % Gains for PID controller
