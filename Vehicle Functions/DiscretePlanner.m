@@ -86,11 +86,14 @@ classdef DiscretePlanner < matlab.System
             obj.waitingCounter = 0;
         end
         
-        function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, delta_s_surroundingVehicles, v_surroundingVehicles, vEgo)
+        function [changeLaneCmd, currentLane, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, delta_s_surroundingVehicles, speedsOtherVehicles, vEgo)
         % Return lane change command, the current lane state and the current driving mode (see system description)
             
             [~, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
-            vLead = v_surroundingVehicles(1);
+            vLead = -1; % Default value if there is no detection
+            if ids_surroundingVehicles(1) > 0 % Leding vehicle detected
+                vLead = speedsOtherVehicles(ids_surroundingVehicles(1));
+            end
            
             [drivingMode, currentLane, changeLaneCmd] = obj.makeDecision(dEgo, vEgo, delta_s_surroundingVehicles, vLead);
         end

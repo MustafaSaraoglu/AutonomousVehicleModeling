@@ -7,12 +7,12 @@ classdef RegisterVehicles < matlab.System
     end
 
     methods(Access = protected)
-        function [speedsSurroundingVehicles, distances2Vehicles] = stepImpl(obj, speedOtherVehicles, poseOtherVehicles, poseEgo)
+        function [distances2Vehicles, ids_surroundingVehicles] = stepImpl(obj, poseOtherVehicles, poseEgo)
         % Register s distances of the front and rear vehicles on the same lane and on the other lane
-            % speedsSurroundingVehicles(1): Speed front vehicle on the same lane
-            % speedsSurroundingVehicles(2): Speed rear vehicle on the same lane
-            % speedsSurroundingVehicles(3): Speed front vehicle on the opposite lane
-            % speedsSurroundingVehicles(4): Speed rear vehicle on the opposite lane
+            % ids_surroundingVehicles(1): ID front vehicle on the same lane
+            % ids_surroundingVehicles(2): ID rear vehicle on the same lane
+            % ids_surroundingVehicles(3): ID front vehicle on the opposite lane
+            % ids_surroundingVehicles(4): ID rear vehicle on the opposite lane
         
             % distances2Vehicles(1): Distance to front vehicle on the same lane
             % distances2Vehicles(2): Distance to rear vehicle on the same lane
@@ -26,11 +26,11 @@ classdef RegisterVehicles < matlab.System
             
             % Vehicles on the same lane
             id_sameLane = abs(delta_d) < obj.LaneWidth/2; % TODO: Need to change if other vehicles are able to change lane
-            [distances2Vehicles(1), distances2Vehicles(2), speedsSurroundingVehicles(1), speedsSurroundingVehicles(2)] = obj.getSurroundingVehicleInformation(id_sameLane, sEgo, sOtherVehicles, speedOtherVehicles);
+            [distances2Vehicles(1), distances2Vehicles(2), ids_surroundingVehicles(1), ids_surroundingVehicles(2)] = obj.getSurroundingVehicleInformation(id_sameLane, sEgo, sOtherVehicles);
 
             % Vehicles on the opposite lane
             id_otherLane = abs(delta_d) >= obj.LaneWidth/2;
-            [distances2Vehicles(3), distances2Vehicles(4), speedsSurroundingVehicles(3), speedsSurroundingVehicles(4)] = obj.getSurroundingVehicleInformation(id_otherLane, sEgo, sOtherVehicles, speedOtherVehicles);
+            [distances2Vehicles(3), distances2Vehicles(4), ids_surroundingVehicles(3), ids_surroundingVehicles(4)] = obj.getSurroundingVehicleInformation(id_otherLane, sEgo, sOtherVehicles);
         end
 
         function [out1, out2] = getOutputSizeImpl(~)
@@ -71,30 +71,29 @@ classdef RegisterVehicles < matlab.System
     end
     
     methods(Static)
-        function [distanceFront, distanceRear, speedFront, speedRear] = getSurroundingVehicleInformation(id_lane, sEgo, sOtherVehicles, speedOtherVehicles)
-        % Get s distance to front and rear vehicle and their speeds for specified lane
+        function [distanceFront, distanceRear, id_vehicleFront, id_vehicleRear] = getSurroundingVehicleInformation(id_lane, sEgo, sOtherVehicles)
+        % Get s distance to front and rear vehicle and their ids
             
+            ids_vehicleOnLane = find(id_lane);
+            % Vehicle id default is -1 if there is no detection
+            id_vehicleFront = -1;
+            id_vehicleRear = -1;
             % Very large default distance if there is no detection
             distanceFront = 999;
             distanceRear = -999;
-            % Default speed -1 if there is no detection 
-            speedFront = -1;
-            speedRear = -1;
         
             delta_s = sOtherVehicles(id_lane) - sEgo;
-            speeds = speedOtherVehicles(id_lane);
             
             id_front = delta_s >= 0; % Front
             if any(id_front)
                 [distanceFront, id_frontMin] = min(delta_s(id_front));
-                speedFront = speeds(id_frontMin);
+                id_vehicleFront = ids_vehicleOnLane(id_frontMin);
             end
             
             id_rear = delta_s < 0; % Rear
             if any(id_rear)
-                [distanceRear, id_rearMin] = min(abs(delta_s(id_rear)));
-                distanceRear = -distanceRear;
-                speedRear = speeds(id_rearMin);
+                [distanceRear, id_rearMin] = max(delta_s(id_rear));
+                id_vehicleRear = ids_vehicleOnLane(id_rearMin);
             end
         end
     end
