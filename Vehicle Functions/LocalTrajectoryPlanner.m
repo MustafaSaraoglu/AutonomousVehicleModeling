@@ -5,11 +5,13 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
     properties(Nontunable)
         vEgo_ref % Reference speed for ego vehicle [m/s]
         
+        vOtherVehicles_ref % Reference speed for other vehicles [m/s]
+        
+        v_max % Maximum allowed velocity
+        
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
         
-        durationToLeftLane % Time for lane changing [s]
-        durationToRightLane % Time for overtaking [s]
         partsTimeHorizon % Divide time horizon into partsTimeHorizon equal parts
         
         discreteCell_length % Length of dicrete cell in s-coordinate [m]
@@ -77,12 +79,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.a_lateral_max = 30; % Placeholder
         end
         
-        function planTrajectory(obj, changeLaneCmd, replan, s, d, a, v, poseOtherVehicles, poseFutureOtherVehicles)
+        function planTrajectory(obj, changeLaneCmd, replan, s, d, a, v, poseOtherVehicles, speedsOtherVehicles)
         % Plan trajectory for the next obj.timeHorizon seconds in Frenet and Cartesian coordinates
             
             if changeLaneCmd 
                 obj.timeStartLaneChange = get_param('VehicleFollowing', 'SimulationTime');
-                obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, v, poseOtherVehicles, poseFutureOtherVehicles); 
+                obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, v, poseOtherVehicles, speedsOtherVehicles); 
             end
             
             if replan
@@ -93,37 +95,19 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.predictFuturePosition(s, v, a);
         end
         
-        function calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, d_dot, d_ddot, v, poseOtherVehicles, poseFutureOtherVehicles)
+        function calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, d_dot, d_ddot, v, poseOtherVehicles, speedsOtherVehicles)
         % Calculate lane changing maneuver either to the left or right lane
             
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeftLane')
                 d_goal = obj.LaneWidth;
-                durationManeuver = obj.durationToLeftLane;
             elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRightLane')
                 d_goal = 0;
-                durationManeuver = obj.durationToRightLane;
             end
             
-            % Get occupied cells for other vehicles
-            poseFuterOtherVehicles_max = poseFutureOtherVehicles(4:6, :);
-            s_otherVehicles_future = [];
-            d_otherVehicles_future = [];
-            for id_otherVehicle = 1:size(poseOtherVehicles, 2)
-                [s_otherVehicle_current, d_otherVehicle] = Cartesian2Frenet(obj.RoadTrajectory, [poseOtherVehicles(1, id_otherVehicle), poseOtherVehicles(2, id_otherVehicle)]);
-                [s_otherVehicle_max, ~] = Cartesian2Frenet(obj.RoadTrajectory, [poseFuterOtherVehicles_max(1, id_otherVehicle), poseFuterOtherVehicles_max(2, id_otherVehicle)]);
+            time_trajectory = get_param('VehicleFollowing', 'SimulationTime') + (0:obj.Ts:obj.timeHorizon); 
             
-                if mod(s_otherVehicle_max, obj.discreteCell_length) < mod(s_otherVehicle_current, obj.discreteCell_length)
-                    s_otherVehicle_max = s_otherVehicle_max + obj.discreteCell_length; % To prevent not including discrete cell (s_max, d)
-                end
-                
-                s_future = (s_otherVehicle_current:obj.discreteCell_length:s_otherVehicle_max)';
-                d_future = d_otherVehicle*ones(length(s_future), 1);
-                
-                s_otherVehicles_future = [s_otherVehicles_future; s_future];
-                d_otherVehicles_future = [d_otherVehicles_future; d_future];
-            end
-            occupiedCells_otherVehicles = Continuous2Discrete(obj.spaceDiscretisationMatrix, s_otherVehicles_future, d_otherVehicles_future);
-            
+            [occupiedCells_otherVehiclesFront, occupiedCells_otherVehiclesRear] = obj.getOccupiedCellsOtherVehicles(s, poseOtherVehicles, speedsOtherVehicles, time_trajectory);
+  
             cost_min = inf;
             for durManeuver = 1:0.2:obj.timeHorizon
                 [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, d_goal, durManeuver, v);
@@ -131,12 +115,13 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 % Feasibility Check
                 if isFeasibleTrajectory
                     % TODO: Take vehicles' dimensions into account
-                    occupiedCells_trajectory = Continuous2Discrete(obj.spaceDiscretisationMatrix, trajectoryFrenet(:, 1), trajectoryFrenet(:, 2));
-                    commonCells = intersect(occupiedCells_trajectory, occupiedCells_otherVehicles, 'rows');
-                    isSafeTrajectory = isempty(commonCells);
+                    occupiedCells_trajectory = Continuous2Discrete(obj.spaceDiscretisationMatrix, trajectoryFrenet(:, 1), trajectoryFrenet(:, 2), trajectoryFrenet(:, 3));
 
                     % Safety check
-                    if isSafeTrajectory
+                    isSafeTrajectoryToVehiclesFront = obj.checkTrajectoryIntersection(occupiedCells_trajectory, occupiedCells_otherVehiclesFront, 'front');
+                    isSafeTrajectoryToVehiclesRear = obj.checkTrajectoryIntersection(occupiedCells_trajectory, occupiedCells_otherVehiclesRear, 'rear');
+
+                    if (isSafeTrajectoryToVehiclesFront && isSafeTrajectoryToVehiclesRear)
                         
                         % Cost check
                         if cost < cost_min
@@ -156,6 +141,39 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             else
                assignin('base', 'isAcceptedTrajectory', false);
             end
+        end
+        
+        function [occupiedCells_otherVehiclesFront, occupiedCells_otherVehiclesRear] = getOccupiedCellsOtherVehicles(obj, sEgo, poseOtherVehicles, speedsOtherVehicles, time_trajectory)
+        % Get occupied cells for other vehicles ahead and behind the ego vehicle
+            
+            % TODO: Maybe only necessary for surrounding vehicles            
+            occupiedCells_otherVehiclesFront = zeros(size(poseOtherVehicles, 2)*4*obj.trajectoryReferenceLength, 4); % Preallocate: At most 4 cells can be occupied for one (s, d) tuple for each vehicle
+            id_front = 1;
+            occupiedCells_otherVehiclesRear = zeros(size(poseOtherVehicles, 2)*4*obj.trajectoryReferenceLength, 4);
+            id_rear = 1;
+            for id_otherVehicle = 1:size(poseOtherVehicles, 2)
+                [s_otherVehicle_current, d_otherVehicle] = Cartesian2Frenet(obj.RoadTrajectory, [poseOtherVehicles(1, id_otherVehicle), poseOtherVehicles(2, id_otherVehicle)]);
+                
+                if s_otherVehicle_current > sEgo % Other vehicle ahead of ego vehcile
+                    acceleration_worstCase = obj.minimumAcceleration; % Worst case: Full break
+                else % Other vehicle behind ego vehicle
+                    acceleration_worstCase = obj.maximumAcceleration; % Worst case: Maximum acceleration
+                end
+                    
+                [s_otherVehicle_trajectory, ~] = obj.calculateLongitudinalTrajectory(s_otherVehicle_current, speedsOtherVehicles(id_otherVehicle), obj.v_max, acceleration_worstCase, obj.trajectoryReferenceLength);
+                d_otherVehicle_trajectory = d_otherVehicle*ones(1, size(s_otherVehicle_trajectory, 2));
+                
+                occupiedCells_otherVehicle = Continuous2Discrete(obj.spaceDiscretisationMatrix, s_otherVehicle_trajectory, d_otherVehicle_trajectory, time_trajectory);
+                
+                if s_otherVehicle_current > sEgo % Ahead
+                    [occupiedCells_otherVehiclesFront, id_front] = obj.addCells(id_front, occupiedCells_otherVehiclesFront, occupiedCells_otherVehicle);
+                else % Behind
+                    [occupiedCells_otherVehiclesRear, id_rear] = obj.addCells(id_rear, occupiedCells_otherVehiclesRear, occupiedCells_otherVehicle);
+                end
+            end
+            
+            occupiedCells_otherVehiclesFront = occupiedCells_otherVehiclesFront(1:id_front-1, :);
+            occupiedCells_otherVehiclesRear = occupiedCells_otherVehiclesRear(1:id_rear-1, :);
         end
         
         function [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_dot_current, d_ddot_current, d_destination, durationManeuver, v_current)
@@ -273,10 +291,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             curvature = delta_orientation./delta_position;
             a_centrifugal = velocity_trajectory(1:end-1)'.^2.*curvature; % Alternative: Limit by using d_ddot
             
-            isFeasibleCurviture = ~any(abs(curvature) >= obj.curvature_max);
-            isFeasibleCentrifugalAcceleration = ~any(abs(a_centrifugal) >= obj.a_lateral_max); % Placeholder for a_lateral_max
+            isFeasibleCurvature = all(abs(curvature) < obj.curvature_max);
+            isFeasibleCentrifugalAcceleration = all(abs(a_centrifugal) < obj.a_lateral_max); % Placeholder for a_lateral_max
             
-            isFeasible = isFeasibleCurviture && isFeasibleCentrifugalAcceleration;
+            isFeasible = isFeasibleCurvature && isFeasibleCentrifugalAcceleration;
         end
         
         function predictFuturePosition(obj, s_current, v_current, a_current)
@@ -378,6 +396,35 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             ID_nextPrediction = sum(timeToCheck >= trajectoryTime); % ID for next predicted time
             obj.predictedTrajectory = obj.laneChangingTrajectoryFrenet(ID_nextPrediction, :); 
+        end
+    end
+    
+    methods(Static)
+        function [cells_total, id_next] = addCells(id, cells_total, cells_toAdd)
+        % Add new cells to list
+            
+            id_next = id + size(cells_toAdd, 1);
+            
+            cells_total(id:id_next-1, :) = cells_toAdd;
+        end
+        
+        function isSafeTrajectory = checkTrajectoryIntersection(trajectory_ref, trajectory_other, relativePosition_other)
+        % Check whether discrete reference trajectory is safe by calculating the
+        % intersection between discrete reference trajectory and other discrete trajectories
+        
+            if ~(strcmp(relativePosition_other, 'front') || strcmp(relativePosition_other, 'rear'))
+                error('Invalid relative position of other trajectories. Specify relative position as ''front'' or ''rear''.');
+            end
+        
+            isSafeTrajectory = true;
+            [commonCells, id_intersect_ref, id_intersect_other] = intersect(trajectory_ref(:, 1:2), trajectory_other(:, 1:2), 'rows');
+            if ~isempty(commonCells)
+                if strcmp(relativePosition_other, 'front')
+                    isSafeTrajectory = all(trajectory_ref(id_intersect_ref, 3) > trajectory_other(id_intersect_other, 4));
+                else 
+                    isSafeTrajectory = all(trajectory_ref(id_intersect_ref, 4) < trajectory_other(id_intersect_other, 3));
+                end
+            end
         end
     end
 end

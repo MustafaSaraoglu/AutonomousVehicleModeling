@@ -81,10 +81,6 @@ vOtherVehicles_ref = vOtherVehicles_0; % Reference longitudinal velocity [m/s]
 %% Lateral Control
 isAcceptedTrajectory = false; % Check whether lane changing trajectory is accepted
 
-% Lane Changing maneuver
-durationToLeftLane = 2; % Time for lane changing (to left lane) [s]
-durationToRightLane = 2; % Time for overtaking (to right lane) [s]
-
 numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
@@ -98,10 +94,6 @@ Ki = 9.3465;
 Kd = 0.1412;
 
 forwardMotionGain = 1.6684; % Position gain of forward motion for Stanley
-
-if timeHorizon < durationToLeftLane || timeHorizon < durationToRightLane
-    error('Time horizon must be greater than or equal to duration to change lane.');
-end
 
 %% Space Discretisation
 cell_length = 5; % Cell length in s-coordinate [m]

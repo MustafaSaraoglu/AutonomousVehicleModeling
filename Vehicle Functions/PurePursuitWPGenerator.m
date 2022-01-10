@@ -11,13 +11,13 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [nextWPs, d_ref, futurePosition, steeringReachability] = stepImpl(obj, pose, poseOtherVehicles, poseFutureOtherVehicles, changeLaneCmd, acceleration, velocity)
+        function [nextWPs, d_ref, futurePosition, steeringReachability] = stepImpl(obj, pose, poseOtherVehicles, speedsOtherVehicles, changeLaneCmd, acceleration, velocity)
         % Return the reference waypoints necessary for Pure Pursuit, the reference lateral positon and the reference trajectory to plot
 
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planTrajectory(changeLaneCmd, replan, s, d, acceleration, velocity, poseOtherVehicles, poseFutureOtherVehicles);
+            obj.planTrajectory(changeLaneCmd, replan, s, d, acceleration, velocity, poseOtherVehicles, speedsOtherVehicles);
             futurePosition = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);

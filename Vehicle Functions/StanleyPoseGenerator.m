@@ -7,13 +7,13 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [d_ref, futurePosition, steeringReachability, referencePose, poseOut] = stepImpl(obj, pose, poseOtherVehicles, poseFutureOtherVehicles, changeLaneCmd, acceleration, velocity)
+        function [d_ref, futurePosition, steeringReachability, referencePose, poseOut] = stepImpl(obj, pose, poseOtherVehicles, speedsOtherVehicles, changeLaneCmd, acceleration, velocity)
         % Return the reference lateral position, the reference trajectory to plot, the reference pose and the current pose  
             
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
             replan = obj.calculateTrajectoryError(s, d);
-            obj.planTrajectory(changeLaneCmd, replan, s, d, acceleration, velocity, poseOtherVehicles, poseFutureOtherVehicles);
+            obj.planTrajectory(changeLaneCmd, replan, s, d, acceleration, velocity, poseOtherVehicles, speedsOtherVehicles);
             futurePosition = obj.futurePosition(:, 1:2);
             
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
