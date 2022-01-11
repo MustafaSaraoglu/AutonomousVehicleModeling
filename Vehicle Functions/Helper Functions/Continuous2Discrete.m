@@ -1,42 +1,34 @@
-function discreteCells = Continuous2Discrete(spaceDiscretisationMatrix, s, d)
-% Maps continuous input to discrete rectangle cell(s)
+function discreteCells = Continuous2Discrete(spaceDiscretisationMatrix, s, d, time)
+% Maps continuous input to discrete rectangle cell(s) and stores the entrance and exit time to the cell(s)
+% discreteCell: [idxRow, idxColumn, time_enter, time_exit]
     
     % Method using matrix structure makes it twice as fast
     rows = spaceDiscretisationMatrix(1:2:end, 1:2); 
     columns = (reshape(spaceDiscretisationMatrix(2, :), 2, []))';
-    idxRow = (find(s>=rows(:, 1) & s<=rows(:, 2)))';
-    idxColumn = (find(d>=columns(:, 1) & d<=columns(:, 2)))';
-
-%     % Method using cell array
-%     idxRow = findIdx(spaceDiscretisation, s, 1);
-%     idxColumn = findIdx(spaceDiscretisation, d, 2);
     
-    if isempty(idxRow) || isempty(idxColumn)
-        discreteCells = []; % s,d not in space discretisation
-        return 
-    end
-    discreteCells = (combvec(idxRow, idxColumn))'; % [idxRow(cell1), idxColumn(cell1); idxRow(cell2), ...]
-end
-
-function idx = findIdx(spaceDiscretisation, value, dim)
-% Find correct row(s)(dim == 1)/colmumn(s)(dim == 2) for given s/d value 
-
-    for counter = 1:size(spaceDiscretisation, dim)
-        switch dim
-            case 1
-                cell = spaceDiscretisation{counter, 1}; % s/d boundries are the same in each row/column
-            case 2
-                cell = spaceDiscretisation{1, counter};
-        end
+    discreteCells = zeros(4*length(s), 4); % Preallocate: At most 4 cells can be occupied for one (s, d) tuple
+    idx = 1;
+    idx_prev = [];
+    for i = 1:length(s)
+        idxRow = (find(s(i)>=rows(:, 1) & s(i)<=rows(:, 2)))';
+        idxColumn = (find(d(i)>=columns(:, 1) & d(i)<=columns(:, 2)))';
         
-        if value < cell(dim, 1) || value > cell(dim, 2) % Incorrect row/column
-            idx = [];
-        elseif (counter ~= size(spaceDiscretisation, dim)) && (value == cell(dim, 2)) % s in between current and next row
-            idx = [counter, counter+1];
-            return
-        else % s/d must be in this row/column exactly
-            idx = counter;
-            return
+        cells = (combvec(idxRow, idxColumn))';
+        cells = cells(~ismember(cells, discreteCells(:, 1:2), 'rows'), :); % Do not duplicate cells
+                
+        idx_next = idx + size(cells, 1);
+        
+        if ~isempty(cells)
+            discreteCells(idx:idx_next-1, 1:2) = cells;
+            discreteCells(idx:idx_next-1, 3) = time(i); % Entrance time
+            if ~isempty(idx_prev)
+                discreteCells(idx_prev, 4) = time(i); % Exit time
+            end
+            idx_prev = idx:idx_next-1;
         end
+        idx = idx_next;
     end
+    
+    discreteCells = discreteCells(1:idx-1, :); % [idxRow(cell1), idxColumn(cell1); idxRow(cell2), ...]
+    discreteCells(idx_prev, 4) = time(end); 
 end

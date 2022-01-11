@@ -1,9 +1,6 @@
 % Initialisation of VehicleFollowing.slx model
 
 %% Constraints
-s_min = 0; % Minimum allowed longitudinal postion [m]
-s_max = 1000; % Maximum allowed longitudinal postion [m]
-
 v_min = 0; % Minimum allowed longitudinal velocity [m/s]
 v_max = 30; % Maximum allowed longitudinal velocity [m/s]
 
@@ -19,43 +16,16 @@ laneWidth = 3.7; % lane width [m]
 
 % Road trajectory according to MOBATSim map format
 % Straight Road
-% roadTrajectory =    [s_min  0   0;
-%                      s_max  0   0;
-%                      0      0   0;
-%                      0      0   0];
+roadTrajectory =    [0      0   0;
+                     1000   0   0;
+                     0      0   0;
+                     0      0   0];
                
 % % Curved Road
-roadTrajectory =    [s_min  0        0;
-                     s_max  0       -s_max;
-                     pi/2   s_min   -s_max;
-                     -1     -1      -1]; 
-
-% Double lane
-d_min = -laneWidth/2; % Right lateral lane boundary [m]
-d_max = 3/2*laneWidth; % Left lateral lane boundary [m]       
-
-%% Leading Vehicle
-% Vehicle's geometry
-dimensionsLead = [6; 2];  % Length and width [[m]; [m]]
-wheelBaseLead = 4; % Wheel base [m]
-% Radius of circle around rectangle vehicle representation for collision 
-% detection [m]
-radiusLead = sqrt((dimensionsLead(1)/2)^2 + (dimensionsLead(2)/2)^2); 
-
-sLead_0 = 60; % Initial Frenet s-coordinate [m]
-dLead = 0; % (Initial) Frenet d-coordinate [m]
-
-% Transformation to Cartesian for 3D-Animation
-% xLead_0: Initial x-coordinate [m]
-% yLead_0: Initial y-coordinate [m]
-% yawLead_0: Initial steering angle [rad]
-[positionLead_0, yawLead_0] = Frenet2Cartesian(sLead_0, dLead, roadTrajectory);
-xLead_0 = positionLead_0(1);
-yLead_0 = positionLead_0(2);
-
-vLead_0 = 10; % Initial longitudinal velocity [m/s]
-
-vLead_ref = vLead_0; % Reference longitudinal velocity [m/s]
+% roadTrajectory =    [0        0        0;
+%                      1000     0       -1000;
+%                      pi/2     0       -1000;
+%                      -1       -1      -1];  
 
 %% Ego Vehicle
 % Vehicle's geometry
@@ -78,20 +48,44 @@ dEgo_0 = 0; % Initial Frenet d-coordinate [m]
 xEgo_0 = positionEgo_0(1);
 yEgo_0 = positionEgo_0(2);
 
-vEgo_0 = 15; % Initial longitudinal velocity [m/s]
+vEgo_0 = 20; % Initial longitudinal velocity [m/s]
 
 vEgo_ref = vEgo_0; % Reference longitudinal velocity [m/s]
 
+%% Other Vehicles
+% [dataVehicle1, dataVehicle2, ..., dataVehicleN]
+
+% Vehicles' geometry
+dimensionsOtherVehicles = [6, 4; 2, 2];  % Length and width [[m]; [m]]
+wheelBaseOtherVehicles = [4, 3]; % Wheel base [m]
+% Radius of circle around rectangle vehicle representation for collision 
+% detection [m]
+radiusOtherVehicles = sqrt((dimensionsOtherVehicles(1, :)/2).^2 + (dimensionsOtherVehicles(2, :)/2).^2);
+
+sOtherVehicles_0 = [60, 40]; % Initial Frenet s-coordinate [m]
+dOtherVehicles = [0, laneWidth]; % (Initial) Frenet d-coordinate [m]
+
+% Transformation to Cartesian for 3D-Animation
+% xLead_0: Initial x-coordinate [m]
+% yLead_0: Initial y-coordinate [m]
+% yawLead_0: Initial steering angle [rad]
+[positionOtherVehicles_0, yawOtherVehicles_0] = Frenet2Cartesian(sOtherVehicles_0', dOtherVehicles', roadTrajectory);
+xOtherVehicles_0 = positionOtherVehicles_0(:, 1)';
+yOtherVehicles_0 = positionOtherVehicles_0(:, 2)';
+yawOtherVehicles_0 = yawOtherVehicles_0';
+
+vOtherVehicles_0 = [10, 13]; % Initial longitudinal velocity [m/s]
+
+vOtherVehicles_ref = vOtherVehicles_0; % Reference longitudinal velocity [m/s]
+
 %% Lateral Control
-% Lane Changing maneuver
-durationToLeftLane = 5; % Time for lane changing (to left lane) [s]
-durationToRightLane = 5; % Time for overtaking (to right lane) [s]
+isAcceptedTrajectory = false; % Check whether lane changing trajectory is accepted
 
 numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
 lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 
 Ts = 0.01; % Sampling time [s]
-timeHorizon = 1; % Time horizon for trajectory genereation [s]
+timeHorizon = 5; % Time horizon for trajectory genereation [s]
 partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
 
 % Gains for PID controller
@@ -108,12 +102,14 @@ laneCell_width = 3; % Width of right/left lane cell [m]
 
 %% Functions
 function [spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)
+% Divide road into discrete cells using Frenet Coordinates
+
     route = roadTrajectory([1, 2],[1, 3]).*[1, -1; 1, -1];
     radian = roadTrajectory(3, 1);
     startPoint = route(1, :);
-    endPoint = route(2, :);
 
     if radian == 0 % Straight road
+        endPoint = route(2, :);
         route_Vector = endPoint - startPoint;
 
         routeLength = norm(route_Vector);

@@ -2,12 +2,11 @@ classdef PlotDrivingScenario< matlab.System
 % Plot driving scenario
     
     properties(Nontunable)
-        dimensionsLead % Dimensions (length, width) leading vehicle [[m]; [m]]
-        wheelBaseLead % Wheel base leading vehicle [m]
+        dimensionsOtherVehicles % Dimensions (length, width) other vehicles [[m]; [m]]
+        wheelBaseOtherVehicles % Wheel base other vehicles [m]
         dimensionsEgo % Dimensions (length, width) ego vehicle [[m]; [m]]
         wheelBaseEgo % Wheel base ego vehicle [m]
         
-        s_max % Maximum allowed longitudinal postion [m]
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
         
@@ -34,18 +33,27 @@ classdef PlotDrivingScenario< matlab.System
             obj.plotDiscreteSpace(); 
         end
 
-        function stepImpl(obj, poseLead, poseLeadFuture_min, poseLeadFuture_max, positionEgoFuture, egoReachability, nextWPsPurePursuit, poseEgo)
+        function stepImpl(obj, poseOtherVehicles, poseOtherVehiclesFuture, positionEgoFuture, egoReachability, nextWPsPurePursuit, poseEgo)
         % Plot driving scenario
         
             obj.deletePreviousPlots; 
-        
-            % Vehicle Lead
-            [obj.plots2update.vehicles.Lead, obj.plots2update.vehicles.LocationLead] = obj.plotVehicle(poseLead, obj.wheelBaseLead, obj.dimensionsLead, [0, 204/255, 204/255], 'o');
-            plot(poseLead(1), poseLead(2), '.', 'Color', 'cyan'); % Traces
-            % Future predictions
-            [obj.plots2update.vehicles.LeadFuture_min, obj.plots2update.vehicles.LocationLeadFuture_min] = obj.plotVehicle(poseLeadFuture_min, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
-            [obj.plots2update.vehicles.LeadFuture_max, obj.plots2update.vehicles.LocationLeadFuture_max] = obj.plotVehicle(poseLeadFuture_max, obj.wheelBaseLead, obj.dimensionsLead, [153/255, 1, 1], 'o');
-
+            
+            % Other Vehicles
+            for id_otherVehicle = 1:size(poseOtherVehicles, 2)
+                % Vehicles
+                fieldVehicleName = append('OtherVehicle', num2str(id_otherVehicle));
+                fieldVehicleLocation = append('LocationOtherVehicle', num2str(id_otherVehicle));
+                [obj.plots2update.vehicles.(fieldVehicleName), obj.plots2update.vehicles.(fieldVehicleLocation)] = obj.plotVehicle(poseOtherVehicles(:, id_otherVehicle), obj.wheelBaseOtherVehicles(id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle), [0, 204/255, 204/255], 'o');
+                plot(poseOtherVehicles(1, id_otherVehicle), poseOtherVehicles(2, id_otherVehicle), '.', 'Color', 'cyan'); % Traces
+                % Future predictions
+                fieldVehicleFutureMinName = append('OtherVehicleFuture_min', num2str(id_otherVehicle));
+                fieldVehicleFutureMinLocation = append('LocationOtherVehicleFuture_min', num2str(id_otherVehicle));
+                fieldVehicleFutureMaxName = append('OtherVehicleFuture_max', num2str(id_otherVehicle));
+                fieldVehicleFutureMaxLocation = append('LocationOtherVehicleFuture_max', num2str(id_otherVehicle));
+                [obj.plots2update.vehicles.(fieldVehicleFutureMinName), obj.plots2update.vehicles.(fieldVehicleFutureMinLocation)] = obj.plotVehicle(poseOtherVehiclesFuture(1:3, id_otherVehicle), obj.wheelBaseOtherVehicles(id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle), [153/255, 1, 1], 'o');
+                [obj.plots2update.vehicles.(fieldVehicleFutureMaxName), obj.plots2update.vehicles.(fieldVehicleFutureMaxLocation)] = obj.plotVehicle(poseOtherVehiclesFuture(4:6, id_otherVehicle), obj.wheelBaseOtherVehicles(id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle), [153/255, 1, 1], 'o');
+            end
+            
             % Vehicle Ego
             [obj.plots2update.vehicles.Ego, obj.plots2update.vehicles.LocationEgo] = obj.plotVehicle(poseEgo, obj.wheelBaseEgo, obj.dimensionsEgo, 'red', 'o');
             plot(poseEgo(1), poseEgo(2), '.', 'Color', 'red'); 
@@ -59,14 +67,28 @@ classdef PlotDrivingScenario< matlab.System
             % Ego Reachability
             obj.plots2update.reachability.EgoReachabilityMinBoundary = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
             obj.plots2update.reachability.EgoReachabilityMaxBoundary = plot(egoReachability(:, 3), egoReachability(:, 4), 'Color', [51/255, 102/255, 0]);
+            % Temp: Connect limiting curves to area
+            x_lowerReferenceRight = egoReachability(end, 5);
+            y_lowerReferenceRight = egoReachability(end, 6);
+            x_lowerReferenceLeft = egoReachability(end, 7);
+            y_lowerReferenceLeft = egoReachability(end, 8);
+            if egoReachability(1, 5) == egoReachability(end, 5)
+                x_lowerReferenceRight = egoReachability(1, 1);
+                y_lowerReferenceRight = egoReachability(1, 2);
+                x_lowerReferenceLeft = egoReachability(end, 1);
+                y_lowerReferenceLeft = egoReachability(end, 2);
+            end
+            obj.plots2update.reachability.EgoReachabilityConnectRight = plot([x_lowerReferenceRight, egoReachability(1, 3)], [y_lowerReferenceRight, egoReachability(1, 4)], 'Color', [51/255, 102/255, 0]);
+            obj.plots2update.reachability.EgoReachabilityConnectLeft = plot([x_lowerReferenceLeft, egoReachability(end, 3)], [y_lowerReferenceLeft, egoReachability(end, 4)], 'Color', [51/255, 102/255, 0]);
+            
             obj.plots2update.reachability.EgoReachabilityRightBoundary = plot(egoReachability(:, 5), egoReachability(:, 6), 'Color', [51/255, 102/255, 0]);
             obj.plots2update.reachability.EgoReachabilityLeftBoundary = plot(egoReachability(:, 7), egoReachability(:, 8), 'Color', [51/255, 102/255, 0]);
             obj.plots2update.reachability.EgoReachabilityEmergencyBoundary = plot(egoReachability(:, 9), egoReachability(:, 10), 'Color', [153/255, 0, 0]);
 
             % Adjust Axis
-            x2 = poseEgo(1);
-            y2 = poseEgo(2);
-            axis([x2-40, x2+40, y2-20, y2+20]); % Camera following V2 as ego vehicle
+            xEgo = poseEgo(1);
+            yEgo = poseEgo(2);
+            axis([xEgo-80, xEgo+80, yEgo-40, yEgo+40]); % Camera following ego vehicle
         end
         
         function deletePreviousPlots(obj)
@@ -88,7 +110,23 @@ classdef PlotDrivingScenario< matlab.System
         function plotRoadLine(obj, d, lineRepresentation)
         % Plot road line according to lateral position
             
-            s = 0:0.1:obj.s_max;
+            route = obj.RoadTrajectory([1, 2],[1, 3]).*[1, -1; 1, -1];
+            radian = obj.RoadTrajectory(3, 1);
+            startPoint = route(1, :);
+
+            if radian == 0 % Straight road
+                endPoint = route(2, :);
+                route_Vector = endPoint - startPoint;
+
+                routeLength = norm(route_Vector);
+            else % Curved road
+                rotationCenter = obj.RoadTrajectory(3, [2, 3]).*[1, -1]; 
+                startPointVector = startPoint - rotationCenter;
+                routeRadius = norm(startPointVector); 
+
+                routeLength = abs(radian*routeRadius);
+            end
+            s = 0:0.1:routeLength;
             d = d*ones(1, length(s));
             [lanePoints, ~] = Frenet2Cartesian(s', d', obj.RoadTrajectory);
             plot(lanePoints(:, 1), lanePoints(:, 2), lineRepresentation, 'Color', 'black')

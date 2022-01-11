@@ -6,7 +6,6 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         maximumAcceleration % Maximum longitudinal acceleration [m/s^2]
         emergencyAcceleration % Acceleration for emergency break [m/s^2]
         
-        minimumVelocity % Minimum longitudinal velocity [m/s]
         maximumVelocity % Maximum longitudinal velocity [m/s]
         
         wheelBase % Wheel base vehicle [m]
@@ -33,7 +32,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             obj.numberPointsSteering = 2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max))); % Consider steering angle range and time horizon
         end
         
-        function [s_future, v_future] = predictLongitudinalFutureState(obj, s_0, v_0, acceleration, k)
+        function [s_future, v_future] = predictLongitudinalFutureState(obj, s_0, v_0, v_max, acceleration, k)
         % Predict longitudinal future state (longitudinal displacement, longitudinal velocity) 
         % according to an itnitial state and a constant acceleration in k+1 time steps
             
@@ -47,10 +46,10 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
                 futureState(2) = 0;
                 t_stop = -v_0/acceleration; % v(t) = 0 = acc*t + v_0 if acc = const.
                 futureState(1) = s_0 + 0.5*v_0*t_stop;
-            elseif futureState(2) > obj.maximumVelocity
-                futureState(2) = obj.maximumVelocity;
-                t_v_max = (obj.maximumVelocity - v_0)/acceleration; % v(t) = v_max = acc*t + v_0 if acc = const.
-                futureState(1) = s_0 + obj.maximumVelocity*obj.timeHorizon - 0.5*(obj.maximumVelocity - v_0)*t_v_max;
+            elseif futureState(2) > v_max
+                futureState(2) = v_max;
+                t_v_max = (v_max - v_0)/acceleration; % v(t) = v_max = acc*t + v_0 if acc = const.
+                futureState(1) = s_0 + v_max*(k+1)*obj.Ts - 0.5*(v_max - v_0)*t_v_max;
             end
             
             s_future = futureState(1);
@@ -60,9 +59,9 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         function steeringReachability = calculateSteeringReachability(obj, pose, s, v)
         % Calcuate reachability for all possible steering angles and different accelerations
                         
-            [s_future_min, ~] = obj.predictLongitudinalFutureState(s, v, obj.minimumAcceleration, obj.k_timeHorizon);
-            [s_future_max, ~] = obj.predictLongitudinalFutureState(s, v, obj.maximumAcceleration, obj.k_timeHorizon);
-            [s_future_emergency, ~] = obj.predictLongitudinalFutureState(s, v, obj.emergencyAcceleration, obj.k_timeHorizon);
+            [s_future_min, ~] = obj.predictLongitudinalFutureState(s, v, obj.maximumVelocity, obj.minimumAcceleration, obj.k_timeHorizon);
+            [s_future_max, ~] = obj.predictLongitudinalFutureState(s, v, obj.maximumVelocity, obj.maximumAcceleration, obj.k_timeHorizon);
+            [s_future_emergency, ~] = obj.predictLongitudinalFutureState(s, v, obj.maximumVelocity, obj.emergencyAcceleration, obj.k_timeHorizon);
             
             steeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
             
@@ -84,6 +83,17 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             
             % TODO: cclockwise variable instead of radii < 0
             turningRadius = obj.wheelBase./tan(steeringAngle);
+            angleLimit = pi;
+            
+            isAngleOverLimit = abs(arcLength./turningRadius) > angleLimit; % Limit space to constant angle
+            
+            if any(isAngleOverLimit) 
+                if length(arcLength) > 1 % right/left boundary[constant steering angle; varying arc length]
+                    arcLength(isAngleOverLimit) = abs(ones(1, length(arcLength(isAngleOverLimit)))*turningRadius*angleLimit);
+                else % min/max boundary[varying steering angle; constant arc length]
+                    turningRadius(isAngleOverLimit) = sign(turningRadius(isAngleOverLimit))*arcLength/angleLimit;
+                end
+            end
             
             x_destination = pose(1) + turningRadius.*(sin(pose(3) + arcLength./turningRadius) - sin(pose(3)));
             y_destination = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcLength./turningRadius));
