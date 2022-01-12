@@ -16,6 +16,7 @@ classdef PlotDrivingScenario< matlab.System
     % Pre-computed constants
     properties(Access = private)
         plots2update % Plots to update at every time step
+        drivingModes % Possible driving modes
     end
 
     methods(Access = protected)
@@ -31,9 +32,12 @@ classdef PlotDrivingScenario< matlab.System
             obj.plotRoadLine(obj.LaneWidth/2, '--'); % Center
             obj.plotRoadLine(3*obj.LaneWidth/2, '-'); % Left
             obj.plotDiscreteSpace(); 
+            
+            obj.drivingModes = ...
+                containers.Map([1, 2, 3], {'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'});
         end
 
-        function stepImpl(obj, poseOtherVehicles, poseOtherVehiclesFuture, positionEgoFuture, egoReachability, nextWPsPurePursuit, poseEgo)
+        function stepImpl(obj, poseOtherVehicles, poseOtherVehiclesFuture, positionEgoFuture, egoReachability, nextWPsPurePursuit, currentDrivingMode, poseEgo)
         % Plot driving scenario
         
             obj.deletePreviousPlots; 
@@ -64,6 +68,9 @@ classdef PlotDrivingScenario< matlab.System
                 obj.plots2update.trajectory.WPsEgo = plot(nextWPsPurePursuit(:, 1), nextWPsPurePursuit(:, 2), '-*', 'Color', 'magenta');
             end
             
+            % Driving mode and current state
+            obj.plots2update.annotations.drivingMode = annotation('textbox',[.5 .72 .2 .2], 'String', ['Current Driving Mode: ' obj.drivingModes(currentDrivingMode)], 'EdgeColor','none');
+            
             % Ego Reachability
             obj.plots2update.reachability.EgoReachabilityMinBoundary = plot(egoReachability(:, 1), egoReachability(:, 2), 'Color', [51/255, 102/255, 0]);
             obj.plots2update.reachability.EgoReachabilityMaxBoundary = plot(egoReachability(:, 3), egoReachability(:, 4), 'Color', [51/255, 102/255, 0]);
@@ -92,7 +99,7 @@ classdef PlotDrivingScenario< matlab.System
         end
         
         function deletePreviousPlots(obj)
-        % Delete plots (cars, trajectory, etc.) from the previous iteration
+        % Delete plots (cars, trajectory, etc.) and annotations from the previous iteration
             
             if isempty(obj.plots2update)
                 return
