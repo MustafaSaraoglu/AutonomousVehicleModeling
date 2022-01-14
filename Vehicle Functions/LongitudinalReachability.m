@@ -24,10 +24,9 @@ classdef LongitudinalReachability < ReachabilityAnalysis
             
             [sFuture_min, ~] = obj.predictLongitudinalFutureState(s_0, v_0, obj.maximumVelocity, obj.minimumAcceleration, obj.k_timeHorizon);
             [sFuture_max, ~] = obj.predictLongitudinalFutureState(s_0, v_0, obj.maximumVelocity, obj.maximumAcceleration, obj.k_timeHorizon);
-            
-            obj.verifyReachabilityAnalysis([s_0; v_0]);
         end
-
+        
+        % TODO: Remove unused function
         function verifyReachabilityAnalysis(obj, initialState)
         % Track error between predicted state and actual state every time horizon seconds
            
