@@ -11,77 +11,66 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [nextWPs, d_ref, futurePosition, steeringReachability] = stepImpl(obj, pose, poseOtherVehicles, speedsOtherVehicles, changeLaneCmd, acceleration, velocity)
-        % Return the reference waypoints necessary for Pure Pursuit, the reference lateral positon and the reference trajectory to plot
+        function [nextWPs, d_ref, steeringReachability] = stepImpl(obj, pose, poseOtherVehicles, speedsOtherVehicles, changeLaneCmd, velocity)
+        % Return the reference waypoints, the reference lateral positon and the steeringReachability
 
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
-            replan = obj.calculateTrajectoryError(s, d);
-            obj.planTrajectory(changeLaneCmd, replan, s, d, acceleration, velocity, poseOtherVehicles, speedsOtherVehicles);
-            futurePosition = obj.futurePosition(:, 1:2);
+            if changeLaneCmd 
+                % Store lane changing points if valid lane chaning trajectory found
+                obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, velocity, poseOtherVehicles, speedsOtherVehicles); 
+            end
             
+            % Boundary curves for steering reachability
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             
             [s_ref, d_ref] = obj.getNextFrenetTrajectoryWaypoints(s, velocity, obj.numberWaypoints);
             
-            [referencePositionCartesian, ~] = Frenet2Cartesian(s_ref, d_ref, obj.RoadTrajectory);
-            
-            nextWPs = referencePositionCartesian;
-            
+            [nextWPs, ~] = Frenet2Cartesian(s_ref, d_ref, obj.RoadTrajectory);
+
             d_ref = d_ref(1); % Only use first waypoint as current reference for d
         end
         
-        function [out1, out2, out3, out4] = getOutputSizeImpl(obj)
+        function [out1, out2, out3] = getOutputSizeImpl(obj)
             % Return size for each output port
             numberPointsSteering =  2*ceil(obj.timeHorizon*rad2deg(abs(obj.steerAngle_max)));
             
             out1 = [obj.numberWaypoints, 2];
             out2 = [1 1];
-            out3 = [1 2];
-            out4 = [numberPointsSteering, 10];
+            out3 = [numberPointsSteering, 10];
 
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);
         end
 
-        function [out1, out2, out3, out4] = getOutputDataTypeImpl(~)
+        function [out1, out2, out3] = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out1 = "double";
             out2 = "double";
             out3 = "double";
-            out4 = "double";
 
             % Example: inherit data type from first input port
             % out = propagatedInputDataType(obj,1);
         end
 
-        function [out1, out2, out3, out4] = isOutputComplexImpl(~)
+        function [out1, out2, out3] = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out1 = false;
             out2 = false;
             out3 = false;
-            out4 = false;
 
             % Example: inherit complexity from first input port
             % out = propagatedInputComplexity(obj,1);
         end
 
-        function [out1, out2, out3, out4] = isOutputFixedSizeImpl(~)
+        function [out1, out2, out3] = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out1 = true;
             out2 = true;
             out3 = true;
-            out4 = true;
 
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
-        end
-        
-%         function sts = getSampleTimeImpl(obj)
-%             % Define sample time type and parameters
-% 
-%             % Example: specify discrete sample time
-%             sts = obj.createSampleTime("Type", "Discrete", "SampleTime", obj.Ts);
-%         end      
+        end    
     end
 end

@@ -8,7 +8,7 @@ classdef RegisterVehicles < matlab.System
 
     methods(Access = protected)
         function [distances2Vehicles, ids_surroundingVehicles] = stepImpl(obj, poseOtherVehicles, poseEgo)
-        % Register s distances of the front and rear vehicles on the same lane and on the other lane
+        % Register s-distances of the front and rear vehicles on the same lane and on the other lane
             % ids_surroundingVehicles(1): ID front vehicle on the same lane
             % ids_surroundingVehicles(2): ID rear vehicle on the same lane
             % ids_surroundingVehicles(3): ID front vehicle on the opposite lane
@@ -24,13 +24,13 @@ classdef RegisterVehicles < matlab.System
             
             delta_d = dOtherVehicles - dEgo;
             
-            % Vehicles on the same lane
-            id_sameLane = abs(delta_d) < obj.LaneWidth/2; % TODO: Need to change if other vehicles are able to change lane
-            [distances2Vehicles(1), distances2Vehicles(2), ids_surroundingVehicles(1), ids_surroundingVehicles(2)] = obj.getSurroundingVehicleInformation(id_sameLane, sEgo, sOtherVehicles);
+            % Vehicles on the same lane as ego vehicle
+            vehicles_sameLane = abs(delta_d) < obj.LaneWidth/2; % TODO: Need to change if other vehicles are able to change lane
+            [distances2Vehicles(1), distances2Vehicles(2), ids_surroundingVehicles(1), ids_surroundingVehicles(2)] = obj.getClosestVehicles(vehicles_sameLane, sEgo, sOtherVehicles);
 
             % Vehicles on the opposite lane
-            id_otherLane = abs(delta_d) >= obj.LaneWidth/2;
-            [distances2Vehicles(3), distances2Vehicles(4), ids_surroundingVehicles(3), ids_surroundingVehicles(4)] = obj.getSurroundingVehicleInformation(id_otherLane, sEgo, sOtherVehicles);
+            vehicles_otherLane = abs(delta_d) >= obj.LaneWidth/2;
+            [distances2Vehicles(3), distances2Vehicles(4), ids_surroundingVehicles(3), ids_surroundingVehicles(4)] = obj.getClosestVehicles(vehicles_otherLane, sEgo, sOtherVehicles);
         end
 
         function [out1, out2] = getOutputSizeImpl(~)
@@ -71,29 +71,32 @@ classdef RegisterVehicles < matlab.System
     end
     
     methods(Static)
-        function [distanceFront, distanceRear, id_vehicleFront, id_vehicleRear] = getSurroundingVehicleInformation(id_lane, sEgo, sOtherVehicles)
-        % Get s distance to front and rear vehicle and their ids
+        function [distanceFront, distanceRear, id_vehicleFront, id_vehicleRear] = getClosestVehicles(relevantVehicles, sEgo, sOtherVehicles)
+        % Get closest vehicles and their distances to the ego vehicle
             
-            ids_vehicleOnLane = find(id_lane);
-            % Vehicle id default is -1 if there is no detection
-            id_vehicleFront = -1;
+            % Store nonzero elements to find id to corresponding relevant vehicles
+            id_toRelevantVehicles = find(relevantVehicles);
+            
+            % No vehicle found
+            id_vehicleFront = -1; % MATLAB System does not allow to return empty variable
             id_vehicleRear = -1;
-            % Very large default distance if there is no detection
-            distanceFront = 999;
-            distanceRear = -999;
-        
-            delta_s = sOtherVehicles(id_lane) - sEgo;
             
-            id_front = delta_s >= 0; % Front
-            if any(id_front)
-                [distanceFront, id_frontMin] = min(delta_s(id_front));
-                id_vehicleFront = ids_vehicleOnLane(id_frontMin);
+            % Infinite distance if no vehicle found
+            distanceFront = inf;
+            distanceRear = -inf;
+        
+            delta_s = sOtherVehicles(relevantVehicles) - sEgo;
+            
+            vehicles_front = delta_s >= 0; % Vehicles ahead of ego vehicle
+            if any(vehicles_front)
+                [distanceFront, vehicle_frontMin] = min(delta_s(vehicles_front));
+                id_vehicleFront = id_toRelevantVehicles(vehicle_frontMin);
             end
             
-            id_rear = delta_s < 0; % Rear
-            if any(id_rear)
-                [distanceRear, id_rearMin] = max(delta_s(id_rear));
-                id_vehicleRear = ids_vehicleOnLane(id_rearMin);
+            vehicles_rear = delta_s < 0; % Vehicles behind ego vehicle
+            if any(vehicles_rear)
+                [distanceRear, vehicle_rearMin] = max(delta_s(vehicles_rear));
+                id_vehicleRear = id_toRelevantVehicles(vehicle_rearMin);
             end
         end
     end

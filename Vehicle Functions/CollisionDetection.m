@@ -16,6 +16,8 @@ classdef CollisionDetection < matlab.System
             
             isCollided = false; 
             
+            % Center of rectangle vehicle is needed to check if circle
+            % around vehicles are overlapping
             centerPointEgo = getVehicleCenterPoint(poseEgo, obj.wheelBaseEgo);
             centerPointOtherVehicles = getVehicleCenterPoint(poseOtherVehicles, obj.wheelBaseOtherVehicles);
             
@@ -27,6 +29,8 @@ classdef CollisionDetection < matlab.System
                 
                 for id_otherVehicle = find(checkForCollision)
                     [~, ~, HitboxOtherVehicle] = createRectangleVehicle(centerPointOtherVehicles(:, id_otherVehicle), poseOtherVehicles(3, id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle));
+                    
+                    % Check if rectangles are overlapping
                     isCollided = obj.checkIntersection(HitboxOtherVehicle, HitboxEgo);
                     
                     if isCollided

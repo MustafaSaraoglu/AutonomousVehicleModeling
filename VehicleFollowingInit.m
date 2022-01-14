@@ -98,11 +98,13 @@ forwardMotionGain = 1.6684; % Position gain of forward motion for Stanley
 %% Space Discretisation
 cell_length = 5; % Cell length in s-coordinate [m]
 laneCell_width = 3; % Width of right/left lane cell [m]
-[spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width); % Discretisation of continuous space
+spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width); % Discretisation of continuous space
 
 %% Functions
-function [spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)
-% Divide road into discrete cells using Frenet Coordinates
+function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)
+% Divide road into discrete cells using Frenet Coordinates 
+% return cell array containing the corner points of each discrete cell
+% represented by the corresponding row and column index in the cell array
 
     route = roadTrajectory([1, 2],[1, 3]).*[1, -1; 1, -1];
     radian = roadTrajectory(3, 1);
@@ -126,10 +128,8 @@ function [spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuous
     roadCenterCell_width = 2*roadBoundryCell_width; % Width of road center cell [m]
 
     number_rows = ceil(routeLength/cell_length);
-    number_columns = 5; % Divide road width into 5 parts
-    spaceDiscretisation = cell(number_rows, number_columns); % Store cell array for comprehensibility
-    % Using 2*rows x 2*columns matrix instead of rows x columns (2x2) cell array because it is much more efficient than cell array
-    spaceDiscretisationMatrix = zeros(2*number_rows, 2*number_columns); 
+    number_columns = 5; % Divide road width into 5 cells
+    spaceDiscretisation = cell(number_rows, number_columns); % Preallocate spaceDiscretisation cell array
 
     for row = 1:number_rows
         s_start = (row-1)*cell_length;
@@ -158,7 +158,6 @@ function [spaceDiscretisation, spaceDiscretisationMatrix] = discretiseContinuous
             end
 
             spaceDiscretisation{row, column} = [s_start, s_end; d_start, d_end];
-            spaceDiscretisationMatrix(2*row-1:2*row, 2*column-1:2*column) = [s_start, s_end; d_start, d_end]; % Index shift because of matrix structure
         end
     end
 end
