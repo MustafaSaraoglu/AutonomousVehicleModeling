@@ -1,16 +1,10 @@
-classdef DiscretePlanner < matlab.System
+classdef DiscretePlannerManual < matlab.System
 % Select driving mode and decide if to execute lane changing maneuver
 
 % Driving Mode
 %   1 = FreeDrive
 %   2 = VehicleFollowing
 %   3 = EmergencyBrake
-
-% Current Lane
-%   0 = On the right lane
-%   0.5 = Going to left lane
-%   1 = On the left lane
-%   -0.5 = Going to right lane
 
 % Change Lane Cmd
 %   0 = Command to follow current trajectory (left lane, right lane, lane change)
