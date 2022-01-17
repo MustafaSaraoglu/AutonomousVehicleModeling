@@ -26,6 +26,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         a5
         
         laneChangeCmds % Possible commands for lane changing
+        plannerModes % Possible planner modes
         
         d_destination % Reference lateral destination (right or left lane)
         
@@ -54,6 +55,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
 
             obj.laneChangeCmds = ...
                 containers.Map({'CmdIdle', 'CmdStartToLeftLane', 'CmdStartToRightLane'}, [0, 1, -1]);
+            
+            obj.plannerModes = ...
+                containers.Map([1, 2], {'MANUAL', 'FORMAL'});
             
             obj.d_destination = 0; % Start on right lane
             

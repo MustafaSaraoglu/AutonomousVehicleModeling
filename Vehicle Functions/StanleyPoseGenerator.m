@@ -7,14 +7,17 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [d_ref, steeringReachability, referencePose, poseOut] = stepImpl(obj, pose, poseOtherVehicles, speedsOtherVehicles, changeLaneCmd, velocity)
+        function [d_ref, steeringReachability, referencePose, poseOut] = stepImpl(obj, pose, poseOtherVehicles, speedsOtherVehicles, changeLaneCmd, plannerMode, velocity)
         % Return the reference lateral position, the reference pose and the current pose  
             
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
-            if changeLaneCmd 
-                % Store lane changing points if valid lane chaning trajectory found
-                obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, velocity, poseOtherVehicles, speedsOtherVehicles); 
+            if strcmp(obj.plannerModes(plannerMode), 'MANUAL')
+                if changeLaneCmd 
+                    % Store lane changing points if valid lane chaning trajectory found
+                    obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, velocity, poseOtherVehicles, speedsOtherVehicles); 
+                end
+            elseif strcmp(obj.plannerModes(plannerMode), 'FORMAL')
             end
             
             % Boundary curves for steering reachability

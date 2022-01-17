@@ -1,45 +1,10 @@
-classdef DiscretePlannerManual < matlab.System
-% Select driving mode and decide if to execute lane changing maneuver
-
-% Driving Mode
-%   1 = FreeDrive
-%   2 = VehicleFollowing
-%   3 = EmergencyBrake
-
-% Change Lane Cmd
-%   0 = Command to follow current trajectory (left lane, right lane, lane change)
-%   1 = Command to start changing to left lane
-%  -1 = Command to start changing to right lane
-
-    properties(Nontunable)
-        vEgo_ref % Reference velocity for ego vehicle [m/s]
-        
-        LaneWidth % Width of road lane [m]
-        RoadTrajectory % Road trajectory according to MOBATSim map format
-        Ts % Sample time [s]
-    end
-    
-    % Pre-computed constants
-    properties(Access = private)
-        drivingModes % Possible driving modes
-        laneChangeCmds % Possible commands for lane changing
-        
-        states % Possible driving states
-        currentState % Current driving state
-        
-        toleranceReachLane % Accepted tolerance to reach destination lane
-        
-        waitingCounter % Counter to wait some time before recheck for lane changing
-    end
+classdef DiscretePlannerManual < DecisionMaking
+% Select driving mode and decide if to execute lane changing maneuver according to manual design
 
     methods(Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            obj.drivingModes = ...
-                containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
-            
-            obj.laneChangeCmds = ...
-                containers.Map({'CmdIdle', 'CmdStartToLeftLane', 'CmdStartToRightLane'}, [0, 1, -1]);
+            setupImpl@DecisionMaking(obj);
             
             stateNames = {...
                 % Right lane
@@ -67,18 +32,15 @@ classdef DiscretePlannerManual < matlab.System
             
             % Initial state: Free Drive and on the right lane 
             obj.currentState = obj.states('RightLane_FreeDrive');
-            
-            obj.toleranceReachLane = 0.05;
-            
-            obj.waitingCounter = 0;
         end
         
-        function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles, vEgo)
+        function [changeLaneCmd, plannerMode, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles, vEgo)
         % Return lane change command, the current lane state and the current driving mode (see system description)
             
             [~, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
             
             [drivingMode, changeLaneCmd] = obj.makeDecision(dEgo, vEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles);
+            plannerMode = obj.plannerModes('MANUAL');
         end
         
         function [drivingMode, changeLaneCmd] = makeDecision(obj, dEgo, vEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles)
