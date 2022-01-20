@@ -69,6 +69,27 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.a_lateral_max = 30; % Placeholder
         end
         
+        function planReferenceTrajectory(obj, changeLaneCmd, plannerMode, s, d, v, poseOtherVehicles, speedsOtherVehicles)
+            
+            if strcmp(obj.plannerModes(plannerMode), 'MANUAL')
+                if changeLaneCmd 
+                    % Store lane changing points if valid lane chaning trajectory found
+                    obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, v, poseOtherVehicles, speedsOtherVehicles); 
+                end
+            elseif strcmp(obj.plannerModes(plannerMode), 'FORMAL')
+            end
+        end
+        
+        function d_oppositeLane = getOppositeLane(obj, d_currentLane)
+        % Get lane opposite to current lane
+            
+            d_oppositeLane = 0;
+        
+            if d_currentLane == 0
+                d_oppositeLane = obj.LaneWidth;
+            end
+        end
+        
         function calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, d_dot, d_ddot, v, poseOtherVehicles, speedsOtherVehicles)
         % Calculate lane changing maneuver either to the left or right lane
             
@@ -88,7 +109,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             cost_min = inf;
             % Calculate candidate trajectories for different maneuver times
             for durManeuver = 1:0.2:obj.timeHorizon
-                [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, d_goal, durManeuver, v);
+                [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, d_goal, durManeuver, v, obj.maximumAcceleration);
                 
                 % Feasibility Check
                 if isFeasibleTrajectory
@@ -176,7 +197,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             occupiedCells_otherVehiclesBehind = occupiedCells_otherVehiclesBehind(1:id_rear-1, :);
         end
         
-        function [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_dot_current, d_ddot_current, d_destination, durationManeuver, v_current)
+        function [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_dot_current, d_ddot_current, d_destination, durationManeuver, v_current, a_ref)
         % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
@@ -214,8 +235,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             d_ddot_trajectory = 2*obj.a2 + 6*obj.a3*t_maneuver + 12*obj.a4*t_maneuver.^2 + 20*obj.a5*t_maneuver.^3;
             d_dddot_trajectory = 6*obj.a3 + 24*obj.a4*t_maneuver + 60*obj.a5*t_maneuver.^2;
             
-            % Calculate velocity profile according to FreeDrive 
-            [~, v_trajectory] = obj.calculateLongitudinalTrajectory(s_current, v_current, obj.vEgo_ref, obj.maximumAcceleration, length(t_maneuver));
+            % Calculate velocity profile according to reference acceleration 
+            [~, v_trajectory] = obj.calculateLongitudinalTrajectory(s_current, v_current, obj.vEgo_ref, a_ref, length(t_maneuver));
             
             % Calculate velocity in s-direction 
             s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
@@ -236,7 +257,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 t_longitudinal = durationManeuver+obj.Ts:obj.Ts:obj.timeHorizon; 
                 
                 % Calculate initial displacement and velocity for t_longitudinal_0 = durationManeuver+obj.Ts
-                [s_0, v_0] = obj.predictLongitudinalFutureState(s_trajectory(end), v_trajectory(end), obj.vEgo_ref, obj.maximumAcceleration, 0);
+                [s_0, v_0] = obj.predictLongitudinalFutureState(s_trajectory(end), v_trajectory(end), obj.vEgo_ref, a_ref, 0);
                 
                 [s_trajectory_straight, v_trajectory_straight] = obj.calculateLongitudinalTrajectory(s_0, v_0, obj.vEgo_ref, obj.maximumAcceleration, length(t_longitudinal));
                 
