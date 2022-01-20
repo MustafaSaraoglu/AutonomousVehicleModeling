@@ -1,104 +1,103 @@
 % Initialisation of VehicleFollowing.slx model
 
-%% Constraints
-v_min = 0; % Minimum allowed longitudinal velocity [m/s]
-v_max = 30; % Maximum allowed longitudinal velocity [m/s]
-
-a_min = -3; % Minimum allowed longitudinal acceleration [m/s^2]
-a_max = 2; % Maximum allowed longitudinal acceleration [m/s^2]
-a_emergency = -5; % Longitudinal acceleration for emergency brek [m/s^2]
-
-steerAngle_max = pi/8; % Maximum allowed steering angle [rad]
-angularVelocity_max = 0.1; % Maximum angular velocity [rad/s]
-
 %% Road
-laneWidth = 3.7; % lane width [m]
+road.laneWidth = 3.7; % lane width [m]
 
 % Road trajectory according to MOBATSim map format
 % Straight Road
-roadTrajectory =    [0      0   0;
-                     1000   0   0;
-                     0      0   0;
-                     0      0   0];
+road.trajectory =    [0      0   0;
+                      1000   0   0;
+                      0      0   0;
+                      0      0   0];
                
 % % Curved Road
-% roadTrajectory =    [0        0        0;
-%                      1000     0       -1000;
-%                      pi/2     0       -1000;
-%                      -1       -1      -1];  
+% road.trajectory =    [0        0        0;
+%                       1000     0       -1000;
+%                       pi/2     0       -1000;
+%                       -1       -1      -1];  
 
 %% Ego Vehicle
+%% Tunable:
 % Vehicle's geometry
-dimensionsEgo = [4; 2];  % length and width [[m]; [m]]
-wheelBaseEgo = 3; % Wheel base [m]
-% Radius of circle around rectangle vehicle representation for collision 
-% detection [m]
-radiusEgo = sqrt((dimensionsEgo(1)/2)^2 + (dimensionsEgo(2)/2)^2); 
+ego.dimensions = [4; 2];  % length and width [[m]; [m]]
+ego.wheelBase = 3; % Wheel base [m]
 
-minimumTurningRadiusEgo = wheelBaseEgo/tan(steerAngle_max); % Minimum turning radius [m]
+% Kinematic initial conditions
+ego.s_0 = 0; % Initial Frenet s-coordinate [m]
+ego.d_0 = 0; % Initial Frenet d-coordinate [m]
 
-sEgo_0 = 0; % Initial Frenet s-coordinate [m]
-dEgo_0 = 0; % Initial Frenet d-coordinate [m]
+ego.v_0 = 20; % Initial longitudinal velocity [m/s]
 
+ego.v_ref = ego.v_0 ; % Reference longitudinal velocity [m/s]
+
+%% Non-Tunable:
 % Transformation to Cartesian for Bicycle Kinematic Model
-% xEgo_0: Initial x-coordinate [m]
-% yEgo_0: Initial y-coordinate [m]
-% yawEgo_0: Initial steering angle [rad]
-[positionEgo_0, yawEgo_0] = Frenet2Cartesian(sEgo_0, dEgo_0, roadTrajectory);
-xEgo_0 = positionEgo_0(1);
-yEgo_0 = positionEgo_0(2);
-
-vEgo_0 = 20; % Initial longitudinal velocity [m/s]
-
-vEgo_ref = vEgo_0; % Reference longitudinal velocity [m/s]
+% ego.x_0: Initial x-coordinate [m]
+% ego.y_0: Initial y-coordinate [m]
+% ego.yaw_0: Initial steering angle [rad]
+[ego.position_0, ego.yaw_0] = Frenet2Cartesian(ego.s_0, ego.d_0, road.trajectory);
+ego.x_0 = ego.position_0(1);
+ego.y_0 = ego.position_0(2);
 
 %% Other Vehicles
-% [dataVehicle1, dataVehicle2, ..., dataVehicleN]
-
+% Structure:[dataVehicle1, dataVehicle2, ..., dataVehicleN]
+%% Tunable
 % Vehicles' geometry
-dimensionsOtherVehicles = [6, 4; 2, 2];  % Length and width [[m]; [m]]
-wheelBaseOtherVehicles = [4, 3]; % Wheel base [m]
-% Radius of circle around rectangle vehicle representation for collision 
-% detection [m]
-radiusOtherVehicles = sqrt((dimensionsOtherVehicles(1, :)/2).^2 + (dimensionsOtherVehicles(2, :)/2).^2);
+other.dimensions = [6, 4; 2, 2];  % Length and width [[m]; [m]]
+other.wheelBase = [4, 3]; % Wheel base [m]
 
-sOtherVehicles_0 = [60, 40]; % Initial Frenet s-coordinate [m]
-dOtherVehicles = [0, laneWidth]; % (Initial) Frenet d-coordinate [m]
+% Kinematic initial conditions
+other.s_0 = [60, 40]; % Initial Frenet s-coordinate [m]
+other.d_0 = [0, road.laneWidth]; % (Initial) Frenet d-coordinate [m]
 
+other.v_0 = [10, 13]; % Initial longitudinal velocity [m/s]
+
+other.v_ref = other.v_0 ; % Reference longitudinal velocity [m/s]
+
+%% Non-Tunable:
 % Transformation to Cartesian for 3D-Animation
-% xLead_0: Initial x-coordinate [m]
-% yLead_0: Initial y-coordinate [m]
+% other.x_0: Initial x-coordinate [m]
+% other.y_0: Initial y-coordinate [m]
 % yawLead_0: Initial steering angle [rad]
-[positionOtherVehicles_0, yawOtherVehicles_0] = Frenet2Cartesian(sOtherVehicles_0', dOtherVehicles', roadTrajectory);
-xOtherVehicles_0 = positionOtherVehicles_0(:, 1)';
-yOtherVehicles_0 = positionOtherVehicles_0(:, 2)';
-yawOtherVehicles_0 = yawOtherVehicles_0';
+[other.position_0, other.yaw_0] = Frenet2Cartesian(other.s_0', other.d_0', road.trajectory);
+other.x_0 = other.position_0(:, 1)';
+other.y_0 = other.position_0(:, 2)';
+other.yaw_0 = other.yaw_0';
 
-vOtherVehicles_0 = [10, 13]; % Initial longitudinal velocity [m/s]
+%% Constraints
+constraints.v_min = 0; % Minimum allowed longitudinal velocity [m/s]
+constraints.v_max = 30; % Maximum allowed longitudinal velocity [m/s]
 
-vOtherVehicles_ref = vOtherVehicles_0; % Reference longitudinal velocity [m/s]
+constraints.a_min = -3; % Minimum allowed longitudinal acceleration [m/s^2]
+constraints.a_max = 2; % Maximum allowed longitudinal acceleration [m/s^2]
+constraints.a_emergency = -5; % Longitudinal acceleration for emergency brek [m/s^2]
 
-%% Lateral Control
+constraints.steerAngle_max = pi/8; % Maximum allowed steering angle [rad]
+constraints.angularVelocity_max = 0.1; % Maximum angular velocity [rad/s]
+
+%% Trajectory Generation
+Ts = 0.01; % Sample time [s] for trajectory generation
+
 isAcceptedTrajectory = false; % Check whether lane changing trajectory is accepted
 
-numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
-lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
+trajectoryGeneration.timeHorizon = 5; % Time horizon for trajectory genereation [s]
+trajectoryGeneration.partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
 
-Ts = 0.01; % Sampling time [s]
-timeHorizon = 5; % Time horizon for trajectory genereation [s]
-partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
-
+%% Lateral Control
 % Gains for PID controller
-Kp = 8.7639; 
-Ki = 9.3465;
-Kd = 0.1412;
+PID.Kp = 8.7639; 
+PID.Ki = 9.3465;
+PID.Kd = 0.1412;
 
-forwardMotionGain = 1.6684; % Position gain of forward motion for Stanley
+PurePursuit.numberWaypoints = 15; % Number of waypoints to provide for Pure Pursuit
+PurePursuit.lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
+
+Stanley.forwardMotionGain = 1.6684; % Position gain of forward motion for Stanley
 
 %% Space Discretisation
 cell_length = 5; % Cell length in s-coordinate [m]
 laneCell_width = 3; % Width of right/left lane cell [m]
-spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width); % Discretisation of continuous space
+spaceDiscretisation = discretiseContinuousSpace(road.trajectory, road.laneWidth, cell_length, laneCell_width); % Discretisation of continuous space
 
 %% Functions
 function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)

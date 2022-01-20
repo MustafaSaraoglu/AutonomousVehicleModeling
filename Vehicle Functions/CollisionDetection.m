@@ -4,13 +4,24 @@ classdef CollisionDetection < matlab.System
     properties(Nontunable)
         dimensionsEgo % Dimensions (length, width) ego vehicle
         wheelBaseEgo % Wheel base ego vehicle
-        radiusEgo % Radius around ego vehicle rectangle representation
+        
         dimensionsOtherVehicles % Dimensions (length, width) other vehicles
-        wheelBaseOtherVehicles % Wheel base other vehicles
+        wheelBaseOtherVehicles % Wheel base other vehicles   
+    end
+    
+    properties(Access = protected)
+        radiusEgo % Radius around ego vehicle rectangle representation
         radiusOtherVehicles % Radius around other vehicles rectangle representation
     end
 
     methods(Access = protected)
+        function setupImpl(obj)
+            % Perform one-time calculations, such as computing constants
+            obj.radiusEgo = sqrt((obj.dimensionsEgo(1)/2)^2 + (obj.dimensionsEgo(2)/2)^2); 
+            obj.radiusOtherVehicles = sqrt((obj.dimensionsOtherVehicles(1, :)/2).^2 + ...
+                (obj.dimensionsOtherVehicles(2, :)/2).^2);
+        end
+        
         function isCollided = stepImpl(obj, poseOtherVehicles, poseEgo)
         % Check whether a collision between two vehicles is detected
             
