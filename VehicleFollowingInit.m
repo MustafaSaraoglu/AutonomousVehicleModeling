@@ -96,3 +96,7 @@ Stanley.forwardMotionGain = 1.6684; % Position gain of forward motion for Stanle
 discreteCells.cell_length = 5; % Cell length in s-coordinate [m]
 discreteCells.laneCell_width = 3; % Width of right/left lane cell [m]
 spaceDiscretisation = discretiseContinuousSpace(road.trajectory, road.laneWidth, discreteCells.cell_length, discreteCells.laneCell_width); % Discretisation of continuous space
+
+%% Disable Warning: 'Property Unspecified Default Value'
+id = 'SystemBlock:MATLABSystem:ParameterWithUnspecifiedDefaultValueRestrictedToBuiltinDataType';
+warning('off',id);
