@@ -19,9 +19,10 @@ function prepare_simulation(options)
         options.v_ref           (1,:) double = [20, 10, 13]         % Reference longitudinal velocity [m/s]       
         
         options.planner         (1,1) string = 'MANUAL'             % Mode of discrete planner
+                               % Alternative = 'FORMAL'
         
         options.lateral         (1,1) string = 'STANLEY'            % Mode of lateral control
-        
+                               % Alternative = 'PURE_PURSUIT'
         options.Th              (1,1) double = 5                    % Time horizon for trajectory genereation [s]
     end
     
@@ -63,13 +64,13 @@ function prepare_simulation(options)
     other.yaw_0 = other.yaw_0';
     
     %% Planner
-    planner = options.planner;
+    planner.mode = options.planner;
     
     %% Lateral Control
     lateral.mode = options.lateral;
     
     % Gains for PID controller
-    lateral.Kp = 8.7639; 
+    lateral.Kp = 8.7639;  
     lateral.Ki = 9.3465;
     lateral.Kd = 0.1412;
 
@@ -107,10 +108,24 @@ function prepare_simulation(options)
     assignin('base', 'planner', planner); 
     assignin('base', 'lateral', lateral); 
     assignin('base', 'trajectoryGeneration', trajectoryGeneration); 
+    assignin('base', 'lateral', lateral); 
     assignin('base', 'Ts', Ts); 
     assignin('base', 'constraints', constraints); 
     assignin('base', 'discreteCells', discreteCells); 
     assignin('base', 'spaceDiscretisation', spaceDiscretisation); 
+    
+    %% Load Model
+    modelName = 'VehicleFollowing';
+    load_system(modelName);
+    open_system(modelName);
+    
+    %% Set Planner Mode
+    % Set Variant Subsystem
+    set_param('VehicleFollowing/Ego - PID/Discrete Planner', 'modePlanner', planner.mode);
+    
+    %% Set Lateral Mode
+    % Set Variant Subsystem
+    set_param('VehicleFollowing/Ego - PID/Lateral Control', 'modeLateral', lateral.mode);
     
     %% Disable Warning: 'Property Unspecified Default Value'
     id = 'SystemBlock:MATLABSystem:ParameterWithUnspecifiedDefaultValueRestrictedToBuiltinDataType';
