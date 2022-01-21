@@ -78,8 +78,6 @@ constraints.angularVelocity_max = 0.1; % Maximum angular velocity [rad/s]
 %% Trajectory Generation
 Ts = 0.01; % Sample time [s] for trajectory generation
 
-isAcceptedTrajectory = false; % Check whether lane changing trajectory is accepted
-
 trajectoryGeneration.timeHorizon = 5; % Time horizon for trajectory genereation [s]
 trajectoryGeneration.partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
 
@@ -95,6 +93,6 @@ PurePursuit.lookAheadDistance = 6; % Look ahead distance for Pure Pursuit [m]
 Stanley.forwardMotionGain = 1.6684; % Position gain of forward motion for Stanley
 
 %% Space Discretisation
-discretCells.cell_length = 5; % Cell length in s-coordinate [m]
-discretCells.laneCell_width = 3; % Width of right/left lane cell [m]
-spaceDiscretisation = discretiseContinuousSpace(road.trajectory, road.laneWidth, discretCells.cell_length, discretCells.laneCell_width); % Discretisation of continuous space
+discreteCells.cell_length = 5; % Cell length in s-coordinate [m]
+discreteCells.laneCell_width = 3; % Width of right/left lane cell [m]
+spaceDiscretisation = discretiseContinuousSpace(road.trajectory, road.laneWidth, discreteCells.cell_length, discreteCells.laneCell_width); % Discretisation of continuous space

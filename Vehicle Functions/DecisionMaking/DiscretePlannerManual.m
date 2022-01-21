@@ -22,11 +22,6 @@ classdef DiscretePlannerManual < DecisionMaking
                 
                 % To right lane
                 'ToRightLane_FreeDrive', 8;
-                
-                % Check to other lane
-                'CheckToLeftLane_VehicleFollowing', 9;
-                'CheckToRightLane_FreeDrive', 10;
-                'CheckToRightLane_VehicleFollowing', 11
                 };
             obj.states = containers.Map(stateNames(:, 1)', [stateNames{:, 2}]);
             
@@ -45,11 +40,6 @@ classdef DiscretePlannerManual < DecisionMaking
         
         function [drivingMode, changeLaneCmd] = makeDecision(obj, dEgo, vEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles)
         % Make decision about driving mode and whether to change lane    
-            
-            % If all proposed lane changing trajectories are rejected, wait
-            % some time until new candidate trajectories are calculated
-            % because calculation is very expensive
-            obj.waitingCounter = obj.decrementCounter(obj.waitingCounter);
             
             vLead = []; % No detection
             id_lead = ids_surroundingVehicles(1);
@@ -82,14 +72,14 @@ classdef DiscretePlannerManual < DecisionMaking
                     end
                     
                     if obj.isVehicleIVeryFar(distance2frontSameLane)
+                        
                         obj.currentState = obj.states('RightLane_FreeDrive');
                     end
                     
                     if obj.isVehicleClose(distance2frontSameLane) && not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && ...
                             obj.isVehicleSlower(vEgo, vLead) && not(obj.isCloseToReferenceSpeed(vEgo, obj.vEgo_ref)) && ...
-                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane)) && ...
-                            obj.isWaitingTimeOver(obj.waitingCounter)
-                        obj.currentState = obj.states('CheckToLeftLane_VehicleFollowing');
+                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane))
+                        obj.currentState = obj.states('ToLeftLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToLeftLane');
                     end
@@ -97,16 +87,6 @@ classdef DiscretePlannerManual < DecisionMaking
                 case obj.states('RightLane_EmergencyBrake')
                     if obj.isVehicleFar(distance2frontSameLane)
                         obj.currentState = obj.states('RightLane_VehicleFollowing');
-                    end
-                    
-                case obj.states('CheckToLeftLane_VehicleFollowing')
-                    if obj.isTrajectoryAccepted()
-                        obj.currentState = obj.states('ToLeftLane_FreeDrive');
-                    end
-                    
-                    if not(obj.isTrajectoryAccepted())
-                        obj.currentState = obj.states('RightLane_VehicleFollowing');
-                        obj.waitingCounter = obj.setWaitingCounter(); 
                     end
                     
                 case obj.states('ToLeftLane_FreeDrive')   
@@ -123,9 +103,9 @@ classdef DiscretePlannerManual < DecisionMaking
                         obj.currentState = obj.states('LeftLane_EmergencyBrake');
                     end
                     
-                    if not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane)) && ...
-                            obj.isWaitingTimeOver(obj.waitingCounter)
-                        obj.currentState = obj.states('CheckToRightLane_FreeDrive');
+                    if not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && ...
+                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane))
+                        obj.currentState = obj.states('ToRightLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToRightLane');
                     end
@@ -139,9 +119,9 @@ classdef DiscretePlannerManual < DecisionMaking
                         obj.currentState = obj.states('LeftLane_FreeDrive');
                     end
                     
-                    if not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane)) && ...
-                            obj.isWaitingTimeOver(obj.waitingCounter)
-                        obj.currentState = obj.states('CheckToRightLane_VehicleFollowing');
+                    if not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && ...
+                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane))
+                        obj.currentState = obj.states('ToRightLane_FreeDrive');
                         
                         changeLaneCmd = obj.laneChangeCmds('CmdStartToRightLane');
                     end
@@ -149,26 +129,6 @@ classdef DiscretePlannerManual < DecisionMaking
                 case obj.states('LeftLane_EmergencyBrake')
                     if obj.isVehicleFar(distance2frontSameLane)
                         obj.currentState = obj.states('LeftLane_VehicleFollowing');
-                    end
-                
-                case obj.states('CheckToRightLane_FreeDrive')
-                    if obj.isTrajectoryAccepted()
-                        obj.currentState = obj.states('ToRightLane_FreeDrive');
-                    end
-                    
-                    if not(obj.isTrajectoryAccepted())
-                        obj.currentState = obj.states('LeftLane_FreeDrive');
-                        obj.waitingCounter = obj.setWaitingCounter(); 
-                    end
-                    
-                case obj.states('CheckToRightLane_VehicleFollowing')
-                    if obj.isTrajectoryAccepted()
-                        obj.currentState = obj.states('ToRightLane_FreeDrive');
-                    end
-                    
-                    if not(obj.isTrajectoryAccepted())
-                        obj.currentState = obj.states('LeftLane_VehicleFollowing');
-                        obj.waitingCounter = obj.setWaitingCounter();
                     end
                     
                 case obj.states('ToRightLane_FreeDrive')
@@ -200,12 +160,6 @@ classdef DiscretePlannerManual < DecisionMaking
                     drivingMode = obj.drivingModes('EmergencyBrake');
                 case obj.states('ToRightLane_FreeDrive')
                     drivingMode = obj.drivingModes('FreeDrive');
-                case obj.states('CheckToLeftLane_VehicleFollowing')
-                    drivingMode = obj.drivingModes('VehicleFollowing');
-                case obj.states('CheckToRightLane_FreeDrive')
-                    drivingMode = obj.drivingModes('FreeDrive');
-                case obj.states('CheckToRightLane_VehicleFollowing')
-                    drivingMode = obj.drivingModes('VehicleFollowing');
             end
         end
         
@@ -293,29 +247,6 @@ classdef DiscretePlannerManual < DecisionMaking
         
         function isReached = isReachedRightLane(d, tolerance)
             isReached = (abs(0 - d) < tolerance);
-        end
-        
-        
-        function counter = setWaitingCounter()
-        % Set counter to wait for next lane change command
-            counter = 1000; 
-        end
-        
-        function counter = decrementCounter(counter)
-        % Decrement counter if not already expired
-            if counter > 0
-                counter = counter - 1;
-            end
-        end
-        
-        function isOver = isWaitingTimeOver(counter)
-            isOver = counter == 0;
-        end
-        
-        function isAccepted = isTrajectoryAccepted()
-            % TODO: Implementation in Simulink without causing algebraic
-            % loop or messing up execution order (witout using base workespace)
-            isAccepted = evalin('base', 'isAcceptedTrajectory');
         end
     end
 end
