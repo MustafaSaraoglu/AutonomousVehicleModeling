@@ -7,7 +7,7 @@
 
 prepare_simulation('s_0', [0, 60, 40], 'd_0', [0, 0, 3.7], ...
     'v_0', [20, 10, 13], 'v_ref', [20, 10, 13]);
-run_simulation;
+run_simulation();
 
 %% Scenario 2
 % RightLane_FreeDrive -> RightLane_VehicleFollowing -> RightLane_EmergencyBrake 
@@ -17,7 +17,7 @@ run_simulation;
 
 prepare_simulation('s_0', [0, 40, 20], 'd_0', [0, 0, 3.7], ...
     'v_0', [23.5, 10, 30], 'v_ref', [30, 10, 7.2]);
-run_simulation;
+run_simulation();
 
 %% Scenario 3
 % RightLane_FreeDrive -> RightLane_EmergencyBrake
@@ -25,7 +25,7 @@ run_simulation;
 
 prepare_simulation('s_0', [0, 9, 0], 'd_0', [0, 0, 3.7], ...
     'v_0', [15, 10, 30], 'v_ref', [15, 30, 0]);
-run_simulation;
+run_simulation();
 
 %% Scenario 4
 % RightLane_FreeDrive -> RightLane_VehicleFollowing -> ToLeftLane_FreeDrive 
@@ -34,4 +34,4 @@ run_simulation;
 
 prepare_simulation('s_0', [0, 30, 61], 'd_0', [0, 0, 3.7], ...
     'v_0', [16, 10, 0.3], 'v_ref', [16, 10, 30]);
-run_simulation;
+run_simulation();

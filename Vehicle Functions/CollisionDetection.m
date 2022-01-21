@@ -12,6 +12,7 @@ classdef CollisionDetection < matlab.System
     properties(Access = protected)
         radiusEgo % Radius around ego vehicle rectangle representation
         radiusOtherVehicles % Radius around other vehicles rectangle representation
+        collisionDetected % Boolean to only register first collision during simulation
     end
 
     methods(Access = protected)
@@ -20,6 +21,7 @@ classdef CollisionDetection < matlab.System
             obj.radiusEgo = sqrt((obj.dimensionsEgo(1)/2)^2 + (obj.dimensionsEgo(2)/2)^2); 
             obj.radiusOtherVehicles = sqrt((obj.dimensionsOtherVehicles(1, :)/2).^2 + ...
                 (obj.dimensionsOtherVehicles(2, :)/2).^2);
+            obj.collisionDetected = false;
         end
         
         function isCollided = stepImpl(obj, poseOtherVehicles, poseEgo)
@@ -45,6 +47,12 @@ classdef CollisionDetection < matlab.System
                     isCollided = obj.checkIntersection(HitboxOtherVehicle, HitboxEgo);
                     
                     if isCollided
+                        if ~obj.collisionDetected
+                            t = get_param('VehicleFollowing', 'SimulationTime');
+
+                            fprintf('@t=%fs: Collision with other vehicle %i.\n', t, id_otherVehicle);
+                            obj.collisionDetected = true;
+                        end
                         return
                     end
                 end
