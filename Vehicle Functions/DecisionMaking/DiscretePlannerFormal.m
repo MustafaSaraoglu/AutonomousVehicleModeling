@@ -21,14 +21,19 @@ classdef DiscretePlannerFormal < DecisionMaking
             
             % Initial state: Free Drive and on the right lane 
             obj.currentState = obj.states('FreeDrive_KeepLane');
+            disp('@t=0s: Initial state is: ''FreeDrive_KeepLane''.');
         end
         
         function [changeLaneCmd, plannerMode, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles, vEgo)
         % Return lane change command, the current lane state and the current driving mode (see system description)
             
             [~, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
-        
+            
+            obj.previousState = obj.currentState;
             [drivingMode, changeLaneCmd] = obj.makeDecision(dEgo, vEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles);
+            
+            obj.displayNewState(obj.currentState, obj.previousState);
+            
             plannerMode = obj.plannerModes('FORMAL');
         end
         

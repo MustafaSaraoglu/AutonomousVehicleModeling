@@ -27,6 +27,7 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
         
         states % Possible driving states
         currentState % Current driving state
+        previousState % Previous driving state
         
         toleranceReachLane % Accepted tolerance to reach destination lane
         
@@ -48,6 +49,25 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
             obj.toleranceReachLane = 0.05;
             
             obj.waitingCounter = 0;
+        end
+        
+        function displayNewState(obj, currentState, previousState)
+        % Display state name if switched to another state
+            
+            if currentState ~= previousState
+                newState = currentState;
+                
+                stateNames = keys(obj.states);
+                % https://www.mathworks.com/matlabcentral/answers/98444-how-can-i-retrieve-the-key-which-belongs-to-a-specified-value-using-the-array-containers-map-in-matl
+                id = cellfun(@(x) isequal(x, newState), values(obj.states));
+                
+                key_newState = stateNames(id);
+                name_newState = key_newState{:};
+                
+                t = get_param('VehicleFollowing', 'SimulationTime');
+                
+                fprintf('@t=%fs: Switched to State: ''%s''.\n', t, name_newState);
+            end
         end
     end
 end

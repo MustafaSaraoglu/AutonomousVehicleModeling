@@ -27,6 +27,7 @@ classdef DiscretePlannerManual < DecisionMaking
             
             % Initial state: Free Drive and on the right lane 
             obj.currentState = obj.states('RightLane_FreeDrive');
+            disp('@t=0s: Initial state is: ''RightLane_FreeDrive''.');
         end
         
         function [changeLaneCmd, plannerMode, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles, vEgo)
@@ -34,7 +35,11 @@ classdef DiscretePlannerManual < DecisionMaking
             
             [~, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
             
+            obj.previousState = obj.currentState;
             [drivingMode, changeLaneCmd] = obj.makeDecision(dEgo, vEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles);
+            
+            obj.displayNewState(obj.currentState, obj.previousState);
+            
             plannerMode = obj.plannerModes('MANUAL');
         end
         

@@ -94,8 +94,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeftLane')
                 obj.d_destination = obj.LaneWidth;
+                destinationLane = 'left lane';
             elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRightLane')
                 obj.d_destination = 0; 
+                destinationLane = 'right lane';
             end
             
             % Static maneuver for 4s
@@ -109,6 +111,10 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             y_trajectory = obj.laneChangingTrajectoryCartesian(:, 2);
 
             plot(x_trajectory, y_trajectory, 'Color', 'green');
+            
+            t = get_param('VehicleFollowing', 'SimulationTime');
+            
+            fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
         end
         
         function [occupiedCells_otherVehiclesAhead, occupiedCells_otherVehiclesBehind] = getOccupiedCellsForOtherVehicles(obj, sEgo, poseOtherVehicles, speedsOtherVehicles, time)
