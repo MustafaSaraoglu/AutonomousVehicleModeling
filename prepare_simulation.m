@@ -114,6 +114,10 @@ function prepare_simulation(options)
     assignin('base', 'discreteCells', discreteCells); 
     assignin('base', 'spaceDiscretisation', spaceDiscretisation); 
     
+    %% Disable Warning: 'Property Unspecified Default Value'
+    id = 'SystemBlock:MATLABSystem:ParameterWithUnspecifiedDefaultValueRestrictedToBuiltinDataType';
+    warning('off',id);
+    
     %% Load Model
     modelName = 'VehicleFollowing';
     load_system(modelName);
@@ -126,10 +130,6 @@ function prepare_simulation(options)
     %% Set Lateral Mode
     % Set Variant Subsystem
     set_param('VehicleFollowing/Ego - PID/Lateral Control', 'modeLateral', lateral.mode);
-    
-    %% Disable Warning: 'Property Unspecified Default Value'
-    id = 'SystemBlock:MATLABSystem:ParameterWithUnspecifiedDefaultValueRestrictedToBuiltinDataType';
-    warning('off',id);
     
 end
 
