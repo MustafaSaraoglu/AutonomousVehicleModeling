@@ -1,5 +1,9 @@
 classdef LongitudinalReachability < ReachabilityAnalysis
 % Longitudinal reachability with constant (minimum/maximum) acceleration assumption
+    
+    properties(Nontunable)
+        lengthOut % Length of output
+    end
 
     % Pre-computed constants
     properties(Access = private)
@@ -22,8 +26,8 @@ classdef LongitudinalReachability < ReachabilityAnalysis
         function [sFuture_min, sFuture_max] = stepImpl(obj, v_0, s_0)
         % Return minimum and maximum predicted future s
             
-            [sFuture_min, ~] = obj.predictLongitudinalFutureState(s_0, v_0, obj.maximumVelocity, obj.minimumAcceleration, obj.k_timeHorizon);
-            [sFuture_max, ~] = obj.predictLongitudinalFutureState(s_0, v_0, obj.maximumVelocity, obj.maximumAcceleration, obj.k_timeHorizon);
+            [sFuture_min, ~] = obj.predictLongitudinalFutureState(s_0', v_0', obj.maximumVelocity, obj.minimumAcceleration, obj.k_timeHorizon);
+            [sFuture_max, ~] = obj.predictLongitudinalFutureState(s_0', v_0', obj.maximumVelocity, obj.maximumAcceleration, obj.k_timeHorizon);
         end
         
         % TODO: Remove unused function
@@ -43,10 +47,10 @@ classdef LongitudinalReachability < ReachabilityAnalysis
             end
         end
     
-        function [out1, out2] = getOutputSizeImpl(~)
+        function [out1, out2] = getOutputSizeImpl(obj)
             % Return size for each output port
-            out1 = [1 1];
-            out2 = [1 1];
+            out1 = [1 obj.lengthOut];
+            out2 = [1 obj.lengthOut];
 
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);

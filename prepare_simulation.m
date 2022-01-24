@@ -4,10 +4,12 @@ function prepare_simulation(options)
     %% Default values
     arguments
         options.road             (4,3) double =  [0      0   0;      % Road trajectory according to MOBATSim map format
-                                                 1000   0   0;
-                                                 0      0   0;
-                                                 0      0   0]; 
-            
+                                                  1000   0   0;
+                                                  0      0   0;
+                                                  0      0   0]; 
+         
+        options.n_other         (1,1) double = 2;                   % Number of other vehicles
+                                              
         % Structure:[dataEgoVehicle, dataOtherVehicle1, ..., dataOtherVehicleN]
         % Vehicles' geometry
         options.dims            (2,:) double = [4, 6, 4; 2, 2, 2]   % Length and width [[m]; [m]]
@@ -47,6 +49,7 @@ function prepare_simulation(options)
     ego.y_0 = ego.position_0(2);
     
     %% Other Vehicles
+    other.number = options.n_other;
     other.dimensions = options.dims(:, 2:end);
     other.wheelBase = options.wheelBase(2:end); 
     other.s_0 = options.s_0(2:end); 
