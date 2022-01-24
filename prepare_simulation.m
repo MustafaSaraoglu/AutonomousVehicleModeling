@@ -11,9 +11,6 @@ function prepare_simulation(options)
         options.n_other         (1,1) double = 2;                   % Number of other vehicles
                                               
         % Structure:[dataEgoVehicle, dataOtherVehicle1, ..., dataOtherVehicleN]
-        % Vehicles' geometry
-        options.dims            (2,:) double = [4, 6, 4; 2, 2, 2]   % Length and width [[m]; [m]]
-        options.wheelBase       (1,:) double = [3, 4, 3]            % Wheel base [m]
         % Kinematic initial conditions
         options.s_0             (1,:) double = [0, 60, 40]          % Initial Frenet s-coordinate [m]
         options.d_0             (1,:) double = [0, 0, 3.7]          % (Initial) Frenet d-coordinate [m]
@@ -33,8 +30,10 @@ function prepare_simulation(options)
     road.trajectory =  options.road;
     
     %% Ego Vehicle
-    ego.dimensions = options.dims(:, 1); 
-    ego.wheelBase = options.wheelBase(1); 
+     % Vehicle's geometry
+    ego.dimensions = [4; 2]; % Length and width [[m]; [m]]
+    ego.wheelBase = 3; % Wheel base [m]
+    
     ego.s_0 = options.s_0(1); 
     ego.d_0 = options.d_0(1); 
     ego.v_0 = options.v_0(1); 
@@ -49,9 +48,11 @@ function prepare_simulation(options)
     ego.y_0 = ego.position_0(2);
     
     %% Other Vehicles
+     % Vehicles' geometry
     other.number = options.n_other;
-    other.dimensions = options.dims(:, 2:end);
-    other.wheelBase = options.wheelBase(2:end); 
+    other.dimensions = [4; 2].*ones(2, other.number);
+    other.wheelBase = 3*ones(1, other.number); 
+    
     other.s_0 = options.s_0(2:end); 
     other.d_0 = options.d_0(2:end);
     other.v_0 = options.v_0(2:end);
