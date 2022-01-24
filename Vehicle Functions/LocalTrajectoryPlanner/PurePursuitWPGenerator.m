@@ -11,16 +11,13 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
             setupImpl@LocalTrajectoryPlanner(obj)
         end
 
-        function [nextWPs, d_ref, steeringReachability] = stepImpl(obj, pose, poseOtherVehicles, speedsOtherVehicles, changeLaneCmd, velocity)
+        function [nextWPs, d_ref, steeringReachability] = stepImpl(obj, pose, poseOtherVehicles, speedsOtherVehicles, changeLaneCmd, plannerMode, velocity)
         % Return the reference waypoints, the reference lateral positon and the steeringReachability
 
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
-            if changeLaneCmd 
-                % Store lane changing points if valid lane chaning trajectory found
-                obj.calculateLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, velocity, poseOtherVehicles, speedsOtherVehicles); 
-            end
-            
+            obj.planReferenceTrajectory(changeLaneCmd, plannerMode, s, d, velocity, poseOtherVehicles, speedsOtherVehicles);
+                
             % Boundary curves for steering reachability
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);
             

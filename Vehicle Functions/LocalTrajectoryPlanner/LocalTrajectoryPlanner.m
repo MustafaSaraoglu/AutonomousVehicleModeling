@@ -12,7 +12,6 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         LaneWidth % Width of road lane [m]
         RoadTrajectory % Road trajectory according to MOBATSim map format
         
-        discreteCell_length % Length of dicrete cell in s-coordinate [m]
         spaceDiscretisation % Space Discretisation
     end
     
@@ -26,6 +25,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         a5
         
         laneChangeCmds % Possible commands for lane changing
+        plannerModes % Possible planner modes
         
         d_destination % Reference lateral destination (right or left lane)
         
@@ -55,6 +55,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.laneChangeCmds = ...
                 containers.Map({'CmdIdle', 'CmdStartToLeftLane', 'CmdStartToRightLane'}, [0, 1, -1]);
             
+            obj.plannerModes = ...
+                containers.Map([1, 2], {'MANUAL', 'FORMAL'});
+            
             obj.d_destination = 0; % Start on right lane
             
             % +1 because planned trajectory also contains current waypoint at current time
@@ -65,66 +68,53 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.a_lateral_max = 30; % Placeholder
         end
         
-        function calculateLaneChangingManeuver(obj, changeLaneCmd, s, d, d_dot, d_ddot, v, poseOtherVehicles, speedsOtherVehicles)
+        function planReferenceTrajectory(obj, changeLaneCmd, plannerMode, s, d, v, poseOtherVehicles, speedsOtherVehicles)
+            
+            if strcmp(obj.plannerModes(plannerMode), 'MANUAL')
+                if changeLaneCmd 
+                    % Store lane changing points if valid lane chaning trajectory found
+                    obj.calculateStaticLaneChangingManeuver(changeLaneCmd, s, d, 0, 0, v); 
+                end
+            elseif strcmp(obj.plannerModes(plannerMode), 'FORMAL')
+            end
+        end
+        
+        function d_oppositeLane = getOppositeLane(obj, d_currentLane)
+        % Get lane opposite to current lane
+            
+            d_oppositeLane = 0;
+        
+            if d_currentLane == 0
+                d_oppositeLane = obj.LaneWidth;
+            end
+        end
+        
+        function calculateStaticLaneChangingManeuver(obj, changeLaneCmd, s, d, d_dot, d_ddot, v)
         % Calculate lane changing maneuver either to the left or right lane
             
             if changeLaneCmd == obj.laneChangeCmds('CmdStartToLeftLane')
-                d_goal = obj.LaneWidth;
+                obj.d_destination = obj.LaneWidth;
+                destinationLane = 'left lane';
             elseif changeLaneCmd == obj.laneChangeCmds('CmdStartToRightLane')
-                d_goal = 0; 
+                obj.d_destination = 0; 
+                destinationLane = 'right lane';
             end
             
-            % Time stamps for lane changing maneuver
-            time = get_param('VehicleFollowing', 'SimulationTime') + (0:obj.Ts:obj.timeHorizon); 
-            
-            % Calculate the occupied cells for all the other vehicles
-            % either ahead of or behind the ego vehicle
-            [occupiedCells_otherVehiclesAhead, occupiedCells_otherVehiclesBehind] = obj.getOccupiedCellsForOtherVehicles(s, poseOtherVehicles, speedsOtherVehicles, time);
-  
-            cost_min = inf;
-            % Calculate candidate trajectories for different maneuver times
-            for durManeuver = 1:0.2:obj.timeHorizon
-                [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, d_goal, durManeuver, v);
-                
-                % Feasibility Check
-                if isFeasibleTrajectory
-                    s_trajectory = trajectoryFrenet(:, 1);
-                    d_trajectory = trajectoryFrenet(:, 2);
-                    
-                    % TODO: Take vehicles' dimensions into account
-                    occupiedCells_ego = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory, d_trajectory, time);
+            % Static maneuver for 4s
+            durationManeuver = 4; 
+            [trajectoryFrenet, trajectoryCartesian, ~, ~] = obj.calculateLaneChangingTrajectory(s, d, d_dot, d_ddot, obj.d_destination, durationManeuver, v, obj.maximumAcceleration);
 
-                    % Safety check
-                    isSafeTrajectoryToVehiclesFront = obj.checkTrajectoryIntersection(occupiedCells_ego, occupiedCells_otherVehiclesAhead, 'ahead');
-                    isSafeTrajectoryToVehiclesRear = obj.checkTrajectoryIntersection(occupiedCells_ego, occupiedCells_otherVehiclesBehind, 'behind');
+            obj.laneChangingTrajectoryFrenet = trajectoryFrenet;
+            obj.laneChangingTrajectoryCartesian = trajectoryCartesian;
 
-                    if (isSafeTrajectoryToVehiclesFront && isSafeTrajectoryToVehiclesRear)
-                        % Cost check
-                        % Set lane changing points for the trajectory with the minimum cost
-                        if cost < cost_min
-                            obj.laneChangingTrajectoryFrenet = trajectoryFrenet;
-                            obj.laneChangingTrajectoryCartesian = trajectoryCartesian;
-                            
-                            cost_min = cost;
-                        end
-                    end   
-                end
-            end
+            x_trajectory = obj.laneChangingTrajectoryCartesian(:, 1);
+            y_trajectory = obj.laneChangingTrajectoryCartesian(:, 2);
+
+            plot(x_trajectory, y_trajectory, 'Color', 'green');
             
-            if ~isempty(obj.laneChangingTrajectoryCartesian) % There exists a accepted reference trajectory
-                obj.d_destination = d_goal;
-                
-                x_trajectory = obj.laneChangingTrajectoryCartesian(:, 1);
-                y_trajectory = obj.laneChangingTrajectoryCartesian(:, 2);
-                
-                plot(x_trajectory, y_trajectory, 'Color', 'green');
-                
-                % Set base workspace variable so that the discrete planner
-                % knows, whether any candidate trajectory was accepted
-                assignin('base', 'isAcceptedTrajectory', true);
-            else % All trajectories rejected
-               assignin('base', 'isAcceptedTrajectory', false);
-            end
+            t = get_param('VehicleFollowing', 'SimulationTime');
+            
+            fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
         end
         
         function [occupiedCells_otherVehiclesAhead, occupiedCells_otherVehiclesBehind] = getOccupiedCellsForOtherVehicles(obj, sEgo, poseOtherVehicles, speedsOtherVehicles, time)
@@ -162,9 +152,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 
                 % Add cells either to the list of cells for vehicles ahead or behind the ego vehicle
                 if s_otherVehicle_current > sEgo % Ahead
-                    [occupiedCells_otherVehiclesAhead, id_front] = obj.addCells(id_front, occupiedCells_otherVehiclesAhead, occupiedCells_otherVehicle);
+                    [occupiedCells_otherVehiclesAhead, id_front] = obj.addToArray(occupiedCells_otherVehiclesAhead, occupiedCells_otherVehicle, id_front);
                 else % Behind
-                    [occupiedCells_otherVehiclesBehind, id_rear] = obj.addCells(id_rear, occupiedCells_otherVehiclesBehind, occupiedCells_otherVehicle);
+                    [occupiedCells_otherVehiclesBehind, id_rear] = obj.addToArray(occupiedCells_otherVehiclesBehind, occupiedCells_otherVehicle, id_front);
                 end
             end
             
@@ -172,7 +162,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             occupiedCells_otherVehiclesBehind = occupiedCells_otherVehiclesBehind(1:id_rear-1, :);
         end
         
-        function [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_dot_current, d_ddot_current, d_destination, durationManeuver, v_current)
+        function [trajectoryFrenet, trajectoryCartesian, cost, isFeasibleTrajectory] = calculateLaneChangingTrajectory(obj, s_current, d_currnet, d_dot_current, d_ddot_current, d_destination, durationManeuver, v_current, a_ref)
         % Calculate minimum jerk trajectory for lane changing maneuver
             
             % Initial conditions
@@ -210,8 +200,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             d_ddot_trajectory = 2*obj.a2 + 6*obj.a3*t_maneuver + 12*obj.a4*t_maneuver.^2 + 20*obj.a5*t_maneuver.^3;
             d_dddot_trajectory = 6*obj.a3 + 24*obj.a4*t_maneuver + 60*obj.a5*t_maneuver.^2;
             
-            % Calculate velocity profile according to FreeDrive 
-            [~, v_trajectory] = obj.calculateLongitudinalTrajectory(s_current, v_current, obj.vEgo_ref, obj.maximumAcceleration, length(t_maneuver));
+            % Calculate velocity profile according to reference acceleration 
+            [~, v_trajectory] = obj.calculateLongitudinalTrajectory(s_current, v_current, obj.vEgo_ref, a_ref, length(t_maneuver));
             
             % Calculate velocity in s-direction 
             s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
@@ -232,7 +222,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 t_longitudinal = durationManeuver+obj.Ts:obj.Ts:obj.timeHorizon; 
                 
                 % Calculate initial displacement and velocity for t_longitudinal_0 = durationManeuver+obj.Ts
-                [s_0, v_0] = obj.predictLongitudinalFutureState(s_trajectory(end), v_trajectory(end), obj.vEgo_ref, obj.maximumAcceleration, 0);
+                [s_0, v_0] = obj.predictLongitudinalFutureState(s_trajectory(end), v_trajectory(end), obj.vEgo_ref, a_ref, 0);
                 
                 [s_trajectory_straight, v_trajectory_straight] = obj.calculateLongitudinalTrajectory(s_0, v_0, obj.vEgo_ref, obj.maximumAcceleration, length(t_longitudinal));
                 
@@ -341,12 +331,11 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
     end
     
     methods(Static)
-        function [cells_existing, id_next] = addCells(id, cells_existing, cells_toAdd)
-        % Add new cells to list of existing cells at the given index
-            
-            id_next = id + size(cells_toAdd, 1);
-            
-            cells_existing(id:id_next-1, :) = cells_toAdd;
+        function [array, id_next] = addToArray(array, toAdd, id)
+        % Add new elements to array at given index
+
+            id_next = id + size(toAdd, 1);
+            array(id:id_next-1, :) = toAdd;
         end
         
         function isSafeTrajectory = checkTrajectoryIntersection(trajectory_ego, trajectory_other, relativePosition_other)
