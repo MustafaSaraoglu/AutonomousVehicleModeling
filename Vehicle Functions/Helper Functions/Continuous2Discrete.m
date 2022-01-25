@@ -40,5 +40,5 @@ function discreteCells = Continuous2Discrete(spaceDiscretisation, s, d, time)
     end
     
     discreteCells = discreteCells(1:idx-1, :); % [idxRow(cell1), idxColumn(cell1); idxRow(cell2), ...]
-    discreteCells(idx_prev, 4) = time(end); 
+    discreteCells(idx_prev, 4) = Inf; % Exit time for last cell is unknown 
 end
