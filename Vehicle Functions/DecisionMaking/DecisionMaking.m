@@ -30,8 +30,6 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
         previousState % Previous driving state
         
         toleranceReachLane % Accepted tolerance to reach destination lane
-        
-        waitingCounter % Counter to wait some time before recheck for lane changing
     end
 
     methods(Access = protected)
@@ -47,8 +45,6 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
                 containers.Map({'MANUAL', 'FORMAL'}, [1, 2]);
             
             obj.toleranceReachLane = 0.05;
-            
-            obj.waitingCounter = 0;
         end
         
         function displayNewState(obj, currentState, previousState)
