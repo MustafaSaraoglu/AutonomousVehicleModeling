@@ -17,8 +17,8 @@ function prepare_simulation(options)
         options.v_0             (1,:) double = [20, 10, 13]         % Initial longitudinal velocity [m/s]
         options.v_ref           (1,:) double = [20, 10, 13]         % Reference longitudinal velocity [m/s]       
         
-        options.planner         (1,1) string = 'MANUAL'             % Mode of discrete planner
-                               % Alternative = 'FORMAL'
+        options.planner         (1,1) string = 'FORMAL'             % Mode of discrete planner
+                               % Alternative = 'MANUAL'
         
         options.lateral         (1,1) string = 'STANLEY'            % Mode of lateral control
                                % Alternative = 'PURE_PURSUIT'
@@ -87,7 +87,7 @@ function prepare_simulation(options)
     Ts = 0.01; % Sample time [s] for trajectory generation
 
     trajectoryGeneration.timeHorizon = options.Th;
-    trajectoryGeneration.partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
+    trajectoryGeneration.partsTimeHorizon = 5; % Divide time horizon into partsTimeHorizon equal parts
     
     %% Constraints
     constraints.v_min = 0; % Minimum allowed longitudinal velocity [m/s]
@@ -117,6 +117,7 @@ function prepare_simulation(options)
     assignin('base', 'constraints', constraints); 
     assignin('base', 'discreteCells', discreteCells); 
     assignin('base', 'spaceDiscretisation', spaceDiscretisation); 
+    assignin('base', 'nextState', 'FreeDrive'); % Start with FreeDrive
     
     %% Disable Warning: 'Property Unspecified Default Value'
     id = 'SystemBlock:MATLABSystem:ParameterWithUnspecifiedDefaultValueRestrictedToBuiltinDataType';

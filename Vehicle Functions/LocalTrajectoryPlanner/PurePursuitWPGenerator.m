@@ -16,7 +16,7 @@ classdef PurePursuitWPGenerator < LocalTrajectoryPlanner
 
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]);
             
-            obj.planReferenceTrajectory(changeLaneCmd, plannerMode, s, d, velocity, poseOtherVehicles, speedsOtherVehicles);
+            obj.planReferenceTrajectory(changeLaneCmd, plannerMode, s, d, velocity, pose(3), poseOtherVehicles, speedsOtherVehicles);
                 
             % Boundary curves for steering reachability
             steeringReachability = obj.calculateSteeringReachability(pose, s, velocity);

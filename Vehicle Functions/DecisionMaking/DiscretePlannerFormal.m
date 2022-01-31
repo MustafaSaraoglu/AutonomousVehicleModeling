@@ -8,20 +8,18 @@ classdef DiscretePlannerFormal < DecisionMaking
             
             stateNames = {...
                 % Keep Lane
-                'FreeDrive_KeepLane', 1;
-                'VehicleFollowing_KeepLane', 2;
-                'EmergencyBrake_KeepLane', 3;
+                'FreeDrive', 1;
+                'VehicleFollowing', 2;
+                'EmergencyBrake', 3;
                 
                 % Change Lane
-                'FreeDrive_ChangeLane', 4;
-                'VehicleFollowing_ChangeLane', 5;
-                'EmergencyBrake_ChangeLane', 6
+                'ChangeLane', 4;
                 };
             obj.states = containers.Map(stateNames(:, 1)', [stateNames{:, 2}]);
             
             % Initial state: Free Drive and on the right lane 
-            obj.currentState = obj.states('FreeDrive_KeepLane');
-            disp('@t=0s: Initial state is: ''FreeDrive_KeepLane''.');
+            obj.currentState = obj.states('FreeDrive');
+            disp('@t=0s: Initial state is: ''FreeDrive''.');
         end
         
         function [changeLaneCmd, plannerMode, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles, vEgo)
@@ -43,6 +41,8 @@ classdef DiscretePlannerFormal < DecisionMaking
             % Necessary to return some output even if there is no command
             changeLaneCmd = obj.laneChangeCmds('CmdIdle');
             
+            obj.currentState = obj.states(evalin('base', 'nextState'));
+            
             drivingMode = obj.getStateInfo(obj.currentState);
         end
         
@@ -50,18 +50,14 @@ classdef DiscretePlannerFormal < DecisionMaking
         % Get information about driving mode given a state
             
             switch state
-                case obj.states('FreeDrive_KeepLane')
+                case obj.states('FreeDrive')
                     drivingMode = obj.drivingModes('FreeDrive');
-                case obj.states('VehicleFollowing_KeepLane')
+                case obj.states('VehicleFollowing')
                     drivingMode = obj.drivingModes('VehicleFollowing');
-                case obj.states('EmergencyBrake_KeepLane')
+                case obj.states('EmergencyBrake')
                     drivingMode = obj.drivingModes('EmergencyBrake');
-                case obj.states('FreeDrive_ChangeLane')
+                case obj.states('ChangeLane')
                     drivingMode = obj.drivingModes('FreeDrive');
-                case obj.states('VehicleFollowing_ChangeLane')
-                    drivingMode = obj.drivingModes('VehicleFollowing');
-                case obj.states('EmergencyBrake_ChangeLane')
-                    drivingMode = obj.drivingModes('EmergencyBrake');
             end
         end
         
