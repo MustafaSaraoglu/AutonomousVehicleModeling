@@ -99,7 +99,15 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                         currentStates_Other(id_other) = obj.createState(s_other(id_other), d_other(id_other), poseOtherVehicles(3, id_other), speedsOtherVehicles(id_other));
                     end
                     
-                    bestDecision_Ego = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, 2);
+                    bestDecision_Ego = [];
+                    
+                    if obj.isChangingLane && (abs(d - obj.d_destination) < 0.05)
+                        obj.isChangingLane = false;
+                    end
+                    
+                    if ~obj.isChangingLane
+                        bestDecision_Ego = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, 3);
+                    end
                     
                     if ~isempty(bestDecision_Ego)
                         nextDecision = bestDecision_Ego(1, :);
@@ -115,10 +123,6 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                             obj.isChangingLane = true;
                             
                             obj.d_destination = nextDecision{3}.d;
-                            
-                            if abs(d - obj.d_destination) < 0.1
-                                obj.isChangingLane = false;
-                            end
                             
                             x_trajectory = obj.laneChangingTrajectoryCartesian(:, 1);
                             y_trajectory = obj.laneChangingTrajectoryCartesian(:, 2);
@@ -158,12 +162,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
         end
         
-        function bestDecision_Ego = planSafeManeuver(obj, state_Ego, d_goal, states_Other, depth2go)
+        function decisionMax_Ego = planSafeManeuver(obj, state_Ego, d_goal, states_Other, depth2go)
         % Plan and decide for a safe maneuver according to specified
         % searching depth
             
-            bestDecision_Ego = [];
-            bestDecisionFuture_Ego = [];
+            decisionMax_Ego = [];
+            decisionNext_Ego = [];
             
             time_trajectory = 0:obj.Ts:obj.timeHorizon;
             
@@ -214,13 +218,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
 
                 % Choose according to max s-value
                 [~, id_max] = max([safeFutureStates_Ego.s]);
-                bestDecision_Ego = decisionsSafe_Ego(id_max, :);
+                decisionMax_Ego = decisionsSafe_Ego(id_max, :);
                 return
             end
             
             possibleFutureStates_Other = [decisions_Other{:, 3}];
-%             % MODEL-FREE
-%             futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
+            futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
             
             % Expand tree for future states of safe decisions
             s_future_max = -Inf;
@@ -228,32 +231,40 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 futureState_Ego = decisionsSafe_Ego{id_safeDecision, 3};
                 d_futureGoal = futureState_Ego.d;
                 
-                % MODEL
-                futureStates_Other = obj.findMostUnsafeAdversatialFutureStates(futureState_Ego, possibleFutureStates_Other);
-                decisionSafeFuture_Ego = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, depth2go);
+                % Each safe future state needs to be called with 
+                % all combinations of possible future states for other vehicles
+                s_future_min = Inf;
+                for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
+                    futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
+                    decisionFuture_Ego = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, depth2go);
+                    
+                    % Min behaviour
+                    if isempty(decisionFuture_Ego)
+                        decisionMinFuture_Ego = [];
+                        break % This decisions is unsafe if at least one possibility is unsafe
+                    else
+                        decisionFinal_Ego = decisionFuture_Ego(end, :);
+                        s_future = decisionFinal_Ego{3}.s;
+                        if s_future < s_future_min
+                            decisionMinFuture_Ego = decisionFuture_Ego;
+                            s_future_min = s_future;
+                        end   
+                    end
+                end
                 
-                if ~isempty(decisionSafeFuture_Ego)
-                    bestDecisionFinal_Ego = decisionSafeFuture_Ego(end, :);
-                    s_future = bestDecisionFinal_Ego{3}.s;
+                % Max behaviour
+                if ~isempty(decisionMinFuture_Ego)
+                    decisionFinal_Ego = decisionMinFuture_Ego(end, :);
+                    s_future = decisionFinal_Ego{3}.s;
                     if s_future > s_future_max
-                        bestDecision_Ego = decisionsSafe_Ego(id_safeDecision, :);
-                        bestDecisionFuture_Ego = decisionSafeFuture_Ego;
+                        decisionNext_Ego = decisionMinFuture_Ego;
+                        decisionMax_Ego = decisionsSafe_Ego(id_safeDecision, :);
                         s_future_max = s_future;
                     end     
                 end
-                
-%                 % MODEL-FREE
-%                 % Each safe future state needs to be called with 
-%                 % all combinations of possible future states for other vehicles
-%                 for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
-%                     futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
-%                     futureDecisions_Ego = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, depth2go);
-%                     
-%                     temp = 3;
-%                 end
             end
             
-            bestDecision_Ego = [bestDecision_Ego; bestDecisionFuture_Ego];
+            decisionMax_Ego = [decisionMax_Ego; decisionNext_Ego];
         end
         
         function decisions = calculateDecisions_Ego_OnLane(obj, state, d_goal, time)
