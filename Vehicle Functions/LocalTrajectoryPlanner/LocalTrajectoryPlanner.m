@@ -106,7 +106,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     end
                     
                     if ~obj.isChangingLane
-                        bestDecision_Ego = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, 3);
+                        bestDecision_Ego = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, -Inf, Inf, 2);
                     end
                     
                     if ~isempty(bestDecision_Ego)
@@ -162,7 +162,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
         end
         
-        function decisionMax_Ego = planSafeManeuver(obj, state_Ego, d_goal, states_Other, depth2go)
+        function decisionMax_Ego = planSafeManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, depth2go)
         % Plan and decide for a safe maneuver according to specified
         % searching depth
             
@@ -184,7 +184,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             decisionsFeasible_Ego = decisions_Ego(isFeasibleDecision, :);
             
             % Decisions other vehicles
-            decisions_Other = obj.calculateDecisions_otherVehicles(states_Other, time_trajectory);
+            decisions_Other = obj.calculateDecisions_Other(states_Other, time_trajectory);
             
             % Safety check
             decisionsSafe_Ego = decisionsFeasible_Ego;
@@ -231,28 +231,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 futureState_Ego = decisionsSafe_Ego{id_safeDecision, 3};
                 d_futureGoal = futureState_Ego.d;
                 
-                % Each safe future state needs to be called with 
-                % all combinations of possible future states for other vehicles
-                s_future_min = Inf;
-                for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
-                    futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
-                    decisionFuture_Ego = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, depth2go);
-                    
-                    % Min behaviour
-                    if isempty(decisionFuture_Ego)
-                        decisionMinFuture_Ego = [];
-                        break % This decisions is unsafe if at least one possibility is unsafe
-                    else
-                        decisionFinal_Ego = decisionFuture_Ego(end, :);
-                        s_future = decisionFinal_Ego{3}.s;
-                        if s_future < s_future_min
-                            decisionMinFuture_Ego = decisionFuture_Ego;
-                            s_future_min = s_future;
-                        end   
-                    end
-                end
+                decisionMinFuture_Ego = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, depth2go);
                 
-                % Max behaviour
+                % Max behaviour: Ego vehicle
                 if ~isempty(decisionMinFuture_Ego)
                     decisionFinal_Ego = decisionMinFuture_Ego(end, :);
                     s_future = decisionFinal_Ego{3}.s;
@@ -260,11 +241,44 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                         decisionNext_Ego = decisionMinFuture_Ego;
                         decisionMax_Ego = decisionsSafe_Ego(id_safeDecision, :);
                         s_future_max = s_future;
-                    end     
+                    end    
+                    
+                    alpha = max(alpha, s_future);
+                    if beta <= alpha
+                        break
+                    end
                 end
             end
             
             decisionMax_Ego = [decisionMax_Ego; decisionNext_Ego];
+        end
+        
+        function decisionMinFuture_Ego = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, depth2go)
+        % For other vehicles choose the action, which is considered the most unsafe
+            
+            s_future_min = Inf;
+            for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
+                futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
+                decisionFuture_Ego = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, depth2go);
+
+                % Min behaviour: Other vehicles
+                if isempty(decisionFuture_Ego)
+                    decisionMinFuture_Ego = [];
+                    break % This decision is unsafe if at least one possibility is unsafe
+                else
+                    decisionFinal_Ego = decisionFuture_Ego(end, :);
+                    s_future = decisionFinal_Ego{3}.s;
+                    if s_future < s_future_min
+                        decisionMinFuture_Ego = decisionFuture_Ego;
+                        s_future_min = s_future;
+                    end   
+                    
+                    beta = min(beta, s_future);
+                    if beta <= alpha
+                        break
+                    end
+                end
+            end
         end
         
         function decisions = calculateDecisions_Ego_OnLane(obj, state, d_goal, time)
@@ -372,7 +386,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
         end
         
-        function decision_otherVehicles = calculateDecisions_otherVehicles(obj, states_Other, time)
+        function decision_otherVehicles = calculateDecisions_Other(obj, states_Other, time)
         % Get occupied cells for all other vehicles ahead and behind the ego vehicle
             
             % TODO: Maybe only necessary to get occupied cells for surrounding vehicles    
