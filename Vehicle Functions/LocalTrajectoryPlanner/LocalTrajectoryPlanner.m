@@ -43,6 +43,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         t_ref % Variable to store a specific simulation time of interest 
         
         isChangingLane % Return if currently executing lane changing maneuver
+        
+        searchDepth  % Depth for search algorithm
     end
     
     methods
@@ -76,6 +78,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.t_ref = 0; 
             
             obj.isChangingLane = false;
+            
+            obj.searchDepth = 2;
         end
         
         function planReferenceTrajectory(obj, changeLaneCmd, plannerMode, s, d, v, orientation, poseOtherVehicles, speedsOtherVehicles)
@@ -106,7 +110,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     end
                     
                     if ~obj.isChangingLane
-                        bestDecision_Ego = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, -Inf, Inf, 2);
+                        initNode = obj.createNode(currentState_Ego, currentStates_Other);
+                        dG_initial = digraph('O', initNode);
+                        dG_initial.Edges.Power = {'InitialStates'};
+                        dG_initial.Edges.Color = {[0, 0, 1]};
+                        dG_initial.Nodes.Color = {[0, 0, 1]; [0, 0, 1]};
+                        [bestDecision_Ego, dG_final] = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, -Inf, Inf, dG_initial, obj.searchDepth);
                     end
                     
                     if ~isempty(bestDecision_Ego)
@@ -162,7 +171,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
         end
         
-        function decisionMax_Ego = planSafeManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, depth2go)
+        function [decisionMax_Ego, graph] = planSafeManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, graph, depth2go)
         % Plan and decide for a safe maneuver according to specified
         % searching depth
             
@@ -170,6 +179,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             decisionNext_Ego = [];
             
             time_trajectory = 0:obj.Ts:obj.timeHorizon;
+            
+            depth2go = depth2go - 1;
             
             % Decisions Ego
             if ~obj.isChangingLane
@@ -185,6 +196,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             % Decisions other vehicles
             decisions_Other = obj.calculateDecisions_Other(states_Other, time_trajectory);
+            
+            % Digraph initialisation
+            startNode = obj.createNode(state_Ego, states_Other);
             
             % Safety check
             decisionsSafe_Ego = decisionsFeasible_Ego;
@@ -203,6 +217,17 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 % Remove unsafe decisions
                 if ~isSafe_decision
                     decisionsSafe_Ego(id_decision, :) = [];
+                else % Add safe decision to digraph
+                    endNode = obj.createNode(decisionsSafe_Ego{id_decision, 3}, states_Other);
+                    
+                    if isempty(intersect(graph.Nodes.Name, endNode))
+                        % Only add new nodes
+                        nodeProperties = table({endNode}, {[0, 1, 0]}, 'VariableNames', {'Name', 'Color'});
+                        graph = addnode(graph, nodeProperties);
+                    end
+                    
+                    edgeProperties = table(decisionsSafe_Ego(id_decision, 4), {[0, 1, 0]}, 'VariableNames', {'Power', 'Color'});
+                    graph = addedge(graph, startNode, endNode, edgeProperties);
                 end
             end
             
@@ -212,13 +237,17 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             end
 
             % Check depth left to go for tree expansion
-            depth2go = depth2go - 1;
             if depth2go == 0
                 safeFutureStates_Ego = [decisionsSafe_Ego{:, 3}];
 
                 % Choose according to max s-value
                 [~, id_max] = max([safeFutureStates_Ego.s]);
                 decisionMax_Ego = decisionsSafe_Ego(id_max, :);
+                
+                % Higlight best node in digraph
+                bestNode = obj.createNode(safeFutureStates_Ego(id_max), states_Other);
+                id_bestNode = findnode(graph, bestNode);
+                graph.Nodes.Color{id_bestNode} = [0, 1, 1];
                 return
             end
             
@@ -231,7 +260,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 futureState_Ego = decisionsSafe_Ego{id_safeDecision, 3};
                 d_futureGoal = futureState_Ego.d;
                 
-                decisionMinFuture_Ego = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, depth2go);
+                [decisionMinFuture_Ego, graph] = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, states_Other, alpha, beta, graph, depth2go);
                 
                 % Max behaviour: Ego vehicle
                 if ~isempty(decisionMinFuture_Ego)
@@ -250,17 +279,38 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 end
             end
             
+            % Higlight best node in digraph
+            if ~isempty(decisionMax_Ego)
+                bestNode = obj.createNode(decisionMax_Ego{1, 3}, states_Other); 
+                id_bestNode = findnode(graph, bestNode);
+                graph.Nodes.Color{id_bestNode} = [0, 1, 1];
+            end
+            
             decisionMax_Ego = [decisionMax_Ego; decisionNext_Ego];
         end
         
-        function decisionMinFuture_Ego = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, depth2go)
+        function [decisionMinFuture_Ego, graph] = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, statesPrev_Other, alpha, beta, graph, depth2go)
         % For other vehicles choose the action, which is considered the most unsafe
             
+            startNode = obj.createNode(futureState_Ego, statesPrev_Other);
+            worstNode = [];
+        
             s_future_min = Inf;
             for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
                 futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
-                decisionFuture_Ego = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, depth2go);
-
+                
+                endNode = obj.createNode(futureState_Ego, futureStates_Other);
+                
+                if isempty(intersect(graph.Nodes.Name, endNode))
+                    % Only add new nodes
+                    nodeProperties = table({endNode}, {[1, 0, 0]}, 'VariableNames', {'Name', 'Color'});
+                    graph = addnode(graph, nodeProperties);
+                end
+                edgeProperties = table({['Combination', num2str(id_statesOther)]}, {[1, 0, 0]}, 'VariableNames', {'Power', 'Color'});
+                graph = addedge(graph, startNode, endNode, edgeProperties);
+                
+                [decisionFuture_Ego, graph] = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, graph, depth2go);
+                
                 % Min behaviour: Other vehicles
                 if isempty(decisionFuture_Ego)
                     decisionMinFuture_Ego = [];
@@ -270,6 +320,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     s_future = decisionFinal_Ego{3}.s;
                     if s_future < s_future_min
                         decisionMinFuture_Ego = decisionFuture_Ego;
+                        worstNode = endNode;
                         s_future_min = s_future;
                     end   
                     
@@ -278,6 +329,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                         break
                     end
                 end
+            end
+            
+            % Higlight worst node in digraph
+            if ~isempty(worstNode)
+                id_worstNode = findnode(graph, worstNode);
+                graph.Nodes.Color{id_worstNode} = [1, 0, 1];
             end
         end
         
@@ -289,14 +346,20 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             decisionsFD = obj.getDecisionsForDrivingMode(state, d_goal, 1, obj.maximumAcceleration, 'FreeDrive', time);
 
             % VehicleFollowing
-            decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, obj.minimumAcceleration, 0, 'VehicleFollowing', time);
+            decisionsVF = [];
+            % ChangeLane
+            decisionsCL = [];
+            if state.speed > 0.001 % Avoid very slow velocities
+                % For v <= 0, vehicle following results in the same as EmergencyBrake
+                decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, obj.minimumAcceleration, 0, 'VehicleFollowing', time);
+                
+                % For v <= 0, ChangeLane is unfeasible
+                d_otherLane = obj.getOppositeLane(d_goal);
+                decisionsCL = obj.getDecisionsForLaneChange(state, d_otherLane, 0, 0, time);
+            end
 
             % EmergencyBrake
             decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, obj.emergencyAcceleration, obj.emergencyAcceleration, 'EmergencyBrake', time);
-
-            % ChangeLane
-            d_otherLane = obj.getOppositeLane(d_goal);
-            decisionsCL = obj.getDecisionsForLaneChange(state, d_otherLane, 0, 0, time);
             
             % All possible decisions
             decisions = [decisionsFD; decisionsVF; decisionsEB; decisionsCL];
@@ -326,11 +389,11 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             number_decisions = length(acc_lower:1:acc_upper);
 
-            decisions = cell(number_decisions, 3);
+            decisions = cell(number_decisions, 6);
             id_decision = 1;
             
             for acc = acc_lower:1:acc_upper 
-                description = [name_DrivingMode, '_acc', num2str(acc)];
+                description = [name_DrivingMode, '_{acc', num2str(acc), '}'];
                 
                 % Trajectory prediction
                 [s_trajectory, v_trajectory] = obj.calculateLongitudinalTrajectory(state.s, state.speed, obj.v_max, acc, obj.trajectoryReferenceLength);
@@ -351,14 +414,16 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         function decisions = getDecisionsForLaneChange(obj, state, d_goal, d_dot, d_ddot, time)
         % Get the decisions for a lane change for different maneuver times
             
-            number_decisions = length(2:1:obj.timeHorizon);
+            dur_lower = min(2, obj.timeHorizon);
+        
+            number_decisions = length(dur_lower:1:obj.timeHorizon);
 
-            decisions = cell(number_decisions, 3);
+            decisions = cell(number_decisions, 6);
             id_decision = 1;
             
             acc = 0;
-            for durManeuver = 2:1:obj.timeHorizon
-                description = ['ChangeLane', '_T', num2str(durManeuver)];
+            for durManeuver = dur_lower:1:obj.timeHorizon
+                description = ['ChangeLane', '_{T', num2str(durManeuver), '}'];
                 
                 [trajectoryFrenet, trajectoryCartesian, trajectorySpeed, ~, isFeasibleTrajectory] = obj.calculateLaneChangingTrajectory(state.s, state.d, d_dot, d_ddot, d_goal, durManeuver, state.speed, acc);
                 s_trajectory = trajectoryFrenet(:, 1)';
@@ -392,7 +457,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             % TODO: Maybe only necessary to get occupied cells for surrounding vehicles    
             n_other = length(states_Other); 
             
-            decision_otherVehicles = cell(1, n_other); 
+            decision_otherVehicles = cell(n_other, 6); 
             
             % Iteration over all other vehicles
             for id_otherVehicle = 1:n_other 
@@ -624,23 +689,24 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             state.speed = speed;
         end
         
-        function stateCombinations = getStateCombinations(states)
+        function stateCombinations = getStateCombinations(possiblestates)
         % Get all possible state combinations for each decision of each
         % vehicle
             
-            n_decisions = size(states, 1);
-            n_vehicles = size(states, 2);
+            % n_stateCombinations = n_possibleStates^n_vehicles
+            n_possibleStates = size(possiblestates, 1);
+            n_vehicles = size(possiblestates, 2);
             
             id_combinations = 1:n_vehicles;
             for id_vehicle = 2:n_vehicles
-                id_combinations = combvec(id_combinations, 1:n_decisions);
+                id_combinations = combvec(id_combinations, 1:n_possibleStates);
             end
             
             id_combinations = id_combinations';
             
             % TODO: Preallocation
             for id_vehicle = 1:n_vehicles
-                stateCombinations(:, id_vehicle) = states(id_combinations(:, id_vehicle), id_vehicle);
+                stateCombinations(:, id_vehicle) = possiblestates(id_combinations(:, id_vehicle), id_vehicle);
             end
         end
         
@@ -678,6 +744,14 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             array{id, 6} = trajectoryCartesian_LC;
             
             id_next = id + 1;
+        end
+        
+        function node = createNode(state_Ego, states_Other)
+        % Create node containing the state info: [stateInfo_Ego, stateInfo_Other]
+            
+            node = ['s:', '[', regexprep(num2str(round([state_Ego.s, states_Other.s], 1)), '\s+',' '), ']', ...
+                        ', d:', '[', regexprep(num2str(round([state_Ego.d, states_Other.d], 1)), '\s+',' '), ']', ...
+                        ', v:', '[', regexprep(num2str(round([state_Ego.speed, states_Other.speed], 1)), '\s+',' '), ']'];
         end
         
         function isSafeTrajectory = checkTrajectoryIntersection(trajectory_ego, trajectory_other, relativePosition_other)
