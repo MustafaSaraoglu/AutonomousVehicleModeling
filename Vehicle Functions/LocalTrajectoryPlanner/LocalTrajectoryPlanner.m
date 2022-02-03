@@ -45,6 +45,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         isChangingLane % Return if currently executing lane changing maneuver
         
         searchDepth  % Depth for search algorithm
+        
+        nodeID % To identify unique nodes in digraph
     end
     
     methods
@@ -80,6 +82,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             obj.isChangingLane = false;
             
             obj.searchDepth = 2;
+            
+            obj.nodeID = 0;
         end
         
         function planReferenceTrajectory(obj, changeLaneCmd, plannerMode, s, d, v, orientation, poseOtherVehicles, speedsOtherVehicles)
@@ -110,12 +114,19 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     end
                     
                     if ~obj.isChangingLane
-                        initNode = obj.createNode(currentState_Ego, currentStates_Other);
-                        dG_initial = digraph('O', initNode);
-                        dG_initial.Edges.Power = {'InitialStates'};
-                        dG_initial.Edges.Color = {[0, 0, 1]};
-                        dG_initial.Nodes.Color = {[0, 0, 1]; [0, 0, 1]};
-                        [bestDecision_Ego, dG_final] = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, -Inf, Inf, dG_initial, obj.searchDepth);
+                        dG_initial = digraph();
+                        
+                        obj.nodeID = 0;
+                        initNode_Ego = obj.createNode(obj.nodeID, currentState_Ego, 0);
+                        obj.nodeID = obj.nodeID + 1;
+                        initNode_Other = obj.createNode(obj.nodeID, currentStates_Other, 0);
+                        nodeProperties = table({initNode_Ego; initNode_Other}, {[0, 1, 1]; [1, 0, 1]}, 'VariableNames', {'Name', 'Color'});
+                        dG_initial = addnode(dG_initial, nodeProperties);
+                        
+                        edgeProperties = table({'InitialStates'}, {[1, 0, 1]}, 'VariableNames', {'Power', 'Color'});
+                        dG_initial = addedge(dG_initial, initNode_Ego, initNode_Other, edgeProperties);
+                        
+                        [bestDecision_Ego, dG_final] = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, -Inf, Inf, dG_initial, obj.nodeID, obj.searchDepth);
                     end
                     
                     if ~isempty(bestDecision_Ego)
@@ -171,12 +182,15 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
         end
         
-        function [decisionMax_Ego, graph] = planSafeManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, graph, depth2go)
+        function [decisionMax_Ego, graph] = planSafeManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, graph, startNodeID, depth2go)
         % Plan and decide for a safe maneuver according to specified
         % searching depth
             
             decisionMax_Ego = [];
             decisionNext_Ego = [];
+            
+            % Digraph initialisation
+            startNode = obj.createNode(startNodeID, states_Other, obj.searchDepth-depth2go);
             
             time_trajectory = 0:obj.Ts:obj.timeHorizon;
             
@@ -197,11 +211,9 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             % Decisions other vehicles
             decisions_Other = obj.calculateDecisions_Other(states_Other, time_trajectory);
             
-            % Digraph initialisation
-            startNode = obj.createNode(state_Ego, states_Other);
-            
             % Safety check
             decisionsSafe_Ego = decisionsFeasible_Ego;
+            nodeIdsSafe_Ego = cell(size(decisionsFeasible_Ego, 1), 1); % Store the IDs for expanding the digraph
             for id_decision = size(decisionsFeasible_Ego, 1):-1:1 % Reverse to remove unsafe decisions without confusing idx
                 TS_Ego = decisionsFeasible_Ego{id_decision, 1};
                 
@@ -217,14 +229,14 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 % Remove unsafe decisions
                 if ~isSafe_decision
                     decisionsSafe_Ego(id_decision, :) = [];
+                    nodeIdsSafe_Ego(id_decision) = [];
                 else % Add safe decision to digraph
-                    endNode = obj.createNode(decisionsSafe_Ego{id_decision, 3}, states_Other);
+                    obj.nodeID = obj.nodeID + 1;
+                    nodeIdsSafe_Ego{id_decision} = obj.nodeID;
                     
-                    if isempty(intersect(graph.Nodes.Name, endNode))
-                        % Only add new nodes
-                        nodeProperties = table({endNode}, {[0, 1, 0]}, 'VariableNames', {'Name', 'Color'});
-                        graph = addnode(graph, nodeProperties);
-                    end
+                    endNode = obj.createNode(obj.nodeID, decisionsSafe_Ego{id_decision, 3}, obj.searchDepth-depth2go);
+                    nodeProperties = table({endNode}, {[0, 1, 0]}, 'VariableNames', {'Name', 'Color'});
+                    graph = addnode(graph, nodeProperties);
                     
                     edgeProperties = table(decisionsSafe_Ego(id_decision, 4), {[0, 1, 0]}, 'VariableNames', {'Power', 'Color'});
                     graph = addedge(graph, startNode, endNode, edgeProperties);
@@ -244,23 +256,27 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 [~, id_max] = max([safeFutureStates_Ego.s]);
                 decisionMax_Ego = decisionsSafe_Ego(id_max, :);
                 
-                % Higlight best node in digraph
-                bestNode = obj.createNode(safeFutureStates_Ego(id_max), states_Other);
+                % Higlight best node and edge in digraph
+                bestNode = obj.createNode(nodeIdsSafe_Ego{id_max}, safeFutureStates_Ego(id_max), obj.searchDepth-depth2go);
                 id_bestNode = findnode(graph, bestNode);
                 graph.Nodes.Color{id_bestNode} = [0, 1, 1];
+                
+                id_bestEdge = findedge(graph, startNode, bestNode);
+                graph.Edges.Color{id_bestEdge} = [0, 1, 1];
                 return
             end
             
             possibleFutureStates_Other = [decisions_Other{:, 3}];
             futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
             
+            % TODO: Do while safety check
             % Expand tree for future states of safe decisions
             s_future_max = -Inf;
             for id_safeDecision = 1:size(decisionsSafe_Ego, 1)
                 futureState_Ego = decisionsSafe_Ego{id_safeDecision, 3};
                 d_futureGoal = futureState_Ego.d;
                 
-                [decisionMinFuture_Ego, graph] = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, states_Other, alpha, beta, graph, depth2go);
+                [decisionMinFuture_Ego, graph] = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, states_Other, alpha, beta, graph, nodeIdsSafe_Ego{id_safeDecision}, depth2go);
                 
                 % Max behaviour: Ego vehicle
                 if ~isempty(decisionMinFuture_Ego)
@@ -269,6 +285,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     if s_future > s_future_max
                         decisionNext_Ego = decisionMinFuture_Ego;
                         decisionMax_Ego = decisionsSafe_Ego(id_safeDecision, :);
+                        maxNodeID = nodeIdsSafe_Ego{id_safeDecision};
                         s_future_max = s_future;
                     end    
                     
@@ -279,37 +296,38 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 end
             end
             
-            % Higlight best node in digraph
+            % Higlight best node and edge in digraph
             if ~isempty(decisionMax_Ego)
-                bestNode = obj.createNode(decisionMax_Ego{1, 3}, states_Other); 
+                bestNode = obj.createNode(maxNodeID, decisionMax_Ego{3}, obj.searchDepth-depth2go); 
                 id_bestNode = findnode(graph, bestNode);
                 graph.Nodes.Color{id_bestNode} = [0, 1, 1];
+                
+                id_bestEdge = findedge(graph, startNode, bestNode);
+                graph.Edges.Color{id_bestEdge} = [0, 1, 1];
             end
             
             decisionMax_Ego = [decisionMax_Ego; decisionNext_Ego];
         end
         
-        function [decisionMinFuture_Ego, graph] = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, statesPrev_Other, alpha, beta, graph, depth2go)
+        function [decisionMinFuture_Ego, graph] = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, statesPrev_Other, alpha, beta, graph, startNodeID, depth2go)
         % For other vehicles choose the action, which is considered the most unsafe
             
-            startNode = obj.createNode(futureState_Ego, statesPrev_Other);
+            startNode = obj.createNode(startNodeID, futureState_Ego, obj.searchDepth-depth2go);
             worstNode = [];
         
             s_future_min = Inf;
             for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
                 futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
                 
-                endNode = obj.createNode(futureState_Ego, futureStates_Other);
+                obj.nodeID = obj.nodeID + 1;
+                endNode = obj.createNode(obj.nodeID, futureStates_Other, obj.searchDepth-depth2go);
+                nodeProperties = table({endNode}, {[1, 0, 0]}, 'VariableNames', {'Name', 'Color'});
+                graph = addnode(graph, nodeProperties);
                 
-                if isempty(intersect(graph.Nodes.Name, endNode))
-                    % Only add new nodes
-                    nodeProperties = table({endNode}, {[1, 0, 0]}, 'VariableNames', {'Name', 'Color'});
-                    graph = addnode(graph, nodeProperties);
-                end
                 edgeProperties = table({['Combination', num2str(id_statesOther)]}, {[1, 0, 0]}, 'VariableNames', {'Power', 'Color'});
                 graph = addedge(graph, startNode, endNode, edgeProperties);
                 
-                [decisionFuture_Ego, graph] = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, graph, depth2go);
+                [decisionFuture_Ego, graph] = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, graph, obj.nodeID, depth2go);
                 
                 % Min behaviour: Other vehicles
                 if isempty(decisionFuture_Ego)
@@ -331,10 +349,13 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 end
             end
             
-            % Higlight worst node in digraph
+            % Higlight worst node and edge in digraph
             if ~isempty(worstNode)
                 id_worstNode = findnode(graph, worstNode);
                 graph.Nodes.Color{id_worstNode} = [1, 0, 1];
+                
+                id_worstEdge = findedge(graph, startNode, worstNode);
+                graph.Edges.Color{id_worstEdge} = [1, 0, 1];
             end
         end
         
@@ -746,12 +767,15 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             id_next = id + 1;
         end
         
-        function node = createNode(state_Ego, states_Other)
-        % Create node containing the state info: [stateInfo_Ego, stateInfo_Other]
+        function node = createNode(ID, state, depth)
+        % Create node containing the state info
             
-            node = ['s:', '[', regexprep(num2str(round([state_Ego.s, states_Other.s], 1)), '\s+',' '), ']', ...
-                        ', d:', '[', regexprep(num2str(round([state_Ego.d, states_Other.d], 1)), '\s+',' '), ']', ...
-                        ', v:', '[', regexprep(num2str(round([state_Ego.speed, states_Other.speed], 1)), '\s+',' '), ']'];
+            depthMarker = repmat('*', 1, depth);
+            node = ['ID:', dec2hex(ID), ...
+                        ' s:', '[', regexprep(num2str(round([state.s], 1)), '\s+',' '), ']', ...
+                        ', d:', '[', regexprep(num2str(round([state.d], 1)), '\s+',' '), ']', ...
+                        ', v:', '[', regexprep(num2str(round([state.speed], 1)), '\s+',' '), ']', ...
+                        depthMarker];
         end
         
         function isSafeTrajectory = checkTrajectoryIntersection(trajectory_ego, trajectory_other, relativePosition_other)
