@@ -102,7 +102,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     
                     [s_other, d_other] = Cartesian2Frenet(obj.RoadTrajectory, [poseOtherVehicles(1, :)', poseOtherVehicles(2, :)']);
                     
-                    % TODO: Preallocation
+                    currentStates_Other = obj.preallocateStates(1, size(poseOtherVehicles, 2));
                     for id_other = 1:size(poseOtherVehicles, 2)
                         currentStates_Other(id_other) = obj.createState(s_other(id_other), d_other(id_other), poseOtherVehicles(3, id_other), speedsOtherVehicles(id_other));
                     end
@@ -685,6 +685,13 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             state.speed = speed;
         end
         
+        function states = preallocateStates(n_row, n_col)
+        % Preallocate struct array containing the states
+            
+            states = struct('s', cell(n_row, n_col), 'd', cell(n_row, n_col), ...
+                'orientation', cell(n_row, n_col), 'speed', cell(n_row, n_col));
+        end
+        
         function stateCombinations = getStateCombinations(possiblestates)
         % Get all possible state combinations for each decision of each
         % vehicle
@@ -700,7 +707,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             id_combinations = id_combinations';
             
-            % TODO: Preallocation
+            stateCombinations = LocalTrajectoryPlanner.preallocateStates(size(id_combinations, 1), n_vehicles);
             for id_vehicle = 1:n_vehicles
                 stateCombinations(:, id_vehicle) = possiblestates(id_combinations(:, id_vehicle), id_vehicle);
             end
@@ -710,7 +717,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
         % Find the future states for the other vehicles which are the most unsafe for the ego
         % vehicle according to some metric
             
-            % TODO: Preallocation
+            worstFutureState = LocalTrajectoryPlanner.preallocateStates(1, size(possibleFutureStates_Other, 2));
             for id_vehicle_other = 1:size(possibleFutureStates_Other, 2)
                 % Distance metric according to delta_s
                 s_other = [possibleFutureStates_Other(:, id_vehicle_other).s];
