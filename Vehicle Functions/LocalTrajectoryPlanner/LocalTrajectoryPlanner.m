@@ -114,17 +114,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     end
                     
                     if ~obj.isChangingLane
-                        dG_initial = digraph();
-                        
                         obj.nodeID = 0;
-                        initNode_Ego = obj.createNode(obj.nodeID, currentState_Ego, 0);
-                        obj.nodeID = obj.nodeID + 1;
-                        initNode_Other = obj.createNode(obj.nodeID, currentStates_Other, 0);
-                        nodeProperties = table({initNode_Ego; initNode_Other}, {[0, 1, 1]; [1, 0, 1]}, 'VariableNames', {'Name', 'Color'});
-                        dG_initial = addnode(dG_initial, nodeProperties);
+                        initNode_Ego = DigraphTree.getNodeName(obj.nodeID, currentState_Ego, 0);
                         
-                        edgeProperties = table({'InitialStates'}, {[1, 0, 1]}, 'VariableNames', {'Power', 'Color'});
-                        dG_initial = addedge(dG_initial, initNode_Ego, initNode_Other, edgeProperties);
+                        dG_initial = DigraphTree.initialise(initNode_Ego, [0, 1, 1]);
+                        
+                        [dG_initial, ~, obj.nodeID] = DigraphTree.expand(dG_initial, obj.nodeID, initNode_Ego, currentStates_Other, 'InitialStates', [1, 0, 1], [1, 0, 1], 0);
                         
                         [bestDecision_Ego, dG_final] = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, -Inf, Inf, dG_initial, obj.nodeID, obj.searchDepth);
                     end
@@ -182,15 +177,15 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
         end
         
-        function [decisionMax_Ego, graph] = planSafeManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, graph, startNodeID, depth2go)
+        function [decisionMax_Ego, graph] = planSafeManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, graph, parentID, depth2go)
         % Plan and decide for a safe maneuver according to specified
         % searching depth
             
             decisionMax_Ego = [];
             decisionNext_Ego = [];
             
-            % Digraph initialisation
-            startNode = obj.createNode(startNodeID, states_Other, obj.searchDepth-depth2go);
+            parentNode = DigraphTree.getNodeName(parentID, states_Other, obj.searchDepth-depth2go);
+            bestNode = [];
             
             time_trajectory = 0:obj.Ts:obj.timeHorizon;
             
@@ -210,10 +205,12 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             % Decisions other vehicles
             decisions_Other = obj.calculateDecisions_Other(states_Other, time_trajectory);
+            possibleFutureStates_Other = [decisions_Other{:, 3}];
+            futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
             
             % Safety check
             decisionsSafe_Ego = decisionsFeasible_Ego;
-            nodeIdsSafe_Ego = cell(size(decisionsFeasible_Ego, 1), 1); % Store the IDs for expanding the digraph
+            s_future_max = -Inf;
             for id_decision = size(decisionsFeasible_Ego, 1):-1:1 % Reverse to remove unsafe decisions without confusing idx
                 TS_Ego = decisionsFeasible_Ego{id_decision, 1};
                 
@@ -226,20 +223,39 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     isSafe_decision = isSafe_decision && isSafeTS; 
                 end
                 
-                % Remove unsafe decisions
                 if ~isSafe_decision
+                    % Remove unsafe decisions
                     decisionsSafe_Ego(id_decision, :) = [];
-                    nodeIdsSafe_Ego(id_decision) = [];
-                else % Add safe decision to digraph
-                    obj.nodeID = obj.nodeID + 1;
-                    nodeIdsSafe_Ego{id_decision} = obj.nodeID;
+                else 
+                    % Add safe decision to digraph
+                    [graph, childNode, obj.nodeID] = DigraphTree.expand(graph, obj.nodeID, parentNode, ...
+                        decisionsSafe_Ego{id_decision, 3}, decisionsSafe_Ego{id_decision, 4}, ...
+                        [0, 1, 0], [0, 1, 0], obj.searchDepth-depth2go);
                     
-                    endNode = obj.createNode(obj.nodeID, decisionsSafe_Ego{id_decision, 3}, obj.searchDepth-depth2go);
-                    nodeProperties = table({endNode}, {[0, 1, 0]}, 'VariableNames', {'Name', 'Color'});
-                    graph = addnode(graph, nodeProperties);
-                    
-                    edgeProperties = table(decisionsSafe_Ego(id_decision, 4), {[0, 1, 0]}, 'VariableNames', {'Power', 'Color'});
-                    graph = addedge(graph, startNode, endNode, edgeProperties);
+                    % Expand tree for future states of safe decisions
+                    if depth2go > 0
+                        futureState_Ego = decisionsSafe_Ego{id_decision, 3};
+                        d_futureGoal = futureState_Ego.d;
+
+                        [decisionMinFuture_Ego, graph] = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, obj.nodeID, depth2go);
+
+                        % Max behaviour: Ego vehicle
+                        if ~isempty(decisionMinFuture_Ego)
+                            decisionFinal_Ego = decisionMinFuture_Ego(end, :);
+                            s_future = decisionFinal_Ego{3}.s;
+                            if s_future > s_future_max
+                                decisionNext_Ego = decisionMinFuture_Ego;
+                                decisionMax_Ego = decisionsSafe_Ego(id_decision, :);
+                                bestNode = childNode;
+                                s_future_max = s_future;
+                            end    
+
+                            alpha = max(alpha, s_future);
+                            if beta <= alpha
+                                break
+                            end
+                        end
+                    end
                 end
             end
             
@@ -257,75 +273,36 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                 decisionMax_Ego = decisionsSafe_Ego(id_max, :);
                 
                 % Higlight best node and edge in digraph
-                bestNode = obj.createNode(nodeIdsSafe_Ego{id_max}, safeFutureStates_Ego(id_max), obj.searchDepth-depth2go);
-                id_bestNode = findnode(graph, bestNode);
-                graph.Nodes.Color{id_bestNode} = [0, 1, 1];
+                bestNode = DigraphTree.getNodeName(obj.nodeID+1-id_max, safeFutureStates_Ego(id_max), obj.searchDepth-depth2go);
+                graph = DigraphTree.changeNodeColor(graph, bestNode, [0, 1, 1]);
+                graph = DigraphTree.changeEdgeColor(graph, parentNode, bestNode, [0, 1, 1]);
                 
-                id_bestEdge = findedge(graph, startNode, bestNode);
-                graph.Edges.Color{id_bestEdge} = [0, 1, 1];
                 return
             end
             
-            possibleFutureStates_Other = [decisions_Other{:, 3}];
-            futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
-            
-            % TODO: Do while safety check
-            % Expand tree for future states of safe decisions
-            s_future_max = -Inf;
-            for id_safeDecision = 1:size(decisionsSafe_Ego, 1)
-                futureState_Ego = decisionsSafe_Ego{id_safeDecision, 3};
-                d_futureGoal = futureState_Ego.d;
-                
-                [decisionMinFuture_Ego, graph] = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, states_Other, alpha, beta, graph, nodeIdsSafe_Ego{id_safeDecision}, depth2go);
-                
-                % Max behaviour: Ego vehicle
-                if ~isempty(decisionMinFuture_Ego)
-                    decisionFinal_Ego = decisionMinFuture_Ego(end, :);
-                    s_future = decisionFinal_Ego{3}.s;
-                    if s_future > s_future_max
-                        decisionNext_Ego = decisionMinFuture_Ego;
-                        decisionMax_Ego = decisionsSafe_Ego(id_safeDecision, :);
-                        maxNodeID = nodeIdsSafe_Ego{id_safeDecision};
-                        s_future_max = s_future;
-                    end    
-                    
-                    alpha = max(alpha, s_future);
-                    if beta <= alpha
-                        break
-                    end
-                end
-            end
-            
             % Higlight best node and edge in digraph
-            if ~isempty(decisionMax_Ego)
-                bestNode = obj.createNode(maxNodeID, decisionMax_Ego{3}, obj.searchDepth-depth2go); 
-                id_bestNode = findnode(graph, bestNode);
-                graph.Nodes.Color{id_bestNode} = [0, 1, 1];
-                
-                id_bestEdge = findedge(graph, startNode, bestNode);
-                graph.Edges.Color{id_bestEdge} = [0, 1, 1];
+            if ~isempty(decisionMax_Ego) 
+                graph = DigraphTree.changeNodeColor(graph, bestNode, [0, 1, 1]);
+                graph = DigraphTree.changeEdgeColor(graph, parentNode, bestNode, [0, 1, 1]);
             end
             
             decisionMax_Ego = [decisionMax_Ego; decisionNext_Ego];
         end
         
-        function [decisionMinFuture_Ego, graph] = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, statesPrev_Other, alpha, beta, graph, startNodeID, depth2go)
+        function [decisionMinFuture_Ego, graph] = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, parentID, depth2go)
         % For other vehicles choose the action, which is considered the most unsafe
             
-            startNode = obj.createNode(startNodeID, futureState_Ego, obj.searchDepth-depth2go);
+            parentNode = DigraphTree.getNodeName(parentID, futureState_Ego, obj.searchDepth-depth2go);
             worstNode = [];
         
             s_future_min = Inf;
             for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
                 futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
                 
-                obj.nodeID = obj.nodeID + 1;
-                endNode = obj.createNode(obj.nodeID, futureStates_Other, obj.searchDepth-depth2go);
-                nodeProperties = table({endNode}, {[1, 0, 0]}, 'VariableNames', {'Name', 'Color'});
-                graph = addnode(graph, nodeProperties);
-                
-                edgeProperties = table({['Combination', num2str(id_statesOther)]}, {[1, 0, 0]}, 'VariableNames', {'Power', 'Color'});
-                graph = addedge(graph, startNode, endNode, edgeProperties);
+                % Add other vehicles' possible decisions to digraph
+                [graph, childNode, obj.nodeID] = DigraphTree.expand(graph, obj.nodeID, parentNode, ...
+                        futureStates_Other, ['Combination', num2str(id_statesOther)], ...
+                        [1, 0, 0], [1, 0, 0], obj.searchDepth-depth2go);
                 
                 [decisionFuture_Ego, graph] = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, graph, obj.nodeID, depth2go);
                 
@@ -338,7 +315,7 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
                     s_future = decisionFinal_Ego{3}.s;
                     if s_future < s_future_min
                         decisionMinFuture_Ego = decisionFuture_Ego;
-                        worstNode = endNode;
+                        worstNode = childNode;
                         s_future_min = s_future;
                     end   
                     
@@ -351,11 +328,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             
             % Higlight worst node and edge in digraph
             if ~isempty(worstNode)
-                id_worstNode = findnode(graph, worstNode);
-                graph.Nodes.Color{id_worstNode} = [1, 0, 1];
-                
-                id_worstEdge = findedge(graph, startNode, worstNode);
-                graph.Edges.Color{id_worstEdge} = [1, 0, 1];
+                graph = DigraphTree.changeNodeColor(graph, worstNode, [1, 0, 1]);
+                graph = DigraphTree.changeEdgeColor(graph, parentNode, worstNode, [1, 0, 1]);
             end
         end
         
@@ -383,7 +357,8 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, obj.emergencyAcceleration, obj.emergencyAcceleration, 'EmergencyBrake', time);
             
             % All possible decisions
-            decisions = [decisionsFD; decisionsVF; decisionsEB; decisionsCL];
+            % TODO: Find order for eficient expansion
+            decisions = [decisionsCL; decisionsEB; decisionsVF; decisionsFD];
         end
         
         function decisions = calculateDecisions_Ego_LaneChange(obj, state, d_goal, time)
@@ -765,54 +740,6 @@ classdef LocalTrajectoryPlanner < ReachabilityAnalysis
             array{id, 6} = trajectoryCartesian_LC;
             
             id_next = id + 1;
-        end
-        
-        function node = createNode(ID, state, depth)
-        % Create node containing the state info
-            
-            depthMarker = repmat('*', 1, depth);
-            node = ['ID:', dec2hex(ID), ...
-                        ' s:', '[', regexprep(num2str(round([state.s], 1)), '\s+',' '), ']', ...
-                        ', d:', '[', regexprep(num2str(round([state.d], 1)), '\s+',' '), ']', ...
-                        ', v:', '[', regexprep(num2str(round([state.speed], 1)), '\s+',' '), ']', ...
-                        depthMarker];
-        end
-        
-        function isSafeTrajectory = checkTrajectoryIntersection(trajectory_ego, trajectory_other, relativePosition_other)
-        % Check whether discrete reference trajectory is safe by calculating the
-        % intersection between discrete reference ego trajectory and other discrete trajectories
-        %
-        % relativePosition_other: Specifies, whether the other trajectories belong to
-        %                         vehicles ahead or behind the ego vehicle on the road
-        
-            if ~(strcmp(relativePosition_other, 'ahead') || strcmp(relativePosition_other, 'behind'))
-                error('Invalid relative position of other trajectories. Specify relative position as ''ahead'' or ''behind''.');
-            end
-            
-            % If there is no intersection of the cells, the reference trajectory is safe 
-            isSafeTrajectory = true;
-            
-            occupied_cells_ego = trajectory_ego(:, 1:2);
-            occupied_cells_other = trajectory_other(:, 1:2);
-            
-            [commonCells, id_intersect_ego, id_intersect_other] = intersect(occupied_cells_ego, occupied_cells_other, 'rows');
-            
-            % Check the cells' temporal intersection
-            if ~isempty(commonCells)
-                if strcmp(relativePosition_other, 'ahead') % For vehicles ahead of the ego vehicle
-                    t_enter_ego = trajectory_ego(id_intersect_ego, 3);
-                    t_exit_other = trajectory_other(id_intersect_other, 4);
-                    
-                    % Safe, if ego vehicle enters after the other vehicle has left the cell
-                    isSafeTrajectory = all(t_enter_ego > t_exit_other);
-                else % For vehicles behind the ego vehicle
-                    t_exit_ego = trajectory_ego(id_intersect_ego, 4);
-                    t_enter_other = trajectory_other(id_intersect_other, 3);
-                    
-                    % Safe, if ego vehicle exits before the other vehicle has entered the cell
-                    isSafeTrajectory = all(t_exit_ego < t_enter_other);
-                end
-            end
         end
     end
 end
