@@ -117,6 +117,9 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         % longitudinal velocity v_future) according to an itnitial state 
         % and a constant acceleration in k+1 time steps
             
+            if v_0 < 0
+                v_0 = 0;
+            end
             initialState = [s_0; v_0];
             
             A_matrix = ReachabilityAnalysis.calculate_A_matrix(k, Ts);
@@ -134,7 +137,7 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
                 futureState(1, :) = s_0 + 0.5*v_0.*t_stop;
             elseif futureState(2, :) > v_max
                 futureState(2) = v_max;
-                if acceleration == 0 || v_0 > v_max
+                if acceleration == 0
                     t_v_max = 0;
                 else
                     t_v_max = (v_max - v_0)/acceleration; % v(t) = v_max = acc*t + v_0 if acc = const.
