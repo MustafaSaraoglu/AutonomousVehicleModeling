@@ -106,6 +106,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                 [bestDecision_Ego, dG_final] = obj.planSafeManeuver(currentState_Ego, obj.d_destination, currentStates_Other, -Inf, Inf, dG_initial, obj.nodeID, obj.searchDepth);
             
                 if isempty(bestDecision_Ego)
+                    % TODO: Minimum Safety Violation
                     obj.currentState = obj.states('EmergencyBrake');
                 else
                     nextDecision = bestDecision_Ego(1, :);
@@ -368,7 +369,7 @@ classdef DiscretePlannerFormal < DecisionMaking
             decisions = cell(number_decisions, 6);
             id_decision = 1;
             
-            acc = 0;
+            acc = obj.maximumAcceleration; % Free Drive
             for durManeuver = dur_lower:1:obj.timeHorizon
                 description = ['ChangeLane', '_{T', num2str(durManeuver), '}'];
                 
