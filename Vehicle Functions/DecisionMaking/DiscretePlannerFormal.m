@@ -14,6 +14,9 @@ classdef DiscretePlannerFormal < DecisionMaking
         wheelBase % Wheel base vehicle [m]
         steerAngle_max % Maximum steering angle [rad]
         
+        sigmaS % Standard deviation for measuring other vehicles' s-coordinate [m]
+        sigmaV % Standard deviation for measuring other vehicles' speeds [m/s]
+        
         spaceDiscretisation % Space Discretisation
     end
 
@@ -407,17 +410,23 @@ classdef DiscretePlannerFormal < DecisionMaking
                 
                 state_Other = states_Other(id_otherVehicle);
                 
+                % Worst case states according to uncertainty
+                s_min = state_Other.s - 3*obj.sigmaS;
+                v_min = state_Other.speed - 3*obj.sigmaV; 
+                s_max = state_Other.s + 3*obj.sigmaS;
+                v_max = state_Other.speed + 3*obj.sigmaV; 
+                
                 % Calculate other vehicle's trajectory for a_min and a_max
                 [s_trajectory_min, v_trajectory_min] = ...
-                    LocalTrajectoryPlanner.calculateLongitudinalTrajectory(state_Other.s, state_Other.speed, ...
+                    LocalTrajectoryPlanner.calculateLongitudinalTrajectory(s_min, v_min, ...
                                                                            obj.maximumVelocity, obj.minimumAcceleration, ...
                                                                            obj.trajectoryReferenceLength, obj.Ts);
-                d_trajectory = state_Other.d*ones(1, size(s_trajectory_min, 2));
-                
                 [s_trajectory_max, v_trajectory_max] = ...
-                    LocalTrajectoryPlanner.calculateLongitudinalTrajectory(state_Other.s, state_Other.speed, ...
+                    LocalTrajectoryPlanner.calculateLongitudinalTrajectory(s_max, v_max, ...
                                                                            obj.maximumVelocity, obj.maximumAcceleration, ...
                                                                            obj.trajectoryReferenceLength, obj.Ts);
+                                                                       
+                d_trajectory = state_Other.d*ones(1, size(s_trajectory_min, 2));
                 
                 % Future state prediction (Min)
                 [~, futureOrientation_min] = Frenet2Cartesian(s_trajectory_min(end), d_trajectory(end), obj.RoadTrajectory);
@@ -431,10 +440,19 @@ classdef DiscretePlannerFormal < DecisionMaking
                 occupiedCells_min = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_min, d_trajectory, time);
                 occupiedCells_max = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_max, d_trajectory, time);
                 
-                % Worst case: earliest entering time (occupiedCells_min) 
-                % latest exiting time (occupiedCells_max)
-                [~, id_intersect_min, id_intersect_max] = intersect(occupiedCells_min(:, 1:2), occupiedCells_max(:, 1:2), 'rows');
-                occupiedCells_worstCase = occupiedCells_max; % Entering times from occupiedCells_max
+                % Worst case: earliest entrance times (occupiedCells_max) 
+                % latest exit times (occupiedCells_min)
+                occupiedCells_worstCase = zeros(size(occupiedCells_max, 1)+1, size(occupiedCells_max, 2));
+                occupiedCells_worstCase(2:end, :) = occupiedCells_max; % Entrance times from occupiedCells_max
+                if isempty(intersect(occupiedCells_min(1, 1:2), occupiedCells_max(1, 1:2), 'rows'))
+                    % First occupied cell is not identical for min/max
+                    % case, thus add the min case starting cell 
+                    occupiedCells_worstCase(1, :) = occupiedCells_min(1, :);
+                else
+                    occupiedCells_worstCase(1, :) = [];
+                end
+                
+                [~, id_intersect_min, id_intersect_max] = intersect(occupiedCells_min(:, 1:2), occupiedCells_worstCase(:, 1:2), 'rows');
                 occupiedCells_worstCase(:, 4) = Inf; % Assume worst case for exit time (vehicle could potentially stop at every cell)
                 occupiedCells_worstCase(id_intersect_max, 4) = occupiedCells_min(id_intersect_min, 4); % Exit times from occupiedCells_min
                 
