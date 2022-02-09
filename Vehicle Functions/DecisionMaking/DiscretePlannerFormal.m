@@ -119,9 +119,10 @@ classdef DiscretePlannerFormal < DecisionMaking
                     
                     if strcmp(nextState, 'ChangeLane')
                         obj.isChangingLane = true;
-
-                        obj.d_destination = nextDecision{3}.d;
                         
+                        % Round: avoid very small value differences
+                        % Use either 0 or 3.7
+                        obj.d_destination = round(nextDecision{3}.d, 1);
                         
                         T_LC = extractBetween(description_nextDecision{2}, '{T', '}');
                         changeLaneCmd = str2double(T_LC{1});
