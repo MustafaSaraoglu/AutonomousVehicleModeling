@@ -26,6 +26,7 @@ classdef DiscretePlannerFormal < DecisionMaking
         isChangingLane % Return if currently executing lane changing maneuver
         
         trajectoryReferenceLength % Number of points for trajectory generation according to specified time horizon 
+        k_timeHorizon % Number of discrete time steps according to specified time horizon
         
         t_ref % Variable to store a specific simulation time of interest 
         
@@ -45,6 +46,9 @@ classdef DiscretePlannerFormal < DecisionMaking
             
             % +1 because planned trajectory also contains current waypoint at current time
             obj.trajectoryReferenceLength = obj.timeHorizon/obj.Ts + 1; 
+            
+            % Discrete steps for one time horizon according to: timeHorizon = (k+1)*Ts
+            obj.k_timeHorizon = obj.timeHorizon/obj.Ts - 1;
             
             obj.curvature_max = tan(obj.steerAngle_max)/obj.wheelBase;
             
@@ -437,6 +441,14 @@ classdef DiscretePlannerFormal < DecisionMaking
                 [~, futureOrientation_max] = Frenet2Cartesian(s_trajectory_max(end), d_trajectory(end), obj.RoadTrajectory);
                 futureState_max = obj.createState(s_trajectory_max(end), d_trajectory(end), futureOrientation_max, v_trajectory_max(end));
                 
+                % Possible future state for a = 0 
+                [s_future_mid, v_future_mid] = ...
+                    ReachabilityAnalysis.predictLongitudinalFutureState(state_Other.s, state_Other.speed, ...
+                                                                        obj.maximumVelocity, 0, ...
+                                                                        obj.k_timeHorizon, obj.Ts);
+                [~, futureOrientation_mid] = Frenet2Cartesian(s_future_mid, state_Other.d, obj.RoadTrajectory);
+                futureState_mid = obj.createState(s_future_mid, state_Other.d, futureOrientation_mid, v_future_mid);
+                
                 % Calculate occupied cells for other vehicle
                 occupiedCells_min = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_min, d_trajectory, time);
                 occupiedCells_max = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_max, d_trajectory, time);
@@ -460,7 +472,10 @@ classdef DiscretePlannerFormal < DecisionMaking
                 TS_otherVehicle = CellChecker.createTSfromCells(occupiedCells_worstCase);
                 
                 % Concrete trajectories not needed for other vehicles
-                [decision_otherVehicles, ~] = obj.addDecision(decision_otherVehicles, TS_otherVehicle, true, [futureState_min; futureState_max], description, [], [], id_otherVehicle);
+                [decision_otherVehicles, ~] = ...
+                    obj.addDecision(decision_otherVehicles, TS_otherVehicle, true, ...
+                                    [futureState_min; futureState_mid; futureState_max], ...
+                                    description, [], [], id_otherVehicle);
             end 
         end 
         
