@@ -561,7 +561,7 @@ classdef DiscretePlannerFormal < DecisionMaking
             n_possibleStates = size(possiblestates, 1);
             n_vehicles = size(possiblestates, 2);
             
-            id_combinations = 1:n_vehicles;
+            id_combinations = 1:n_possibleStates;
             for id_vehicle = 2:n_vehicles
                 id_combinations = combvec(id_combinations, 1:n_possibleStates);
             end
