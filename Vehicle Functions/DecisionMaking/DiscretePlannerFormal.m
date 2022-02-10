@@ -161,8 +161,7 @@ classdef DiscretePlannerFormal < DecisionMaking
             decisionsFeasible_Ego = decisions_Ego(isFeasibleDecision, :);
             
             % Decisions other vehicles
-            decisions_Other = obj.calculateDecisions_Other(states_Other, time_trajectory);
-            possibleFutureStates_Other = [decisions_Other{:, 3}];
+            [decisions_Other, possibleFutureStates_Other] = obj.calculateDecisions_Other(states_Other, depth2go, time_trajectory);
             futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
             
             % Safety check
@@ -401,93 +400,152 @@ classdef DiscretePlannerFormal < DecisionMaking
             end  
         end
         
-        function decision_otherVehicles = calculateDecisions_Other(obj, states_Other, time)
-        % Get occupied cells for all other vehicles ahead and behind the ego vehicle
+        function [decisions, futureStates] = calculateDecisions_Other(obj, states, depth2go, time)
+        % Get possible decisions for all other vehicles 
             
             % TODO: Maybe only necessary to get occupied cells for surrounding vehicles    
-            n_other = length(states_Other); 
+            n_other = length(states); 
+            n_decisions = 1; % Keep Lane; n=2: +(Change Lane)
             
-            decision_otherVehicles = cell(n_other, 6); 
+            decisions = cell(n_other*n_decisions, 6); 
+            futureStates = obj.preallocateStates(2*n_decisions, n_other);
+            id_decision = 1;
             
             % Iteration over all other vehicles
             for id_otherVehicle = 1:n_other 
-                description = ['Other Vehicle ', num2str(id_otherVehicle)];
+                descriptionVehicle = ['Other Vehicle ', num2str(id_otherVehicle), ': '];
                 
-                state_Other = states_Other(id_otherVehicle);
+                state = states(id_otherVehicle);
                 
-                % Worst case states according to uncertainty
-                s_min = state_Other.s - 3*obj.sigmaS;
-                v_min = state_Other.speed - 3*obj.sigmaV; 
-                s_max = state_Other.s + 3*obj.sigmaS;
-                v_max = state_Other.speed + 3*obj.sigmaV; 
-                
-                % Calculate other vehicle's trajectory for a_min and a_max
-                [s_trajectory_min, v_trajectory_min] = ...
-                    LocalTrajectoryPlanner.calculateLongitudinalTrajectory(s_min, v_min, ...
-                                                                           obj.maximumVelocity, obj.minimumAcceleration, ...
-                                                                           obj.trajectoryReferenceLength, obj.Ts);
-                [s_trajectory_max, v_trajectory_max] = ...
-                    LocalTrajectoryPlanner.calculateLongitudinalTrajectory(s_max, v_max, ...
-                                                                           obj.maximumVelocity, obj.maximumAcceleration, ...
-                                                                           obj.trajectoryReferenceLength, obj.Ts);
-                                                                       
-                d_trajectory = state_Other.d*ones(1, size(s_trajectory_min, 2));
-                
-                % Future state prediction (Min)
-                [~, futureOrientation_min] = Frenet2Cartesian(s_trajectory_min(end), d_trajectory(end), obj.RoadTrajectory);
-                futureState_min = obj.createState(s_trajectory_min(end), d_trajectory(end), futureOrientation_min, v_trajectory_min(end));
-                
-                 % Future state prediction (Max)
-                [~, futureOrientation_max] = Frenet2Cartesian(s_trajectory_max(end), d_trajectory(end), obj.RoadTrajectory);
-                futureState_max = obj.createState(s_trajectory_max(end), d_trajectory(end), futureOrientation_max, v_trajectory_max(end));
-                
-                % Possible future state for a = 0 
-                [s_future_mid, v_future_mid] = ...
-                    ReachabilityAnalysis.predictLongitudinalFutureState(state_Other.s, state_Other.speed, ...
-                                                                        obj.maximumVelocity, 0, ...
-                                                                        obj.k_timeHorizon, obj.Ts);
-                [~, futureOrientation_mid] = Frenet2Cartesian(s_future_mid, state_Other.d, obj.RoadTrajectory);
-                futureState_mid = obj.createState(s_future_mid, state_Other.d, futureOrientation_mid, v_future_mid);
-                
-                % Calculate occupied cells for other vehicle
-                occupiedCells_min = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_min, d_trajectory, time);
-                occupiedCells_max = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_max, d_trajectory, time);
-                
-                % Worst case: earliest entrance times (occupiedCells_max) 
-                % latest exit times (occupiedCells_min)
-                occupiedCells_worstCase = zeros(size(occupiedCells_max, 1)+1, size(occupiedCells_max, 2));
-                occupiedCells_worstCase(2:end, :) = occupiedCells_max; % Entrance times from occupiedCells_max
-                if isempty(intersect(occupiedCells_min(1, 1:2), occupiedCells_max(1, 1:2), 'rows'))
-                    % First occupied cell is not identical for min/max
-                    % case, thus add the min case starting cell 
-                    occupiedCells_worstCase(1, :) = occupiedCells_min(1, :);
+                % Only consider uncertainty for first depth
+                if depth2go == obj.searchDepth-1
+                    % Worst case states according to uncertainty
+                    s_min = state.s - 3*obj.sigmaS;
+                    v_min = state.speed - 3*obj.sigmaV; 
+                    s_max = state.s + 3*obj.sigmaS;
+                    v_max = state.speed + 3*obj.sigmaV; 
                 else
-                    occupiedCells_worstCase(1, :) = [];
+                    s_min = state.s;
+                    v_min = state.speed; 
+                    s_max = state.s;
+                    v_max = state.speed; 
                 end
                 
-                [~, id_intersect_min, id_intersect_max] = intersect(occupiedCells_min(:, 1:2), occupiedCells_worstCase(:, 1:2), 'rows');
-                occupiedCells_worstCase(:, 4) = Inf; % Assume worst case for exit time (vehicle could potentially stop at every cell)
-                occupiedCells_worstCase(id_intersect_max, 4) = occupiedCells_min(id_intersect_min, 4); % Exit times from occupiedCells_min
+                % Decision: Keep Lane 
+                [decision_KL, futureStates_KL] = obj.getDecisionForKeepLane_Other(s_min, v_min, s_max, v_max, state.d, descriptionVehicle, time);
+                decisions(id_decision, :) = decision_KL;
+                futureStates(1:2, id_otherVehicle) = futureStates_KL;
+                id_decision = id_decision + 1;
                 
-                TS_otherVehicle = CellChecker.createTSfromCells(occupiedCells_worstCase);
-                
-                % Concrete trajectories not needed for other vehicles
-                [decision_otherVehicles, ~] = ...
-                    obj.addDecision(decision_otherVehicles, TS_otherVehicle, true, ...
-                                    [futureState_min; futureState_mid; futureState_max], ...
-                                    description, [], [], id_otherVehicle);
-            end 
+                % TO ADD DECISION FOR CHANGE LANE n_decisions=2
+%                 % Decision: Change Lane Static for a=0 and T=4s
+%                 [decision_CL, futureStates_CL] = obj.getDecisionForChangeLane_Other(s_min, v_min, s_max, v_max, state.d, descriptionVehicle, time);
+%                 if ~isempty(decision_CL)
+%                     decisions(id_decision, :) = decision_CL;
+%                     futureStates(3:4, id_otherVehicle) = futureStates_CL;
+%                     id_decision = id_decision + 1;
+%                 end
+            end
+            
+            decisions = decisions(1:id_decision-1, :);
         end 
         
-        function [drivingMode, changeLaneCmd] = makeDecision(obj)
-        % Make decision about driving mode and whether to change lane   
+        function [decision_KL, futureStates_KL] = getDecisionForKeepLane_Other(obj, s_min, v_min, s_max, v_max, d, descriptionVehicle, time)
+        % Get the decision to keep lane for other vehicle    
+            
+            decision_KL = cell(1, 6);
+            descriptionDecision = [descriptionVehicle, 'Keep Lane'];
+
+            % Calculate other vehicle's trajectory for a_min and a_max
+            [s_trajectory_min, v_trajectory_min] = ...
+                LocalTrajectoryPlanner.calculateLongitudinalTrajectory(s_min, v_min, ...
+                                                                       obj.maximumVelocity, obj.minimumAcceleration, ...
+                                                                       obj.trajectoryReferenceLength, obj.Ts);
+            [s_trajectory_max, v_trajectory_max] = ...
+                LocalTrajectoryPlanner.calculateLongitudinalTrajectory(s_max, v_max, ...
+                                                                       obj.maximumVelocity, obj.maximumAcceleration, ...
+                                                                       obj.trajectoryReferenceLength, obj.Ts);
+
+            d_trajectory = d*ones(1, size(s_trajectory_min, 2));
+
+            % Future state prediction (Min)
+            futureState_min = obj.createState(s_trajectory_min(end), d, 'don''t care', v_trajectory_min(end));
+
+             % Future state prediction (Max)
+            futureState_max = obj.createState(s_trajectory_max(end), d, 'don''t care', v_trajectory_max(end));
+            
+            futureStates_KL = [futureState_min, futureState_max];
+
+            TS = obj.calculateTS_Other(s_trajectory_min, d_trajectory, s_trajectory_max, d_trajectory, time);
+
+            [decision_KL, ~] = obj.addDecision(decision_KL, TS, true, ...
+                                               [futureState_min; futureState_max], ...
+                                               descriptionDecision, [], [], 1);
+        end
         
-            % Necessary to return some output even if there is no command
-            changeLaneCmd = obj.laneChangeCmds('CmdIdle');
+        function [decision_CL, futureStates_CL] = getDecisionForChangeLane_Other(obj, s_min, v_min, s_max, v_max, d, descriptionVehicle, time)
+        % Get the decision to change lane for other vehicle for static maneuver with a=0, T=4s  
             
-            obj.currentState = obj.states(evalin('base', 'nextState'));
+            decision_CL = cell(0, 6);
+            futureStates_CL = [obj.createState([], [], [], []); obj.createState([], [], [], [])];
+            descriptionDecision = [descriptionVehicle, 'Change Lane'];
+                
+            d_goal = obj.getOppositeLane(d, obj.LaneWidth);
+            [trajectoryFrenet_min, ~, ~, ~, isFeasiblTrajectory_min] = ...
+                LocalTrajectoryPlanner.calculateLaneChangingTrajectory(s_min, d, 0, 0, d_goal, ...
+                                                                       v_min, obj.maximumVelocity, 0, ...
+                                                                       4, obj.curvature_max, ...
+                                                                       obj.RoadTrajectory, obj.timeHorizon, obj.Ts);
+            % Trajectories must be feasible                                                       
+            if isFeasiblTrajectory_min    
+                [trajectoryFrenet_max, ~, ~, ~, isFeasiblTrajectory_max] = ...
+                    LocalTrajectoryPlanner.calculateLaneChangingTrajectory(s_max, d, 0, 0, d_goal, ...
+                                                                           v_max, obj.maximumVelocity, 0, ...
+                                                                           4, obj.curvature_max, ...
+                                                                           obj.RoadTrajectory, obj.timeHorizon, obj.Ts);
+                if isFeasiblTrajectory_max
+                    % Future state prediction (Min)
+                    futureState_min = obj.createState(trajectoryFrenet_min(end, 1), d_goal, 'don''t care', v_min);
+
+                    % Future state prediction (Max)
+                    futureState_max = obj.createState(trajectoryFrenet_max(end, 1), d_goal, 'don''t care', v_max);
+                    
+                    futureStates_CL = [futureState_min, futureState_max];
+
+                    TS = obj.calculateTS_Other(trajectoryFrenet_min(:, 1), trajectoryFrenet_min(:, 2), ...
+                                               trajectoryFrenet_max(:, 1), trajectoryFrenet_max(:, 2), time);
+                    
+                    [decision_CL, ~] = obj.addDecision(decision_CL, TS, true, ...
+                                                       [futureState_min; futureState_max], ...
+                                                       descriptionDecision, [], [], 1);
+                end
+            end
+        end
+        
+        function TS = calculateTS_Other(obj, s_trajectory_min, d_trajectory_min, s_trajectory_max, d_trajectory_max, time)
+        % Calculate transition system (TS) for other vehicle
             
-            drivingMode = obj.getStateInfo(obj.currentState);
+            % Calculate occupied cells for other vehicle
+            occupiedCells_min = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_min, d_trajectory_min, time);
+            occupiedCells_max = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_max, d_trajectory_max, time);
+
+            % Worst case: earliest entrance times (occupiedCells_max) 
+            % latest exit times (occupiedCells_min)
+            occupiedCells_worstCase = zeros(size(occupiedCells_max, 1)+1, size(occupiedCells_max, 2)); % Preallocation
+            occupiedCells_worstCase(2:end, :) = occupiedCells_max; % Entrance times from occupiedCells_max
+            if isempty(intersect(occupiedCells_min(1, 1:2), occupiedCells_max(1, 1:2), 'rows'))
+                % First occupied cell is not identical for min/max
+                % case, thus add the min case starting cell 
+                occupiedCells_worstCase(1, :) = occupiedCells_min(1, :);
+            else
+                occupiedCells_worstCase(1, :) = [];
+            end
+
+            [~, id_intersect_min, id_intersect_max] = intersect(occupiedCells_min(:, 1:2), occupiedCells_worstCase(:, 1:2), 'rows');
+            occupiedCells_worstCase(:, 4) = Inf; % Assume worst case for exit time (vehicle could potentially stop at every cell)
+            occupiedCells_worstCase(id_intersect_max, 4) = occupiedCells_min(id_intersect_min, 4); % Exit times from occupiedCells_min
+
+            TS = CellChecker.createTSfromCells(occupiedCells_worstCase);
         end
         
         function drivingMode = getStateInfo(obj, state)
@@ -569,24 +627,28 @@ classdef DiscretePlannerFormal < DecisionMaking
                 'orientation', cell(n_row, n_col), 'speed', cell(n_row, n_col));
         end
         
-        function stateCombinations = getStateCombinations(possiblestates)
+        function stateCombinations = getStateCombinations(states)
         % Get all possible state combinations for each decision of each
         % vehicle
             
-            % n_stateCombinations = n_possibleStates^n_vehicles
-            n_possibleStates = size(possiblestates, 1);
-            n_vehicles = size(possiblestates, 2);
+            % n_stateCombinations = \prod_{i=1}^{n_vehicles} n_states_{i}
+            n_vehicles = size(states, 2);
             
-            id_combinations = 1:n_possibleStates;
-            for id_vehicle = 2:n_vehicles
-                id_combinations = combvec(id_combinations, 1:n_possibleStates);
+            for id_vehicle = 1:n_vehicles
+                % Get number of nonempty states for each vehicle
+                n_states = sum(arrayfun(@(x) ~any(structfun(@isempty, x)), states(:, id_vehicle)));
+                if id_vehicle == 1
+                    id_combinations = 1:n_states;
+                else
+                    id_combinations = combvec(id_combinations, 1:n_states);
+                end
             end
             
             id_combinations = id_combinations';
             
             stateCombinations = DiscretePlannerFormal.preallocateStates(size(id_combinations, 1), n_vehicles);
             for id_vehicle = 1:n_vehicles
-                stateCombinations(:, id_vehicle) = possiblestates(id_combinations(:, id_vehicle), id_vehicle);
+                stateCombinations(:, id_vehicle) = states(id_combinations(:, id_vehicle), id_vehicle);
             end
         end
         
