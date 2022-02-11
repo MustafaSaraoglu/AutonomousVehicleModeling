@@ -143,8 +143,8 @@ classdef DiscretePlannerFormal < DecisionMaking
         % Plan and decide for a safe maneuver according to specified
         % searching depth
             
-            decisionMax_Ego = [];
-            decisionNext_Ego = [];
+            decisionMax_Ego = []; % Current decision, that maximises future value
+            decisionsNext_Ego = []; % Next planned decision after decisionMax_Ego
             
             parentNode = DigraphTree.getNodeName(parentID, states_Other, obj.searchDepth-depth2go);
             bestNode = [];
@@ -189,63 +189,50 @@ classdef DiscretePlannerFormal < DecisionMaking
                         [0, 1, 0], [0, 1, 0], obj.searchDepth-depth2go);
                     
                     % Expand tree for future states of safe decisions
-                    if depth2go > 0
-                        futureState_Ego = decisionsSafe_Ego{id_decision, 3};
-                        d_futureGoal = futureState_Ego.d;
+                    futureState_Ego = decisionsSafe_Ego{id_decision, 3};
+                    d_futureGoal = futureState_Ego.d;
+                    
+                    if depth2go == 0
+                        % Evaluate safe decision
+                        decisionsFuture_Ego = decisionsSafe_Ego(id_decision, :);
+                    else
+                        [decisionsFuture_Ego, graph] = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, obj.nodeID, depth2go);
+                    end
 
-                        [decisionMinFuture_Ego, graph] = obj.planUnsafeManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, obj.nodeID, depth2go);
+                    % Max behaviour: Ego vehicle
+                    if ~isempty(decisionsFuture_Ego)
+                        decisionFinal_Ego = decisionsFuture_Ego(end, :);
+                        s_future = decisionFinal_Ego{3}.s;
+                        if s_future > s_future_max
+                            decisionsNext_Ego = decisionsFuture_Ego;
+                            decisionMax_Ego = decisionsSafe_Ego(id_decision, :);
+                            bestNode = childNode;
+                            s_future_max = s_future;
+                        end    
 
-                        % Max behaviour: Ego vehicle
-                        if ~isempty(decisionMinFuture_Ego)
-                            decisionFinal_Ego = decisionMinFuture_Ego(end, :);
-                            s_future = decisionFinal_Ego{3}.s;
-                            if s_future > s_future_max
-                                decisionNext_Ego = decisionMinFuture_Ego;
-                                decisionMax_Ego = decisionsSafe_Ego(id_decision, :);
-                                bestNode = childNode;
-                                s_future_max = s_future;
-                            end    
-
-                            alpha = max(alpha, s_future);
-                            if beta <= alpha
-                                break
-                            end
+                        alpha = max(alpha, s_future);
+                        if beta <= alpha
+                            break
                         end
                     end
                 end
             end
             
-            % No safe future states
-            if isempty(decisionsSafe_Ego)
-                return
-            end
-
-            % Check depth left to go for tree expansion
             if depth2go == 0
-                safeFutureStates_Ego = [decisionsSafe_Ego{:, 3}];
-
-                % Choose according to max s-value
-                [~, id_max] = max([safeFutureStates_Ego.s]);
-                decisionMax_Ego = decisionsSafe_Ego(id_max, :);
-                
-                % Higlight best node and edge in digraph
-                bestNode = DigraphTree.getNodeName(obj.nodeID+1-id_max, safeFutureStates_Ego(id_max), obj.searchDepth-depth2go);
-                graph = DigraphTree.changeNodeColor(graph, bestNode, [0, 1, 1]);
-                graph = DigraphTree.changeEdgeColor(graph, parentNode, bestNode, [0, 1, 1]);
-                
-                return
+                % No next decisions if final depth is reached
+                decisionsNext_Ego = [];
             end
             
             % Higlight best node and edge in digraph
-            if ~isempty(decisionMax_Ego) 
+            if ~isempty(bestNode) 
                 graph = DigraphTree.changeNodeColor(graph, bestNode, [0, 1, 1]);
                 graph = DigraphTree.changeEdgeColor(graph, parentNode, bestNode, [0, 1, 1]);
             end
             
-            decisionMax_Ego = [decisionMax_Ego; decisionNext_Ego];
+            decisionMax_Ego = [decisionMax_Ego; decisionsNext_Ego];
         end
         
-        function [decisionMinFuture_Ego, graph] = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, parentID, depth2go)
+        function [decisionsMinFuture_Ego, graph] = planUnsafeManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, parentID, depth2go)
         % For other vehicles choose the action, which is considered the most unsafe
             
             parentNode = DigraphTree.getNodeName(parentID, futureState_Ego, obj.searchDepth-depth2go);
@@ -260,17 +247,17 @@ classdef DiscretePlannerFormal < DecisionMaking
                         futureStates_Other, ['Combination', num2str(id_statesOther)], ...
                         [1, 0, 0], [1, 0, 0], obj.searchDepth-depth2go);
                 
-                [decisionFuture_Ego, graph] = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, graph, obj.nodeID, depth2go);
+                [decisionsFuture_Ego, graph] = obj.planSafeManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, graph, obj.nodeID, depth2go);
                 
                 % Min behaviour: Other vehicles
-                if isempty(decisionFuture_Ego)
-                    decisionMinFuture_Ego = [];
+                if isempty(decisionsFuture_Ego)
+                    decisionsMinFuture_Ego = [];
                     break % This decision is unsafe if at least one possibility is unsafe
                 else
-                    decisionFinal_Ego = decisionFuture_Ego(end, :);
+                    decisionFinal_Ego = decisionsFuture_Ego(end, :);
                     s_future = decisionFinal_Ego{3}.s;
                     if s_future < s_future_min
-                        decisionMinFuture_Ego = decisionFuture_Ego;
+                        decisionsMinFuture_Ego = decisionsFuture_Ego;
                         worstNode = childNode;
                         s_future_min = s_future;
                     end   
