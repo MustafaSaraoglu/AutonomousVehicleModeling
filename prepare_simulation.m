@@ -3,7 +3,7 @@ function prepare_simulation(options)
     
     %% Default values
     arguments
-        options.road             (4,3) double =  [0      0   0;      % Road trajectory according to MOBATSim map format
+        options.road             (4,3) double =  [0      0   0;     % Road trajectory according to MOBATSim map format
                                                   1000   0   0;
                                                   0      0   0;
                                                   0      0   0]; 
@@ -12,17 +12,20 @@ function prepare_simulation(options)
                                               
         % Structure:[dataEgoVehicle, dataOtherVehicle1, ..., dataOtherVehicleN]
         % Kinematic initial conditions
-        options.s_0             (1,:) double = [0, 60, 40]          % Initial Frenet s-coordinate [m]
-        options.d_0             (1,:) double = [0, 0, 3.7]          % (Initial) Frenet d-coordinate [m]
-        options.v_0             (1,:) double = [20, 10, 13]         % Initial longitudinal velocity [m/s]
-        options.v_ref           (1,:) double = [20, 10, 13]         % Reference longitudinal velocity [m/s]       
+        options.s_0             (1,:) double = [0, 60, 40];         % Initial Frenet s-coordinate [m]
+        options.d_0             (1,:) double = [0, 0, 3.7];         % (Initial) Frenet d-coordinate [m]
+        options.v_0             (1,:) double = [20, 10, 13];        % Initial longitudinal velocity [m/s]
+        options.v_ref           (1,:) double = [20, 10, 13];        % Reference longitudinal velocity [m/s]       
         
-        options.planner         (1,1) string = 'MANUAL'             % Mode of discrete planner
-                               % Alternative = 'FORMAL'
+        options.planner         (1,1) string = 'FORMAL';            % Mode of discrete planner
+                               % Alternative = 'MANUAL'
         
-        options.lateral         (1,1) string = 'STANLEY'            % Mode of lateral control
+        options.lateral         (1,1) string = 'STANLEY';           % Mode of lateral control
                                % Alternative = 'PURE_PURSUIT'
-        options.Th              (1,1) double = 5                    % Time horizon for trajectory genereation [s]
+        options.Th              (1,1) double = 5;                   % Time horizon for trajectory genereation [s]
+        
+        options.sigmaS          (1,1) double = 0.2;                 % Standard deviation for measuring other vehicles' s-coordinate [m]
+        options.sigmaV          (1,1) double = 0.2;                 % Standard deviation for measuring other vehicles' speeds [m/s]
     end
     
     %% Road
@@ -87,7 +90,11 @@ function prepare_simulation(options)
     Ts = 0.01; % Sample time [s] for trajectory generation
 
     trajectoryGeneration.timeHorizon = options.Th;
-    trajectoryGeneration.partsTimeHorizon = 3; % Divide time horizon into partsTimeHorizon equal parts
+    trajectoryGeneration.partsTimeHorizon = 5; % Divide time horizon into partsTimeHorizon equal parts
+    
+    %% Uncertainty
+    uncertainty.sigmaS = options.sigmaS;
+    uncertainty.sigmaV = options.sigmaV;
     
     %% Constraints
     constraints.v_min = 0; % Minimum allowed longitudinal velocity [m/s]
@@ -115,8 +122,10 @@ function prepare_simulation(options)
     assignin('base', 'lateral', lateral); 
     assignin('base', 'Ts', Ts); 
     assignin('base', 'constraints', constraints); 
+    assignin('base', 'uncertainty', uncertainty); 
     assignin('base', 'discreteCells', discreteCells); 
     assignin('base', 'spaceDiscretisation', spaceDiscretisation); 
+    assignin('base', 'nextState', 'FreeDrive'); % Start with FreeDrive
     
     %% Disable Warning: 'Property Unspecified Default Value'
     id = 'SystemBlock:MATLABSystem:ParameterWithUnspecifiedDefaultValueRestrictedToBuiltinDataType';

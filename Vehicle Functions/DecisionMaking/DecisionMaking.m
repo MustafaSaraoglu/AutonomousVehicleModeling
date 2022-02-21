@@ -7,9 +7,8 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
 %   3 = EmergencyBrake
 
 % Change Lane Cmd
-%   0 = Command to follow current trajectory (left lane, right lane, lane change)
-%   1 = Command to start changing to left lane
-%  -1 = Command to start changing to right lane
+%   0       = Command to follow current trajectory (left lane, right lane, lane change)
+%   T>=0    = Command to start to other lane in T seconds
 
     properties(Nontunable)
         vEgo_ref % Reference velocity for ego vehicle [m/s]
@@ -25,13 +24,13 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
         laneChangeCmds % Possible commands for lane changing
         plannerModes % Possible planner modes
         
+        curvature_max % Maximum allowed curvature
+        
         states % Possible driving states
         currentState % Current driving state
         previousState % Previous driving state
         
         toleranceReachLane % Accepted tolerance to reach destination lane
-        
-        waitingCounter % Counter to wait some time before recheck for lane changing
     end
 
     methods(Access = protected)
@@ -41,14 +40,12 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
                 containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
             
             obj.laneChangeCmds = ...
-                containers.Map({'CmdIdle', 'CmdStartToLeftLane', 'CmdStartToRightLane'}, [0, 1, -1]);
+                containers.Map({'CmdIdle'}, 0);
             
             obj.plannerModes = ...
                 containers.Map({'MANUAL', 'FORMAL'}, [1, 2]);
             
             obj.toleranceReachLane = 0.05;
-            
-            obj.waitingCounter = 0;
         end
         
         function displayNewState(obj, currentState, previousState)

@@ -26,8 +26,10 @@ classdef LongitudinalReachability < ReachabilityAnalysis
         function [sFuture_min, sFuture_max] = stepImpl(obj, v_0, s_0)
         % Return minimum and maximum predicted future s
             
-            [sFuture_min, ~] = obj.predictLongitudinalFutureState(s_0', v_0', obj.maximumVelocity, obj.minimumAcceleration, obj.k_timeHorizon);
-            [sFuture_max, ~] = obj.predictLongitudinalFutureState(s_0', v_0', obj.maximumVelocity, obj.maximumAcceleration, obj.k_timeHorizon);
+            [sFuture_min, ~] = ReachabilityAnalysis.predictLongitudinalFutureState(s_0', v_0', ...
+                obj.maximumVelocity, obj.minimumAcceleration, obj.k_timeHorizon, obj.Ts);
+            [sFuture_max, ~] = ReachabilityAnalysis.predictLongitudinalFutureState(s_0', v_0', ...
+                obj.maximumVelocity, obj.maximumAcceleration, obj.k_timeHorizon, obj.Ts);
         end
         
         % TODO: Remove unused function
@@ -41,7 +43,8 @@ classdef LongitudinalReachability < ReachabilityAnalysis
                     obj.err_s_v(obj.counter, 2:3) = error_s_v';
                 end 
                 
-                [sFuture, vFuture] = obj.predictLongitudinalFutureState(initialState(1), initialState(2), obj.maximumVelocity, aLead_ref, obj.k_timeHorizon);
+                [sFuture, vFuture] = ReachabilityAnalysis.predictLongitudinalFutureState(initialState(1), ...
+                    initialState(2), obj.maximumVelocity, aLead_ref, obj.k_timeHorizon, obj.Ts);
                 obj.futureStatePrediction = [sFuture; vFuture];
                 obj.counter = obj.counter + 1; 
             end
