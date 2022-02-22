@@ -210,12 +210,12 @@ classdef DiscretePlannerFormal < DecisionMaking
                         decisionsNext_Ego = decisionsFuture_Ego;
                         decisionMax_Ego = decisionSafe_Ego;
                         bestNode = childNode;
+                        
+                        alpha = max(alpha, value_max);
+                        if beta <= alpha 
+                            break
+                        end
                     end    
-
-                    alpha = max(alpha, value);
-                    if beta <= alpha
-                        break
-                    end
                 end
             end
             
@@ -258,12 +258,12 @@ classdef DiscretePlannerFormal < DecisionMaking
                         value_min = value;
                         decisionsNext_Ego = decisionsFuture_Ego;
                         worstNode = childNode;
+                        
+                        beta = min(beta, value_min);
+                        if beta <= alpha
+                            break
+                        end
                     end   
-                    
-                    beta = min(beta, value);
-                    if beta <= alpha
-                        break
-                    end
                 end
             end
             
