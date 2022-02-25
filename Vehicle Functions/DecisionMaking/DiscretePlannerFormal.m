@@ -32,6 +32,8 @@ classdef DiscretePlannerFormal < DecisionMaking
         
         nodeID % To identify unique nodes in digraph
         searchDepth  % Depth for search algorithm
+        depthBound % Maximum depth to search for in one iteration
+        safety_limit % Safety boundary for each depth
     end
     
     methods(Access = protected)
@@ -101,16 +103,25 @@ classdef DiscretePlannerFormal < DecisionMaking
                     currentStates_Other(id_other) = obj.createState(sOther(id_other), dOther(id_other), poseOtherVehicles(3, id_other), speedsOtherVehicles(id_other));
                 end
                 
-                unsafetyLevel_min = Inf;
+                % TODO: Free Drive if no vehicle in front on right lane for faster computation?
+                
+                obj.safety_limit = -Inf*ones(1, obj.searchDepth); % Maximum safety level for each depth
                 for depth = 1:obj.searchDepth % Iterative deepening
                     % Initialise digraph
                     obj.nodeID = 0;
-                    initNode_Ego = DigraphTree.getNodeName(obj.nodeID, currentState_Ego, unsafetyLevel_min);
+                    initNode_Ego = DigraphTree.getNodeName(obj.nodeID, currentState_Ego, obj.safety_limit(1));
                     dG_initial = DigraphTree.initialise(initNode_Ego, [0, 1, 1]);
-                    [dG_initial, ~, obj.nodeID] = DigraphTree.expand(dG_initial, obj.nodeID, initNode_Ego, currentStates_Other, 'InitialStates', [1, 0, 1], [1, 0, 1], unsafetyLevel_min);
+                    [dG_initial, ~, obj.nodeID] = DigraphTree.expand(dG_initial, obj.nodeID, initNode_Ego, currentStates_Other, 'InitialStates', [1, 0, 1], [1, 0, 1], obj.safety_limit(1));
+                    
+                    obj.depthBound = depth; % Remember depth boundary for each iteration
+                    alpha_0.safety = -Inf;
+                    alpha_0.liveness = -Inf;
+                    beta_0.safety = Inf;
+                    beta_0.liveness = Inf;
                     
                     % Best decisions iteratively
-                    [bestDecision_iteration, ~, unsafetyLevel_min, dG_final] = obj.planMaxManeuver(currentState_Ego, obj.d_destination, currentStates_Other, -Inf, Inf, unsafetyLevel_min, dG_initial, obj.nodeID, depth);
+                    [bestDecision_iteration, value_iteration, dG_final] = obj.planMaxManeuver(currentState_Ego, obj.d_destination, currentStates_Other, alpha_0, beta_0, dG_initial, obj.nodeID, depth);
+                    obj.safety_limit(obj.depthBound) = value_iteration.safety;
                     if ~isempty(bestDecision_iteration)
                         % Minimum Violation Planning
                         bestDecision_Ego = bestDecision_iteration;
@@ -139,19 +150,25 @@ classdef DiscretePlannerFormal < DecisionMaking
             obj.displayNewState(obj.currentState, obj.previousState);
         end
         
-        function [decisionsNext_Ego, value_max, unsafetyLevel_min, graph] = planMaxManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, unsafetyLevel_min, graph, parentID, depth2go)
+        function [decisionsNext_Ego, value_max, graph] = planMaxManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, graph, parentID, depth2go)
         % Plan and decide for a safe maneuver according to specified searching depth
             
             decisionMax_Ego = []; % Decision of current depth, that maximises future value
             decisionsNext_Ego = []; % Next planned decisions (starting with most recent one)
-            value_max = -Inf;
-            
-            parentNode = DigraphTree.getNodeName(parentID, states_Other, unsafetyLevel_min);
-            bestNode = [];
-            
-            time_trajectory = 0:obj.Ts:obj.timeHorizon;
+            value_max.safety = -Inf;
+            value_max.liveness = -Inf;
             
             depth2go = depth2go - 1;
+            depthCurrent = obj.depthBound - depth2go;
+            depthPrev = depthCurrent - 1;
+            
+            if depthPrev == 0
+                depthPrev = 1;
+            end
+            parentNode = DigraphTree.getNodeName(parentID, states_Other, obj.safety_limit(depthPrev));
+            maxNode = [];
+            
+            time_trajectory = 0:obj.Ts:obj.timeHorizon;
             
             % Decisions Ego
             decisions_Ego = obj.calculateDecisions_Ego(state_Ego, d_goal, time_trajectory);
@@ -168,33 +185,25 @@ classdef DiscretePlannerFormal < DecisionMaking
             for id_decision = size(decisionsFeasible_Ego, 1):-1:1 % Reverse to remove unsafe decisions without confusing idx
                 TS_Ego = decisionsFeasible_Ego{id_decision, 1};
                 
-                unsafetyLevel = 0;
+                safetyLevel = 0;
                 for id_other = 1:size(decisions_Other, 1)
                     TS_Other = decisions_Other{id_other, 1};
                     [~, unsafeDiscreteStates] = CellChecker.isSafeTransitions(TS_Ego, TS_Other);
 
-                    unsafetyLevel = max(unsafetyLevel, length(unsafeDiscreteStates));
+                    safetyLevel = min(safetyLevel, -length(unsafeDiscreteStates));
                     
-                    if unsafetyLevel > unsafetyLevel_min
-                        % Remove unsafe decisions
+                    if safetyLevel < obj.safety_limit(depthCurrent)
+                        % Remove unsafer decisions
                         decisionsSafe_Ego(id_decision, :) = [];
                         break
                     end
                 end
                 
-                if unsafetyLevel <= unsafetyLevel_min
-                    if unsafetyLevel < unsafetyLevel_min
-                        % Reset values if safer option exists
-                        value_max = -Inf;
-                        alpha = -Inf;
-                        bestNode = [];
-                    end
-                    unsafetyLevel_min = unsafetyLevel;
-                    
+                if safetyLevel >= obj.safety_limit(depthCurrent) % Only consider safer/as safe decisions 
                     % Add safe decision to digraph
                     [graph, childNode, obj.nodeID] = DigraphTree.expand(graph, obj.nodeID, parentNode, ...
                         decisionsSafe_Ego{id_decision, 3}, decisionsSafe_Ego{id_decision, 4}, ...
-                        [0, 1, 0], [0, 1, 0], unsafetyLevel);
+                        [0, 1, 0], [0, 1, 0], safetyLevel);
                     
                     % Expand tree for future states of safe decisions
                     decisionSafe_Ego = decisionsSafe_Ego(id_decision, :);
@@ -204,21 +213,22 @@ classdef DiscretePlannerFormal < DecisionMaking
                     if depth2go == 0
                         % No future decision for this depth
                         decisionsFuture_Ego = [];
-                        value = obj.evaluate(futureState_Ego);
+                        % Combined value for liveness and safety
+                        value = obj.evaluate(safetyLevel, futureState_Ego);  
                     else
                         futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
-                        [decisionsFuture_Ego, value, graph] = obj.planMinManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, unsafetyLevel_min, graph, obj.nodeID, depth2go);
+                        [decisionsFuture_Ego, value, graph] = obj.planMinManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, obj.nodeID, depth2go);
                     end
 
                     % Max behaviour: Ego vehicle
-                    if value > value_max
+                    if Values.isGreater(value, value_max)
                         value_max = value;
                         decisionsNext_Ego = decisionsFuture_Ego;
                         decisionMax_Ego = decisionSafe_Ego;
-                        bestNode = childNode;
+                        maxNode = childNode;
                         
-                        alpha = max(alpha, value_max);
-                        if beta <= alpha 
+                        alpha = Values.Max(alpha, value_max);
+                        if Values.isLessEqual(beta, alpha) 
                             break
                         end
                     end    
@@ -226,22 +236,25 @@ classdef DiscretePlannerFormal < DecisionMaking
             end
             
             % Higlight best node and edge in digraph
-            if ~isempty(bestNode) 
-                graph = DigraphTree.changeNodeColor(graph, bestNode, [0, 1, 1]);
-                graph = DigraphTree.changeEdgeColor(graph, parentNode, bestNode, [0, 1, 1]);
+            if ~isempty(maxNode) 
+                graph = DigraphTree.changeNodeColor(graph, maxNode, [0, 1, 1]);
+                graph = DigraphTree.changeEdgeColor(graph, parentNode, maxNode, [0, 1, 1]);
             end
             
             decisionsNext_Ego = [decisionMax_Ego; decisionsNext_Ego];
         end
         
-        function [decisionsNext_Ego, value_min, graph] = planMinManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, unsafetyLevel, graph, parentID, depth2go)
+        function [decisionsNext_Ego, value_min, graph] = planMinManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, parentID, depth2go)
         % For other vehicles choose the action, which is considered the most unsafe
             
             decisionsNext_Ego = [];
-            value_min = Inf;
+            value_min.safety = Inf;
+            value_min.liveness = Inf;
+            
+            depthCurrent = obj.depthBound - depth2go;
         
-            parentNode = DigraphTree.getNodeName(parentID, futureState_Ego, unsafetyLevel);
-            worstNode = [];
+            parentNode = DigraphTree.getNodeName(parentID, futureState_Ego, obj.safety_limit(depthCurrent));
+            minNode = [];
         
             for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
                 futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
@@ -249,24 +262,26 @@ classdef DiscretePlannerFormal < DecisionMaking
                 % Add other vehicles' possible decisions to digraph
                 [graph, childNode, obj.nodeID] = DigraphTree.expand(graph, obj.nodeID, parentNode, ...
                         futureStates_Other, ['Combination', num2str(id_statesOther)], ...
-                        [1, 0, 0], [1, 0, 0], unsafetyLevel);
+                        [1, 0, 0], [1, 0, 0], obj.safety_limit(depthCurrent));
                 
-                [decisionsFuture_Ego, value, ~, graph] = obj.planMaxManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, unsafetyLevel, graph, obj.nodeID, depth2go);
+                [decisionsFuture_Ego, value, graph] = obj.planMaxManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, graph, obj.nodeID, depth2go);
                 
                 % Min behaviour: Other vehicles
                 if isempty(decisionsFuture_Ego)
                     decisionsNext_Ego = [];
-                    value_min = -Inf;
+                    minNode = [];
+                    value_min.safety = -Inf;
+                    value_min.liveness = -Inf;
                     break % These decisions are unsafe if at least one combination of the
                           % other vehicles' possible future states might be unsafe
-                else
-                    if value < value_min
+                elseif value.safety <= value_min.safety
+                    if Values.isLess(value, value_min)
                         value_min = value;
                         decisionsNext_Ego = decisionsFuture_Ego;
-                        worstNode = childNode;
+                        minNode = childNode;
                         
-                        beta = min(beta, value_min);
-                        if beta <= alpha
+                        beta = Values.Min(beta, value_min);
+                        if Values.isLessEqual(beta, alpha)
                             break
                         end
                     end   
@@ -274,38 +289,18 @@ classdef DiscretePlannerFormal < DecisionMaking
             end
             
             % Higlight worst node and edge in digraph
-            if ~isempty(worstNode)
-                graph = DigraphTree.changeNodeColor(graph, worstNode, [1, 0, 1]);
-                graph = DigraphTree.changeEdgeColor(graph, parentNode, worstNode, [1, 0, 1]);
+            if ~isempty(minNode)
+                graph = DigraphTree.changeNodeColor(graph, minNode, [1, 0, 1]);
+                graph = DigraphTree.changeEdgeColor(graph, parentNode, minNode, [1, 0, 1]);
             end
         end
         
-        function value = evaluate(obj, state)
+        function value = evaluate(obj, safety, state)
         % Evaluate state
-            
-            value = state.s + state.speed*obj.timeHorizon; % - state.d; to goback to right lane
-        end
-        
-        function value = evaluate2(obj, state_Ego, states_Other)
-        % Evaluate states
-            
-            value = -Inf;
-            TTC_min = 1.4; % TTC=1.4s worst acceptable case
-        
-            s_Other = arrayfun(@(x) x.s, states_Other);
-            d_Other = arrayfun(@(x) x.d, states_Other);
-            v_other = arrayfun(@(x) x.speed, states_Other);
-        
-            TTC = (s_Other - state_Ego.s)./(state_Ego.speed - v_other);
-            TTC(TTC < 0) = Inf; % Negative TTC is safe in any casse
-            
-            % Situation with vehicles on opposite lane should always be
-            % safe
-            TTC = TTC + abs(state_Ego.d - d_Other)*TTC_min/obj.LaneWidth; 
-            
-            if all(all(TTC > TTC_min)) 
-                value = state_Ego.s + state_Ego.speed*obj.timeHorizon;
-            end
+           
+            value.safety = safety;
+            liveness = state.s + state.speed*obj.timeHorizon; % - state.d; to goback to right lane 
+            value.liveness = liveness;
         end
         
         function decisions = calculateDecisions_Ego(obj, state, d_goal, time)
@@ -314,18 +309,13 @@ classdef DiscretePlannerFormal < DecisionMaking
             % FreeDrive
             decisionsFD = obj.getDecisionsForDrivingMode(state, d_goal, 1, obj.maximumAcceleration, 'FreeDrive', time);
 
+            % TODO: For v <= 0, LC might be unfeasible vehicle following might result in the same as EmergencyBrake
             % VehicleFollowing
-            decisionsVF = [];
+            decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, obj.minimumAcceleration, 0, 'VehicleFollowing', time);
+
             % ChangeLane
-            decisionsCL = [];
-            if state.speed > 0.001 % Avoid very slow velocities
-                % For v <= 0, vehicle following results in the same as EmergencyBrake
-                decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, obj.minimumAcceleration, 0, 'VehicleFollowing', time);
-                
-                % For v <= 0, ChangeLane is unfeasible
-                d_otherLane = obj.getOppositeLane(d_goal, obj.LaneWidth);
-                decisionsCL = obj.getDecisionsForLaneChange(state, d_otherLane, 0, 0, time);
-            end
+            d_otherLane = obj.getOppositeLane(d_goal, obj.LaneWidth);
+            decisionsCL = obj.getDecisionsForLaneChange(state, d_otherLane, 0, 0, time);
 
             % EmergencyBrake
             decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, obj.emergencyAcceleration, obj.emergencyAcceleration, 'EmergencyBrake', time);

@@ -11,12 +11,12 @@ classdef DigraphTree
             dG = addnode(dG, nodeProperties);
         end
         
-        function [dG, child, ID] = expand(dG, ID, parent, state, edgeName, colorNode, colorEdge, unsafety)
+        function [dG, child, ID] = expand(dG, ID, parent, state, edgeName, colorNode, colorEdge, safety)
         % Expand the tree, add a new state node and connect it to its parent
             
             ID = ID + 1;
             
-            child = DigraphTree.getNodeName(ID, state, unsafety);
+            child = DigraphTree.getNodeName(ID, state, safety);
             dG = DigraphTree.connect(dG, parent, child, edgeName, colorNode, colorEdge);
         end
         
@@ -44,14 +44,14 @@ classdef DigraphTree
             dG.Edges.Color{id_Edge} = color;
         end
         
-        function nodeName = getNodeName(ID, state, unsafety)
+        function nodeName = getNodeName(ID, state, safety)
         % Get unique node name defined by its ID
             
             nodeName = ['ID:', dec2hex(ID), ...
                         ' s:', '[', regexprep(num2str(round([state.s], 1)), '\s+',' '), ']', ...
                         ', d:', '[', regexprep(num2str(round([state.d], 1)), '\s+',' '), ']', ...
                         ', v:', '[', regexprep(num2str(round([state.speed], 1)), '\s+',' '), ']', ...
-                        ', U:', num2str(round(unsafety, 1))];
+                        ', S_{f}:', num2str(round(safety, 1))];
         end
     end
 end
