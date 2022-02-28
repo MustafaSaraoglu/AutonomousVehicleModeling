@@ -94,13 +94,13 @@ classdef DiscretePlannerFormal < DecisionMaking
                 obj.t_ref = get_param('VehicleFollowing', 'SimulationTime') + obj.timeHorizon/obj.partsTimeHorizon;
                 
                 % Define vehicle states
-                currentState_Ego = obj.createState(sEgo, dEgo, orientationEgo, vEgo);
+                currentState_Ego = State(sEgo, dEgo, orientationEgo, vEgo);
                     
                 [sOther, dOther] = Cartesian2Frenet(obj.RoadTrajectory, [poseOtherVehicles(1, :)', poseOtherVehicles(2, :)']);
-
-                currentStates_Other = obj.preallocateStates(1, size(poseOtherVehicles, 2));
+                
+                currentStates_Other(1, size(poseOtherVehicles, 2)) = State([], [], [], []); % Preallocation
                 for id_other = 1:size(poseOtherVehicles, 2)
-                    currentStates_Other(id_other) = obj.createState(sOther(id_other), dOther(id_other), poseOtherVehicles(3, id_other), speedsOtherVehicles(id_other));
+                    currentStates_Other(id_other) = State(sOther(id_other), dOther(id_other), poseOtherVehicles(3, id_other), speedsOtherVehicles(id_other));
                 end
                 
                 % TODO: Free Drive if no vehicle in front on right lane for faster computation?
@@ -221,7 +221,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                         value = obj.evaluate(safetyLevel, futureState_Ego);  
                     else
                         d_futureGoal = futureState_Ego.d;
-                        futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
+                        futureStatesCombinations_Other = State.getStateCombinations(possibleFutureStates_Other);
                         [decisionsFuture_Ego, value, graph] = obj.planMinManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, obj.nodeID, depth2go);
                     end
 
@@ -370,7 +370,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                 
                 % Future state prediction
                 [~, futureOrientation] = Frenet2Cartesian(s_trajectory(end), d_trajectory(end), obj.RoadTrajectory);
-                futureState = obj.createState(s_trajectory(end), d_trajectory(end), futureOrientation, v_trajectory(end));
+                futureState = State(s_trajectory(end), d_trajectory(end), futureOrientation, v_trajectory(end));
                 
                 % Discrete trajectory
                 occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory, d_trajectory, time);
@@ -405,7 +405,7 @@ classdef DiscretePlannerFormal < DecisionMaking
 
                 % Future state prediction
                 futureOrientation = trajectoryCartesian(end, 3);
-                futureState = obj.createState(s_trajectory(end), d_trajectory(end), futureOrientation, trajectorySpeed(end));
+                futureState = State(s_trajectory(end), d_trajectory(end), futureOrientation, trajectorySpeed(end));
                 
                 occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory, d_trajectory, time);
                 
@@ -424,7 +424,7 @@ classdef DiscretePlannerFormal < DecisionMaking
             n_decisions = 1; % Keep Lane; n=2: +(Change Lane)
             
             decisions = cell(n_other*n_decisions, 1); 
-            futureStates = obj.preallocateStates(2*n_decisions, n_other);
+            futureStates(2*n_decisions, n_other) = State([], [], [], []);
             id_decision = 1;
             
             % Iteration over all other vehicles
@@ -484,10 +484,10 @@ classdef DiscretePlannerFormal < DecisionMaking
             d_trajectory = d*ones(1, size(s_trajectory_min, 2));
 
             % Future state prediction (Min)
-            futureState_min = obj.createState(s_trajectory_min(end), d, 'don''t care', v_trajectory_min(end));
+            futureState_min = State(s_trajectory_min(end), d, 'don''t care', v_trajectory_min(end));
 
              % Future state prediction (Max)
-            futureState_max = obj.createState(s_trajectory_max(end), d, 'don''t care', v_trajectory_max(end));
+            futureState_max = State(s_trajectory_max(end), d, 'don''t care', v_trajectory_max(end));
             
             futureStates_KL = [futureState_min, futureState_max];
 
@@ -500,7 +500,7 @@ classdef DiscretePlannerFormal < DecisionMaking
         % Get the decision to change lane for other vehicle for static maneuver with a=0, T=4s  
             
             decision_CL = Decision([], [], [], [], [], []);
-            futureStates_CL = [obj.createState([], [], [], []); obj.createState([], [], [], [])];
+            futureStates_CL(2, 1) = State([], [], [], []);
             descriptionDecision = [descriptionVehicle, 'Change Lane'];
                 
             d_goal = obj.getOppositeLane(d, obj.LaneWidth);
@@ -518,10 +518,10 @@ classdef DiscretePlannerFormal < DecisionMaking
                                                                            obj.RoadTrajectory, obj.timeHorizon, obj.Ts);
                 if isFeasiblTrajectory_max
                     % Future state prediction (Min)
-                    futureState_min = obj.createState(trajectoryFrenet_min(end, 1), d_goal, 'don''t care', v_min);
+                    futureState_min = State(trajectoryFrenet_min(end, 1), d_goal, 'don''t care', v_min);
 
                     % Future state prediction (Max)
-                    futureState_max = obj.createState(trajectoryFrenet_max(end, 1), d_goal, 'don''t care', v_max);
+                    futureState_max = State(trajectoryFrenet_max(end, 1), d_goal, 'don''t care', v_max);
                     
                     futureStates_CL = [futureState_min, futureState_max];
 
@@ -619,47 +619,6 @@ classdef DiscretePlannerFormal < DecisionMaking
         
             if d_currentLane == 0
                 d_oppositeLane = laneWidth;
-            end
-        end
-        
-        function states = preallocateStates(n_row, n_col)
-        % Preallocate struct array containing the states
-            
-            states = struct('s', cell(n_row, n_col), 'd', cell(n_row, n_col), ...
-                'orientation', cell(n_row, n_col), 'speed', cell(n_row, n_col));
-        end
-        
-        function state = createState(s, d, orientation, speed)
-        % Create State with information about pose and speed
-            
-            state.s = s;
-            state.d = d;
-            state.orientation = orientation;
-            state.speed = speed;
-        end
-        
-        function stateCombinations = getStateCombinations(states)
-        % Get all possible state combinations for each decision of each
-        % vehicle
-            
-            % n_stateCombinations = \prod_{i=1}^{n_vehicles} n_states_{i}
-            n_vehicles = size(states, 2);
-            
-            for id_vehicle = 1:n_vehicles
-                % Get number of nonempty states for each vehicle
-                n_states = sum(arrayfun(@(x) ~any(structfun(@isempty, x)), states(:, id_vehicle)));
-                if id_vehicle == 1
-                    id_combinations = 1:n_states;
-                else
-                    id_combinations = combvec(id_combinations, 1:n_states);
-                end
-            end
-            
-            id_combinations = id_combinations';
-            
-            stateCombinations = DiscretePlannerFormal.preallocateStates(size(id_combinations, 1), n_vehicles);
-            for id_vehicle = 1:n_vehicles
-                stateCombinations(:, id_vehicle) = states(id_combinations(:, id_vehicle), id_vehicle);
             end
         end
     end
