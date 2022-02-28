@@ -104,6 +104,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                 end
                 
                 % TODO: Free Drive if no vehicle in front on right lane for faster computation?
+                % [sEgo_max, ~] = ReachabilityAnalysis.predictLongitudinalFutureState(sEgo, vEgo, obj.vEgo_ref, obj.minimumAcceleration, obj.k_timeHorizon, obj.Ts);
                 
                 obj.safety_limit = -Inf*ones(1, obj.searchDepth); % Maximum safety level for each depth
                 for depth = 1:obj.searchDepth % Iterative deepening
@@ -123,13 +124,15 @@ classdef DiscretePlannerFormal < DecisionMaking
                     [bestDecision_iteration, value_iteration, dG_final] = obj.planMaxManeuver(currentState_Ego, obj.d_destination, currentStates_Other, alpha_0, beta_0, dG_initial, obj.nodeID, depth);
                     obj.safety_limit(obj.depthBound) = value_iteration.safety;
                     if ~isempty(bestDecision_iteration)
-                        % Minimum Violation Planning
+                        % Minimum Violation Planning:
+                        % Take solution of previous iteration if no safe
+                        % option was found in this iteration
                         bestDecision_Ego = bestDecision_iteration;
                     end
                 end
                     
-                nextDecision = bestDecision_Ego(1, :);
-                description_nextDecision = strsplit(nextDecision{4}, '_');
+                nextDecision = bestDecision_Ego(1);
+                description_nextDecision = strsplit(nextDecision.description, '_');
                 nextState = description_nextDecision{1};
                 obj.currentState = obj.states(nextState);
 
@@ -138,7 +141,7 @@ classdef DiscretePlannerFormal < DecisionMaking
 
                     % Round: avoid very small value differences
                     % Use either 0 or 3.7
-                    obj.d_destination = round(nextDecision{3}.d, 1);
+                    obj.d_destination = round(nextDecision.futureState.d, 1);
 
                     T_LC = extractBetween(description_nextDecision{2}, '{T', '}');
                     changeLaneCmd = str2double(T_LC{1});
@@ -172,29 +175,32 @@ classdef DiscretePlannerFormal < DecisionMaking
             
             % Decisions Ego
             decisions_Ego = obj.calculateDecisions_Ego(state_Ego, d_goal, time_trajectory);
-            
-            % Feasibility check
-            isFeasibleDecision = [decisions_Ego{:, 2}];
-            decisionsFeasible_Ego = decisions_Ego(isFeasibleDecision, :);
-            
+
             % Decisions other vehicles
             [decisions_Other, possibleFutureStates_Other] = obj.calculateDecisions_Other(states_Other, depth2go, time_trajectory);
             
             % Safety check
-            decisionsSafe_Ego = decisionsFeasible_Ego;
-            for id_decision = size(decisionsFeasible_Ego, 1):-1:1 % Reverse to remove unsafe decisions without confusing idx
-                TS_Ego = decisionsFeasible_Ego{id_decision, 1};
+            for id_decision = length(decisions_Ego):-1:1 % Reverse to remove unsafe decisions without confusing idx
+                decision_Ego = decisions_Ego{id_decision};
                 
+                % Feasibility check
+                if ~decision_Ego.isFeasible
+                    decisions_Ego(id_decision) = [];
+                    continue
+                end
+                
+                TS_Ego = decision_Ego.TS;
                 safetyLevel = 0;
-                for id_other = 1:size(decisions_Other, 1)
-                    TS_Other = decisions_Other{id_other, 1};
+                for id_other = 1:length(decisions_Other)
+                    decision_Other = decisions_Other{id_other};
+                    TS_Other = decision_Other.TS;
                     [~, unsafeDiscreteStates] = CellChecker.isSafeTransitions(TS_Ego, TS_Other);
 
                     safetyLevel = min(safetyLevel, -length(unsafeDiscreteStates));
                     
-                    if safetyLevel < obj.safety_limit(depthCurrent)
+                    if safetyLevel < obj.safety_limit(depthCurrent) % Better option available previously
                         % Remove unsafer decisions
-                        decisionsSafe_Ego(id_decision, :) = [];
+                        decisions_Ego(id_decision) = [];
                         break
                     end
                 end
@@ -202,13 +208,11 @@ classdef DiscretePlannerFormal < DecisionMaking
                 if safetyLevel >= obj.safety_limit(depthCurrent) % Only consider safer/as safe decisions 
                     % Add safe decision to digraph
                     [graph, childNode, obj.nodeID] = DigraphTree.expand(graph, obj.nodeID, parentNode, ...
-                        decisionsSafe_Ego{id_decision, 3}, decisionsSafe_Ego{id_decision, 4}, ...
+                        decision_Ego.futureState, decision_Ego.description, ...
                         [0, 1, 0], [0, 1, 0], safetyLevel);
                     
                     % Expand tree for future states of safe decisions
-                    decisionSafe_Ego = decisionsSafe_Ego(id_decision, :);
-                    futureState_Ego = decisionSafe_Ego{3};
-                    d_futureGoal = futureState_Ego.d;
+                    futureState_Ego = decision_Ego.futureState;
                     
                     if depth2go == 0
                         % No future decision for this depth
@@ -216,6 +220,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                         % Combined value for liveness and safety
                         value = obj.evaluate(safetyLevel, futureState_Ego);  
                     else
+                        d_futureGoal = futureState_Ego.d;
                         futureStatesCombinations_Other = obj.getStateCombinations(possibleFutureStates_Other);
                         [decisionsFuture_Ego, value, graph] = obj.planMinManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, graph, obj.nodeID, depth2go);
                     end
@@ -224,7 +229,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                     if Values.isGreater(value, value_max)
                         value_max = value;
                         decisionsNext_Ego = decisionsFuture_Ego;
-                        decisionMax_Ego = decisionSafe_Ego;
+                        decisionMax_Ego = decision_Ego;
                         maxNode = childNode;
                         
                         alpha = Values.Max(alpha, value_max);
@@ -296,7 +301,7 @@ classdef DiscretePlannerFormal < DecisionMaking
         end
         
         function value = evaluate(obj, safety, state)
-        % Evaluate state
+        % Evaluate safety and state
            
             value.safety = safety;
             liveness = state.s + state.speed*obj.timeHorizon; % - state.d; to goback to right lane 
@@ -321,7 +326,7 @@ classdef DiscretePlannerFormal < DecisionMaking
             decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, obj.emergencyAcceleration, obj.emergencyAcceleration, 'EmergencyBrake', time);
             
             % All possible decisions
-            % TODO: Find order for eficient expansion
+            % TODO: Find order for eficient tree expansion
             decisions = [decisionsCL; decisionsEB; decisionsVF; decisionsFD];
         end
         
@@ -349,7 +354,7 @@ classdef DiscretePlannerFormal < DecisionMaking
             
             number_decisions = length(acc_lower:1:acc_upper);
 
-            decisions = cell(number_decisions, 6);
+            decisions = cell(number_decisions, 1);
             id_decision = 1;
             
             for acc = acc_lower:1:acc_upper 
@@ -371,7 +376,8 @@ classdef DiscretePlannerFormal < DecisionMaking
                 occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory, d_trajectory, time);
                 TS  = CellChecker.createTSfromCells(occupiedCells);
                 
-                [decisions, id_decision] = obj.addDecision(decisions, TS, true, futureState, description, [], [], id_decision);
+                newDecision = Decision(TS, true, futureState, description, [], []);
+                [decisions, id_decision] = newDecision.addDecisionToCell(decisions, id_decision);
             end
         end
         
@@ -382,7 +388,7 @@ classdef DiscretePlannerFormal < DecisionMaking
         
             number_decisions = length(dur_lower:1:obj.timeHorizon);
 
-            decisions = cell(number_decisions, 6);
+            decisions = cell(number_decisions, 1);
             id_decision = 1;
             
             acc = obj.maximumAcceleration; % Free Drive
@@ -405,7 +411,8 @@ classdef DiscretePlannerFormal < DecisionMaking
                 
                 TS  = CellChecker.createTSfromCells(occupiedCells);
                 
-                [decisions, id_decision] = obj.addDecision(decisions, TS, isFeasibleTrajectory, futureState, description, trajectoryFrenet, trajectoryCartesian, id_decision);
+                newDecision = Decision(TS, isFeasibleTrajectory, futureState, description, trajectoryFrenet, trajectoryCartesian);
+                [decisions, id_decision] = newDecision.addDecisionToCell(decisions, id_decision);
             end  
         end
         
@@ -416,7 +423,7 @@ classdef DiscretePlannerFormal < DecisionMaking
             n_other = length(states); 
             n_decisions = 1; % Keep Lane; n=2: +(Change Lane)
             
-            decisions = cell(n_other*n_decisions, 6); 
+            decisions = cell(n_other*n_decisions, 1); 
             futureStates = obj.preallocateStates(2*n_decisions, n_other);
             id_decision = 1;
             
@@ -442,7 +449,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                 
                 % Decision: Keep Lane 
                 [decision_KL, futureStates_KL] = obj.getDecisionForKeepLane_Other(s_min, v_min, s_max, v_max, state.d, descriptionVehicle, time);
-                decisions(id_decision, :) = decision_KL;
+                decisions{id_decision} = decision_KL;
                 futureStates(1:2, id_otherVehicle) = futureStates_KL;
                 id_decision = id_decision + 1;
                 
@@ -462,7 +469,6 @@ classdef DiscretePlannerFormal < DecisionMaking
         function [decision_KL, futureStates_KL] = getDecisionForKeepLane_Other(obj, s_min, v_min, s_max, v_max, d, descriptionVehicle, time)
         % Get the decision to keep lane for other vehicle    
             
-            decision_KL = cell(1, 6);
             descriptionDecision = [descriptionVehicle, 'Keep Lane'];
 
             % Calculate other vehicle's trajectory for a_min and a_max
@@ -487,15 +493,13 @@ classdef DiscretePlannerFormal < DecisionMaking
 
             TS = obj.calculateTS_Other(s_trajectory_min, d_trajectory, s_trajectory_max, d_trajectory, time);
 
-            [decision_KL, ~] = obj.addDecision(decision_KL, TS, true, ...
-                                               [futureState_min; futureState_max], ...
-                                               descriptionDecision, [], [], 1);
+            decision_KL = Decision(TS, true, [futureState_min; futureState_max], descriptionDecision, [], []);
         end
         
         function [decision_CL, futureStates_CL] = getDecisionForChangeLane_Other(obj, s_min, v_min, s_max, v_max, d, descriptionVehicle, time)
         % Get the decision to change lane for other vehicle for static maneuver with a=0, T=4s  
             
-            decision_CL = cell(0, 6);
+            decision_CL = Decision([], [], [], [], [], []);
             futureStates_CL = [obj.createState([], [], [], []); obj.createState([], [], [], [])];
             descriptionDecision = [descriptionVehicle, 'Change Lane'];
                 
@@ -524,9 +528,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                     TS = obj.calculateTS_Other(trajectoryFrenet_min(:, 1), trajectoryFrenet_min(:, 2), ...
                                                trajectoryFrenet_max(:, 1), trajectoryFrenet_max(:, 2), time);
                     
-                    [decision_CL, ~] = obj.addDecision(decision_CL, TS, true, ...
-                                                       [futureState_min; futureState_max], ...
-                                                       descriptionDecision, [], [], 1);
+                    decision_CL = Decision(TS, true, [futureState_min; futureState_max], descriptionDecision, [], []);
                 end
             end
         end
@@ -659,35 +661,6 @@ classdef DiscretePlannerFormal < DecisionMaking
             for id_vehicle = 1:n_vehicles
                 stateCombinations(:, id_vehicle) = states(id_combinations(:, id_vehicle), id_vehicle);
             end
-        end
-        
-        function worstFutureState = findMostUnsafeAdversatialFutureStates(futureState_Ego, possibleFutureStates_Other)
-        % Find the future states for the other vehicles which are the most unsafe for the ego
-        % vehicle according to some metric
-            
-            worstFutureState = DiscretePlannerFormal.preallocateStates(1, size(possibleFutureStates_Other, 2));
-            for id_vehicle_other = 1:size(possibleFutureStates_Other, 2)
-                % Distance metric according to delta_s
-                s_other = [possibleFutureStates_Other(:, id_vehicle_other).s];
-                
-                delta_s = futureState_Ego.s - s_other;
-                [~, id_min] = min(abs(delta_s));
-                worstFutureState(id_vehicle_other) = possibleFutureStates_Other(id_min, id_vehicle_other);
-            end
-        end
-        
-        function [decisions, id_next] = addDecision(decisions, TS, isFeasibile, futureState, description, trajectoryFrenet_LC, trajectoryCartesian_LC, id)
-        % Add new decisions (TS, feasibility, futureState, description, trajectoryFrenet, trajectoryCartesian) 
-        % to cell array at the given index
-            
-            decisions{id, 1} = TS;
-            decisions{id, 2} = isFeasibile;
-            decisions{id, 3} = futureState;
-            decisions{id, 4} = description;
-            decisions{id, 5} = trajectoryFrenet_LC;
-            decisions{id, 6} = trajectoryCartesian_LC;
-            
-            id_next = id + 1;
         end
     end
 end
