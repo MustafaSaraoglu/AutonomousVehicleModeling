@@ -13,18 +13,20 @@ classdef Decision
     methods
         function obj = Decision(TS, isFeasible, futureState, description, trajectoryFrenet_LC, trajectoryCartesian_LC)
             %DECISION Construct an instance of this class
-            obj.TS = TS;
-            obj.isFeasible = isFeasible; 
-            obj.futureState = futureState;
-            obj.description = description;
-            obj.trajectoryFrenet_LC = trajectoryFrenet_LC;
-            obj.trajectoryCartesian_LC = trajectoryCartesian_LC;
+            if nargin > 0
+                obj.TS = TS;
+                obj.isFeasible = isFeasible; 
+                obj.futureState = futureState;
+                obj.description = description;
+                obj.trajectoryFrenet_LC = trajectoryFrenet_LC;
+                obj.trajectoryCartesian_LC = trajectoryCartesian_LC;
+            end
         end
         
-        function [decisions, id_next] = addDecisionToCell(obj, decisions, id)
-        % Add new decisions to cell array at the given index
+        function [decisions, id_next] = addDecisionToArray(obj, decisions, id)
+        % Add new decisions to Decision array at the given index
             
-            decisions{id} = obj;
+            decisions(id) = obj;
             id_next = id + 1;
         end
     end

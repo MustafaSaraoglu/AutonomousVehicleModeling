@@ -181,7 +181,7 @@ classdef DiscretePlannerFormal < DecisionMaking
             
             % Safety check
             for id_decision = length(decisions_Ego):-1:1 % Reverse to remove unsafe decisions without confusing idx
-                decision_Ego = decisions_Ego{id_decision};
+                decision_Ego = decisions_Ego(id_decision);
                 
                 % Feasibility check
                 if ~decision_Ego.isFeasible
@@ -192,7 +192,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                 TS_Ego = decision_Ego.TS;
                 safetyLevel = 0;
                 for id_other = 1:length(decisions_Other)
-                    decision_Other = decisions_Other{id_other};
+                    decision_Other = decisions_Other(id_other);
                     TS_Other = decision_Other.TS;
                     [~, unsafeDiscreteStates] = CellChecker.isSafeTransitions(TS_Ego, TS_Other);
 
@@ -354,7 +354,8 @@ classdef DiscretePlannerFormal < DecisionMaking
             
             number_decisions = length(acc_lower:1:acc_upper);
 
-            decisions = cell(number_decisions, 1);
+            % decisions = cell(number_decisions, 1);
+            decisions(number_decisions, 1) = Decision([], [], [], [], [], []);
             id_decision = 1;
             
             for acc = acc_lower:1:acc_upper 
@@ -377,7 +378,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                 TS  = CellChecker.createTSfromCells(occupiedCells);
                 
                 newDecision = Decision(TS, true, futureState, description, [], []);
-                [decisions, id_decision] = newDecision.addDecisionToCell(decisions, id_decision);
+                [decisions, id_decision] = newDecision.addDecisionToArray(decisions, id_decision);
             end
         end
         
@@ -388,7 +389,8 @@ classdef DiscretePlannerFormal < DecisionMaking
         
             number_decisions = length(dur_lower:1:obj.timeHorizon);
 
-            decisions = cell(number_decisions, 1);
+            %decisions = cell(number_decisions, 1);
+            decisions(number_decisions, 1) = Decision([], [], [], [], [], []);
             id_decision = 1;
             
             acc = obj.maximumAcceleration; % Free Drive
@@ -412,7 +414,7 @@ classdef DiscretePlannerFormal < DecisionMaking
                 TS  = CellChecker.createTSfromCells(occupiedCells);
                 
                 newDecision = Decision(TS, isFeasibleTrajectory, futureState, description, trajectoryFrenet, trajectoryCartesian);
-                [decisions, id_decision] = newDecision.addDecisionToCell(decisions, id_decision);
+                [decisions, id_decision] = newDecision.addDecisionToArray(decisions, id_decision);
             end  
         end
         
@@ -423,7 +425,8 @@ classdef DiscretePlannerFormal < DecisionMaking
             n_other = length(states); 
             n_decisions = 1; % Keep Lane; n=2: +(Change Lane)
             
-            decisions = cell(n_other*n_decisions, 1); 
+            %decisions = cell(n_other*n_decisions, 1); 
+            decisions(n_other*n_decisions, 1) = Decision([], [], [], [], [], []); % Preallocate
             futureStates(2*n_decisions, n_other) = State([], [], [], []);
             id_decision = 1;
             
@@ -449,9 +452,8 @@ classdef DiscretePlannerFormal < DecisionMaking
                 
                 % Decision: Keep Lane 
                 [decision_KL, futureStates_KL] = obj.getDecisionForKeepLane_Other(s_min, v_min, s_max, v_max, state.d, descriptionVehicle, time);
-                decisions{id_decision} = decision_KL;
                 futureStates(1:2, id_otherVehicle) = futureStates_KL;
-                id_decision = id_decision + 1;
+                [decisions, id_decision] = decision_KL.addDecisionToArray(decisions, id_decision);
                 
                 % TO ADD DECISION FOR CHANGE LANE n_decisions=2
 %                 % Decision: Change Lane Static for a=0 and T=4s
