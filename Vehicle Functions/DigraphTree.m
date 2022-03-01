@@ -11,12 +11,12 @@ classdef DigraphTree
             dG = addnode(dG, nodeProperties);
         end
         
-        function [dG, child, ID] = expand(dG, ID, parent, state, edgeName, colorNode, colorEdge, safety)
+        function [dG, child, childID] = expand(dG, parent, state, edgeName, colorNode, colorEdge, safety)
         % Expand the tree, add a new state node and connect it to its parent
             
-            ID = ID + 1;
+            childID = DigraphTree.getNewID();
             
-            child = DigraphTree.getNodeName(ID, state, safety);
+            child = DigraphTree.getNodeName(childID, state, safety);
             dG = DigraphTree.connect(dG, parent, child, edgeName, colorNode, colorEdge);
         end
         
@@ -52,6 +52,18 @@ classdef DigraphTree
                         ', d:', '[', regexprep(num2str(round([state.d], 1)), '\s+',' '), ']', ...
                         ', v:', '[', regexprep(num2str(round([state.speed], 1)), '\s+',' '), ']', ...
                         ', S_{f}:', num2str(round(safety, 1))];
+        end
+        
+        function ID_global = getNewID(init)
+        % Get new unique IDs
+
+            persistent ID;
+            if nargin == 1
+                ID = init;
+            else
+                ID = ID + 1;
+            end
+            ID_global = ID;
         end
     end
 end
