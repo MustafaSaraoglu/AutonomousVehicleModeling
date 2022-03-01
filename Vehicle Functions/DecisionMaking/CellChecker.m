@@ -1,18 +1,17 @@
 classdef CellChecker
-% Check if discrete trajectory (consisting of discrete discreteCells) is safe
+% Check if discrete trajectory (consisting of discrete discrete cells) is safe
 % against other discrete trajectories by comparing the transition systems
     
     methods
         function obj = CellChecker()
             %CELLCHECKER Construct an instance of this class
-            %   Detailed explanation goes here
         end
     end
     
     methods (Static)
         function TS = createTSfromCells(discreteCells)
-        % Create a transition system containing the states (transition from state to next state in 
-        % the list) and the entrance and exit time to each state
+        % Create a transition system containing the discrete states (transition from state to next 
+        % state in the list) and the entrance and exit time to each state
             
             X_cell = discreteCells(:, 1);
             Y_cell = discreteCells(:, 2);
