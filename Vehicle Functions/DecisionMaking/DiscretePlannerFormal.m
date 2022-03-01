@@ -330,31 +330,11 @@ classdef DiscretePlannerFormal < DecisionMaking
             decisions = [decisionsCL; decisionsEB; decisionsVF; decisionsFD];
         end
         
-        function decisions = calculateDecisions_Ego_LaneChange(obj, state, d_goal, time)
-        % Calculate candidate trajectories (decisions) while executing lane change
-        
-            [~, roadOrientation] = Frenet2Cartesian(state.s, state.d, obj.RoadTrajectory);
-            d_dot = state.speed*sin(state.orientation - roadOrientation);
-            
-            d_ddot = 0; % Simplification: Assume d_ddot = 0
-        
-            % ChangeLane
-            decisionsCL = obj.getDecisionsForLaneChange(state, d_goal, d_dot, d_ddot, time);
-            
-            % Abort: ChangeBack
-            d_otherLane = getOppositeLane(obj, obj.d_destination);
-            decisionsCB = obj.getDecisionsForLaneChange(state, d_otherLane, d_dot, d_ddot, time);
-            
-            % All possible decisions
-            decisions = [decisionsCL; decisionsCB];
-        end
-        
         function decisions = getDecisionsForDrivingMode(obj, state, d_goal, acc_lower, acc_upper, name_DrivingMode, time)
         % Get the decisions for a driving mode for different accelerations
             
             number_decisions = length(acc_lower:1:acc_upper);
 
-            % decisions = cell(number_decisions, 1);
             decisions(number_decisions, 1) = Decision([], [], [], [], [], []);
             id_decision = 1;
             
@@ -389,7 +369,6 @@ classdef DiscretePlannerFormal < DecisionMaking
         
             number_decisions = length(dur_lower:1:obj.timeHorizon);
 
-            %decisions = cell(number_decisions, 1);
             decisions(number_decisions, 1) = Decision([], [], [], [], [], []);
             id_decision = 1;
             
@@ -425,7 +404,6 @@ classdef DiscretePlannerFormal < DecisionMaking
             n_other = length(states); 
             n_decisions = 1; % Keep Lane; n=2: +(Change Lane)
             
-            %decisions = cell(n_other*n_decisions, 1); 
             decisions(n_other*n_decisions, 1) = Decision([], [], [], [], [], []); % Preallocate
             futureStates(2*n_decisions, n_other) = State([], [], [], []);
             id_decision = 1;
@@ -459,13 +437,12 @@ classdef DiscretePlannerFormal < DecisionMaking
 %                 % Decision: Change Lane Static for a=0 and T=4s
 %                 [decision_CL, futureStates_CL] = obj.getDecisionForChangeLane_Other(s_min, v_min, s_max, v_max, state.d, descriptionVehicle, time);
 %                 if ~isempty(decision_CL)
-%                     decisions(id_decision, :) = decision_CL;
 %                     futureStates(3:4, id_otherVehicle) = futureStates_CL;
-%                     id_decision = id_decision + 1;
+%                     [decisions, id_decision] = decision_CL.addDecisionToArray(decisions, id_decision);
 %                 end
             end
             
-            decisions = decisions(1:id_decision-1, :);
+            decisions = decisions(1:id_decision-1);
         end 
         
         function [decision_KL, futureStates_KL] = getDecisionForKeepLane_Other(obj, s_min, v_min, s_max, v_max, d, descriptionVehicle, time)
