@@ -34,6 +34,8 @@ classdef DiscretePlannerFormal < DecisionMaking
         searchDepth  % Depth for search algorithm
         depthBound % Maximum depth to search for in one iteration
         safety_limit % Safety boundary for each depth
+        
+        TrajectoryGenerator % Generate trajectories
     end
     
     methods(Access = protected)
@@ -52,8 +54,6 @@ classdef DiscretePlannerFormal < DecisionMaking
             % Discrete steps for one time horizon according to: timeHorizon = (k+1)*Ts
             obj.k_timeHorizon = obj.timeHorizon/obj.Ts - 1;
             
-            obj.curvature_max = tan(obj.steerAngle_max)/obj.wheelBase;
-            
             obj.nodeID = 0;
             obj.searchDepth = 2;
             
@@ -71,6 +71,10 @@ classdef DiscretePlannerFormal < DecisionMaking
             % Initial state: Free Drive and on the right lane 
             obj.currentState = obj.states('FreeDrive');
             disp('@t=0s: Initial state is: ''FreeDrive''.');
+            
+            curvature_max = tan(obj.steerAngle_max)/obj.wheelBase;
+            a_lateral_max = 30; % Maximum allowed lateral acceleration
+            obj.TrajectoryGenerator = TrajectoryGeneration(obj.Ts, obj.timeHorizon, obj.RoadTrajectory, curvature_max, a_lateral_max);
         end
         
         function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, poseOtherVehicles, speedsOtherVehicles, vEgo)
@@ -343,10 +347,9 @@ classdef DiscretePlannerFormal < DecisionMaking
                 
                 % Trajectory prediction
                 [s_trajectory, v_trajectory] = ...
-                    LocalTrajectoryPlanner.calculateLongitudinalTrajectory(state.s, state.speed, ...
+                    obj.TrajectoryGenerator.calculateLongitudinalTrajectory(state.s, state.speed, ...
                                                                            obj.vEgo_ref, acc, ...
-                                                                           obj.trajectoryReferenceLength, ...
-                                                                           obj.Ts);
+                                                                           obj.trajectoryReferenceLength);
                 d_trajectory = d_goal*ones(1, size(s_trajectory, 2));
                 
                 % Future state prediction
@@ -377,10 +380,9 @@ classdef DiscretePlannerFormal < DecisionMaking
                 description = ['ChangeLane', '_{T', num2str(durManeuver), '}'];
                 
                 [trajectoryFrenet, trajectoryCartesian, trajectorySpeed, ~, isFeasibleTrajectory] = ...
-                    LocalTrajectoryPlanner.calculateLaneChangingTrajectory(state.s, state.d, d_dot, d_ddot, d_goal, ...
+                    obj.TrajectoryGenerator.calculateLaneChangingTrajectory(state.s, state.d, d_dot, d_ddot, d_goal, ...
                                                                            state.speed, obj.vEgo_ref, acc, ...
-                                                                           durManeuver, obj.curvature_max, ...
-                                                                           obj.RoadTrajectory, obj.timeHorizon, obj.Ts);
+                                                                           durManeuver);
                 s_trajectory = trajectoryFrenet(:, 1)';
                 d_trajectory = trajectoryFrenet(:, 2)';
 
@@ -452,13 +454,13 @@ classdef DiscretePlannerFormal < DecisionMaking
 
             % Calculate other vehicle's trajectory for a_min and a_max
             [s_trajectory_min, v_trajectory_min] = ...
-                LocalTrajectoryPlanner.calculateLongitudinalTrajectory(s_min, v_min, ...
+                obj.TrajectoryGenerator.calculateLongitudinalTrajectory(s_min, v_min, ...
                                                                        obj.maximumVelocity, obj.minimumAcceleration, ...
-                                                                       obj.trajectoryReferenceLength, obj.Ts);
+                                                                       obj.trajectoryReferenceLength);
             [s_trajectory_max, v_trajectory_max] = ...
-                LocalTrajectoryPlanner.calculateLongitudinalTrajectory(s_max, v_max, ...
+                obj.TrajectoryGenerator.calculateLongitudinalTrajectory(s_max, v_max, ...
                                                                        obj.maximumVelocity, obj.maximumAcceleration, ...
-                                                                       obj.trajectoryReferenceLength, obj.Ts);
+                                                                       obj.trajectoryReferenceLength);
 
             d_trajectory = d*ones(1, size(s_trajectory_min, 2));
 
@@ -484,17 +486,15 @@ classdef DiscretePlannerFormal < DecisionMaking
                 
             d_goal = obj.getOppositeLane(d, obj.LaneWidth);
             [trajectoryFrenet_min, ~, ~, ~, isFeasiblTrajectory_min] = ...
-                LocalTrajectoryPlanner.calculateLaneChangingTrajectory(s_min, d, 0, 0, d_goal, ...
+                obj.TrajectoryGenerator.calculateLaneChangingTrajectory(s_min, d, 0, 0, d_goal, ...
                                                                        v_min, obj.maximumVelocity, 0, ...
-                                                                       4, obj.curvature_max, ...
-                                                                       obj.RoadTrajectory, obj.timeHorizon, obj.Ts);
+                                                                       4);
             % Trajectories must be feasible                                                       
             if isFeasiblTrajectory_min    
                 [trajectoryFrenet_max, ~, ~, ~, isFeasiblTrajectory_max] = ...
-                    LocalTrajectoryPlanner.calculateLaneChangingTrajectory(s_max, d, 0, 0, d_goal, ...
+                    obj.TrajectoryGenerator.calculateLaneChangingTrajectory(s_max, d, 0, 0, d_goal, ...
                                                                            v_max, obj.maximumVelocity, 0, ...
-                                                                           4, obj.curvature_max, ...
-                                                                           obj.RoadTrajectory, obj.timeHorizon, obj.Ts);
+                                                                           4);
                 if isFeasiblTrajectory_max
                     % Future state prediction (Min)
                     futureState_min = State(trajectoryFrenet_min(end, 1), d_goal, 'don''t care', v_min);
