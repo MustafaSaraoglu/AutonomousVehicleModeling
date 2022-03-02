@@ -32,11 +32,8 @@ classdef TreeSearch
             for depth = 1:obj.searchDepth % Iterative deepening
                 % Initialise digraph
                 ID_global = DigraphTree.getNewID(0);
-                initNode_Ego = DigraphTree.getNodeName(ID_global, state_Ego0, 0);
-                dG_initial = DigraphTree.initialise(initNode_Ego, [0, 1, 1]);
-                [dG_initial, ~, ID_global] = ...
-                    DigraphTree.expand(dG_initial, initNode_Ego, states_Other0, ...
-                                       'InitialStates', [1, 0, 1], [1, 0, 1], 0);
+                initNode_Ego = DigraphTree.getNodeName(ID_global, [state_Ego0, states_Other0], 0);
+                dG_initial = DigraphTree.initialise(initNode_Ego, [1, 0, 1]);
 
                 obj.depthBound = depth; % Remember depth boundary for each iteration
                 alpha_0.safety = -Inf;
@@ -70,7 +67,7 @@ classdef TreeSearch
             depth2go = depth2go - 1;
             depthCurrent = obj.depthBound - depth2go;
             
-            parentNode = DigraphTree.getNodeName(parentID, states_Other, parentSafety);
+            parentNode = DigraphTree.getNodeName(parentID, [state_Ego, states_Other], parentSafety);
             maxNode = [];
             
             time_trajectory = 0:obj.Ts:obj.Th;
@@ -113,18 +110,19 @@ classdef TreeSearch
                         decision_Ego.futureState, decision_Ego.description, ...
                         [0, 1, 0], [0, 1, 0], safetyLevel);
                     
-                    % Expand tree for future states of safe decisions
+                    % Expand tree for future states of safes decisions
                     futureState_Ego = decision_Ego.futureState;
+                    futureStatesCombinations_Other = State.getStateCombinations(possibleFutureStates_Other);
                     
                     if depth2go == 0
                         % No future decision for this depth
                         decisionsFuture_Ego = [];
                         % Combined value for liveness and safety
                         value = obj.evaluate(safetyLevel, futureState_Ego);  
+                        % Plot decisions of other vehicles at end of the tree
+                        [~, ~, graph] = obj.planMinManeuver(futureState_Ego, futureState_Ego.d, futureStatesCombinations_Other, alpha, beta, safetyLevel, graph, childID, depth2go);
                     else
-                        d_futureGoal = futureState_Ego.d;
-                        futureStatesCombinations_Other = State.getStateCombinations(possibleFutureStates_Other);
-                        [decisionsFuture_Ego, value, graph] = obj.planMinManeuver(futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, safetyLevel, graph, childID, depth2go);
+                        [decisionsFuture_Ego, value, graph] = obj.planMinManeuver(futureState_Ego, futureState_Ego.d, futureStatesCombinations_Other, alpha, beta, safetyLevel, graph, childID, depth2go);
                     end
 
                     % Max behaviour: Ego vehicle
@@ -151,25 +149,33 @@ classdef TreeSearch
             decisionsNext_Ego = [decisionMax_Ego; decisionsNext_Ego];
         end
         
-        function [decisionsNext_Ego, value_min, graph] = planMinManeuver(obj, futureState_Ego, d_futureGoal, futureStatesCombinations_Other, alpha, beta, parentSafety, graph, parentID, depth2go)
+        function [decisionsNext_Ego, value_min, graph] = planMinManeuver(obj, state_Ego, d_futureGoal, stateCombinations_Other, alpha, beta, parentSafety, graph, parentID, depth2go)
         % For other vehicles choose the action, which is considered the most unsafe
             
             decisionsNext_Ego = [];
             value_min.safety = Inf;
             value_min.liveness = Inf;
             
-            parentNode = DigraphTree.getNodeName(parentID, futureState_Ego, parentSafety);
+            parentNode = DigraphTree.getNodeName(parentID, state_Ego, parentSafety);
             minNode = [];
         
-            for id_statesOther = 1:size(futureStatesCombinations_Other, 1)
-                futureStates_Other = futureStatesCombinations_Other(id_statesOther, :);
+            for id_statesOther = 1:size(stateCombinations_Other, 1)
+                futureStates_Other = stateCombinations_Other(id_statesOther, :);
                 
                 % Add other vehicles' possible decisions to digraph
                 [graph, childNode, childID] = DigraphTree.expand(graph, parentNode, ...
-                        futureStates_Other, ['Combination', num2str(id_statesOther)], ...
+                        [state_Ego, futureStates_Other], ['Combination', num2str(id_statesOther)], ...
                         [1, 0, 0], [1, 0, 0], parentSafety);
                 
-                [decisionsFuture_Ego, value, graph] = obj.planMaxManeuver(futureState_Ego, d_futureGoal, futureStates_Other, alpha, beta, parentSafety, graph, childID, depth2go);
+                if depth2go == 0
+                    % Plot at end of the tree without calling planMaxManeuver again
+                    if id_statesOther == size(stateCombinations_Other, 1)
+                        return
+                    end
+                    continue
+                end
+                    
+                [decisionsFuture_Ego, value, graph] = obj.planMaxManeuver(state_Ego, d_futureGoal, futureStates_Other, alpha, beta, parentSafety, graph, childID, depth2go);
                 
                 % Min behaviour: Other vehicles
                 if isempty(decisionsFuture_Ego)
