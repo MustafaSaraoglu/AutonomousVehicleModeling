@@ -32,8 +32,8 @@ classdef TreeSearch
             for depth = 1:obj.searchDepth % Iterative deepening
                 % Initialise digraph
                 ID_global = DigraphTree.getNewID(0);
-                initNode_Ego = DigraphTree.getNodeName(ID_global, [state_Ego0, states_Other0], 0);
-                dG_initial = DigraphTree.initialise(initNode_Ego, [1, 0, 1]);
+                initNode = DigraphTree.getNodeName(ID_global, [state_Ego0, states_Other0], 0);
+                dG_initial = DigraphTree.initialise(initNode, [1, 0, 1]);
 
                 obj.depthBound = depth; % Remember depth boundary for each iteration
                 alpha_0.safety = -Inf;
