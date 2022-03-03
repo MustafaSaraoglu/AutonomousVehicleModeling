@@ -7,7 +7,8 @@ classdef RegisterVehicles < matlab.System
     end
 
     methods(Access = protected)
-        function [distances2Vehicles, ids_surroundingVehicles] = stepImpl(obj, poseOtherVehicles, poseEgo)
+        function [distances2Vehicles, ids_surroundingVehicles] = stepImpl(obj, poseOtherVehicles, ...
+                                                                          poseEgo)
         % Register s-distances of the front and rear vehicles on the same lane and on the other lane
             % ids_surroundingVehicles(1): ID front vehicle on the same lane
             % ids_surroundingVehicles(2): ID rear vehicle on the same lane
@@ -20,17 +21,22 @@ classdef RegisterVehicles < matlab.System
             % distances2Vehicles(4): Distance to rear vehicle on the opposite lane
             
             [sEgo, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1), poseEgo(2)]);
-            [sOtherVehicles, dOtherVehicles] = Cartesian2Frenet(obj.RoadTrajectory, [poseOtherVehicles(1, :)', poseOtherVehicles(2, :)']);
+            [sOtherVehicles, dOtherVehicles] = Cartesian2Frenet(obj.RoadTrajectory, ...
+                                                                [poseOtherVehicles(1, :)', ...
+                                                                poseOtherVehicles(2, :)']);
             
             delta_d = dOtherVehicles - dEgo;
             
             % Vehicles on the same lane as ego vehicle
-            vehicles_sameLane = abs(delta_d) < obj.LaneWidth/2; % TODO: Need to change if other vehicles are able to change lane
-            [distances2Vehicles(1), distances2Vehicles(2), ids_surroundingVehicles(1), ids_surroundingVehicles(2)] = obj.getClosestVehicles(vehicles_sameLane, sEgo, sOtherVehicles);
+            vehicles_sameLane = abs(delta_d) < obj.LaneWidth/2; % TODO: Need to change if other 
+                                                                % vehicles are able to change lane
+            [distances2Vehicles(1), distances2Vehicles(2), ids_surroundingVehicles(1), ids_surroundingVehicles(2)] = ...
+                obj.getClosestVehicles(vehicles_sameLane, sEgo, sOtherVehicles);
 
             % Vehicles on the opposite lane
             vehicles_otherLane = abs(delta_d) >= obj.LaneWidth/2;
-            [distances2Vehicles(3), distances2Vehicles(4), ids_surroundingVehicles(3), ids_surroundingVehicles(4)] = obj.getClosestVehicles(vehicles_otherLane, sEgo, sOtherVehicles);
+            [distances2Vehicles(3), distances2Vehicles(4), ids_surroundingVehicles(3), ids_surroundingVehicles(4)] = ...
+                obj.getClosestVehicles(vehicles_otherLane, sEgo, sOtherVehicles);
         end
 
         function [out1, out2] = getOutputSizeImpl(~)
@@ -71,7 +77,8 @@ classdef RegisterVehicles < matlab.System
     end
     
     methods(Static)
-        function [distanceFront, distanceRear, id_vehicleFront, id_vehicleRear] = getClosestVehicles(relevantVehicles, sEgo, sOtherVehicles)
+        function [distanceFront, distanceRear, id_vehicleFront, id_vehicleRear] = ...
+                    getClosestVehicles(relevantVehicles, sEgo, sOtherVehicles)
         % Get closest vehicles and their distances to the ego vehicle
             
             % Store nonzero elements to find id to corresponding relevant vehicles

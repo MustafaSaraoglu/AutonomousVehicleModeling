@@ -60,7 +60,9 @@ classdef TreeSearch
             end
         end
         
-        function [decisionsNext_Ego, value_max, graph, parentNode] = planMaxManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, parentSafety, graph, parentID, depth2go)
+        function [decisionsNext_Ego, value_max, graph, parentNode] = ...
+                    planMaxManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, ...
+                                    parentSafety, graph, parentID, depth2go)
         % Plan and decide for a safe maneuver according to specified searching depth
             
             decisionMax_Ego = []; % Decision of current depth, that maximises future value
@@ -77,13 +79,17 @@ classdef TreeSearch
             time_trajectory = 0:obj.Ts:obj.Th;
             
             % Decisions Ego
-            decisions_Ego = obj.DecisionGenerator.calculateDecisions_Ego(state_Ego, d_goal, time_trajectory);
+            decisions_Ego = obj.DecisionGenerator.calculateDecisions_Ego(state_Ego, d_goal, ...
+                                                                         time_trajectory);
 
             % Decisions other vehicles
-            [decisions_Other, possibleFutureStates_Other] = obj.DecisionGenerator.calculateDecisions_Other(states_Other, depthCurrent, time_trajectory);
+            [decisions_Other, possibleFutureStates_Other] = ...
+                obj.DecisionGenerator.calculateDecisions_Other(states_Other, depthCurrent, ...
+                                                               time_trajectory);
             
             % Safety check
-            for id_decision = length(decisions_Ego):-1:1 % Reverse to remove unsafe decisions without confusing idx
+            for id_decision = length(decisions_Ego):-1:1 % Reverse to remove unsafe decisions 
+                                                         % without confusing idx
                 decision_Ego = decisions_Ego(id_decision);
                 
                 % Feasibility check
@@ -119,7 +125,8 @@ classdef TreeSearch
                     
                     % Expand tree for future states of safes decisions
                     futureState_Ego = decision_Ego.futureState;
-                    futureStatesCombinations_Other = State.getStateCombinations(possibleFutureStates_Other);
+                    futureStatesCombinations_Other = ...
+                        State.getStateCombinations(possibleFutureStates_Other);
                     
                     if depth2go == 0
                         % No future decision for this depth
@@ -142,7 +149,10 @@ classdef TreeSearch
                         % Update value in graph
                         [graph, childNode] = DigraphTree.updateNodeValue(graph, childNode, value);
                     else
-                        [decisionsFuture_Ego, value, graph, childNode] = obj.planMinManeuver(futureState_Ego, futureState_Ego.d, futureStatesCombinations_Other, alpha, beta, safety, graph, childID, depth2go);
+                        [decisionsFuture_Ego, value, graph, childNode] = ...
+                            obj.planMinManeuver(futureState_Ego, futureState_Ego.d, ...
+                                                futureStatesCombinations_Other, alpha, beta, ...
+                                                safety, graph, childID, depth2go);
                     end
 
                     % Max behaviour: Ego vehicle
@@ -168,7 +178,9 @@ classdef TreeSearch
             decisionsNext_Ego = [decisionMax_Ego; decisionsNext_Ego];
         end
         
-        function [decisionsNext_Ego, value_min, graph, parentNode] = planMinManeuver(obj, state_Ego, d_futureGoal, stateCombinations_Other, alpha, beta, parentSafety, graph, parentID, depth2go)
+        function [decisionsNext_Ego, value_min, graph, parentNode] = ...
+                planMinManeuver(obj, state_Ego, d_futureGoal, stateCombinations_Other, alpha, ...
+                                beta, parentSafety, graph, parentID, depth2go)
         % For other vehicles choose the action, which is considered the most unsafe
             
             decisionsNext_Ego = [];
@@ -186,7 +198,9 @@ classdef TreeSearch
                         [state_Ego, futureStates_Other], ['Combination', num2str(id_statesOther)], ...
                         [1, 0, 0], [1, 0, 0]);
                     
-                [decisionsFuture_Ego, value, graph, childNode] = obj.planMaxManeuver(state_Ego, d_futureGoal, futureStates_Other, alpha, beta, parentSafety, graph, childID, depth2go);
+                [decisionsFuture_Ego, value, graph, childNode] = ...
+                    obj.planMaxManeuver(state_Ego, d_futureGoal, futureStates_Other, alpha, ...
+                                        beta, parentSafety, graph, childID, depth2go);
                 
                 % Min behaviour: Other vehicles
                 if isempty(decisionsFuture_Ego)

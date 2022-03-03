@@ -48,9 +48,11 @@ classdef State
             
             id_combinations = id_combinations';
             
-            stateCombinations(size(id_combinations, 1), n_vehicles) = State([], [], [], []); % Preallocation
+            % Preallocation
+            stateCombinations(size(id_combinations, 1), n_vehicles) = State([], [], [], []); 
             for id_vehicle = 1:n_vehicles
-                stateCombinations(:, id_vehicle) = states(id_combinations(:, id_vehicle), id_vehicle);
+                stateCombinations(:, id_vehicle) = states(id_combinations(:, id_vehicle), ...
+                                                          id_vehicle);
             end
         end
     end

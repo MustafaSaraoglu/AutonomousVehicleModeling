@@ -52,24 +52,34 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             [s_future_emergency, ~] = ReachabilityAnalysis.predictLongitudinalFutureState(s, v, ...
                 obj.maximumVelocity, obj.emergencyAcceleration, obj.k_timeHorizon, obj.Ts);
             
-            possibleSteeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, obj.numberPointsSteering);
+            possibleSteeringAngles = linspace(-obj.steerAngle_max, obj.steerAngle_max, ...
+                                              obj.numberPointsSteering);
             
             % Variation of possible steering angles and constant arc length
             % according to constant acceleration for longitudinal boundary curves
-            destinations_lowerBoundary = obj.predictFutureDestinations(pose, possibleSteeringAngles, s_future_min-s);
-            destinations_upperBoundary = obj.predictFutureDestinations(pose, possibleSteeringAngles, s_future_max-s);
-            destinations_emergencyBoundary = obj.predictFutureDestinations(pose, possibleSteeringAngles, s_future_emergency-s);
+            destinations_lowerBoundary = obj.predictFutureDestinations(pose, ...
+                                                                       possibleSteeringAngles, ...
+                                                                       s_future_min-s);
+            destinations_upperBoundary = obj.predictFutureDestinations(pose, ...
+                                                                       possibleSteeringAngles, ...
+                                                                       s_future_max-s);
+            destinations_emergencyBoundary = obj.predictFutureDestinations(pose, ...
+                                                                           possibleSteeringAngles, ...
+                                                                           s_future_emergency-s);
            
             possibleArcLengths =  linspace(s_future_min, s_future_max, obj.numberPointsSteering) - s;
             
             % Variation of possible arc lengths for minimum to maximum
             % acceleration and constant +/- maximum steering angle for
             % right and left boundary curves
-            destinations_rightBoundary = obj.predictFutureDestinations(pose, -obj.steerAngle_max, possibleArcLengths);
-            destinations_leftBoundary = obj.predictFutureDestinations(pose, obj.steerAngle_max, possibleArcLengths);
+            destinations_rightBoundary = obj.predictFutureDestinations(pose, -obj.steerAngle_max, ...
+                                                                       possibleArcLengths);
+            destinations_leftBoundary = obj.predictFutureDestinations(pose, obj.steerAngle_max, ...
+                                                                      possibleArcLengths);
             
             steeringReachability = [destinations_lowerBoundary, destinations_upperBoundary, ...
-                                    destinations_rightBoundary, destinations_leftBoundary, destinations_emergencyBoundary];
+                                    destinations_rightBoundary, destinations_leftBoundary, ...
+                                    destinations_emergencyBoundary];
         end
         
         function destinations = predictFutureDestinations(obj, pose, steeringAngle, arcLength)
@@ -86,19 +96,24 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             
             if any(isAngleOverLimit) 
                 if length(arcLength) > 1 % Right/left boundary [constant steering angle; varying arc length]
-                    arcLength(isAngleOverLimit) = abs(ones(1, length(arcLength(isAngleOverLimit)))*turningRadius*turningAngleLimit);
+                    arcLength(isAngleOverLimit) = ...
+                        abs(ones(1, length(arcLength(isAngleOverLimit)))*turningRadius*turningAngleLimit);
                 else % Longitudinal boundary [varying steering angle; constant arc length]
-                    turningRadius(isAngleOverLimit) = sign(turningRadius(isAngleOverLimit))*arcLength/turningAngleLimit;
+                    turningRadius(isAngleOverLimit) = ...
+                        sign(turningRadius(isAngleOverLimit))*arcLength/turningAngleLimit;
                 end
             end
             
             % Derived formula to calculate a destination position inside
             % the reachable area for given initial pose, arc length and turning radius
-            x_destination = pose(1) + turningRadius.*(sin(pose(3) + arcLength./turningRadius) - sin(pose(3)));
-            y_destination = pose(2) + turningRadius.*(cos(pose(3)) - cos(pose(3) + arcLength./turningRadius));
+            x_destination = pose(1) + ...
+                            turningRadius.*(sin(pose(3) + arcLength./turningRadius) - sin(pose(3)));
+            y_destination = pose(2) + ...
+                            turningRadius.*(cos(pose(3)) - cos(pose(3) + arcLength./turningRadius));
             
             % Correct values for infinite turning radius to avoid division by 0
-            % TODO: Find more elegant way to work with either longitudinal boundary or right/left boundary
+            % TODO: Find more elegant way to work with either longitudinal boundary or 
+            % right/left boundary
             if isinf(turningRadius) % Right/left boundary[constant steering angle; varying arc length]
                 x_destination = pose(1) + arcLength.*cos(pose(3)); 
                 y_destination = pose(2) + arcLength.*sin(pose(3));
@@ -112,7 +127,8 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
     end
     
     methods(Static)
-        function [s_future, v_future] = predictLongitudinalFutureState(s_0, v_0, v_max, acceleration, k, Ts)
+        function [s_future, v_future] = predictLongitudinalFutureState(s_0, v_0, v_max, ...
+                                                                       acceleration, k, Ts)
         % Predict longitudinal future state (longitudinal displacement s_future,
         % longitudinal velocity v_future) according to an itnitial state 
         % and a constant acceleration in k+1 time steps

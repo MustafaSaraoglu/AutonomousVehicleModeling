@@ -11,7 +11,8 @@ classdef Decision
     end
     
     methods
-        function obj = Decision(TS, isFeasible, futureState, description, trajectoryFrenet_LC, trajectoryCartesian_LC)
+        function obj = Decision(TS, isFeasible, futureState, description, trajectoryFrenet_LC, ...
+                                trajectoryCartesian_LC)
             %DECISION Construct an instance of this class
             if nargin > 0
                 obj.TS = TS;

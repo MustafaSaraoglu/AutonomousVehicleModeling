@@ -7,7 +7,8 @@ classdef DecisionGeneration
         
         Ts % Sample time [s]
         Th % Time horizon for trajectory genereation [s]
-        trajectoryReferenceLength % Number of points for trajectory generation according to specified time horizon 
+        trajectoryReferenceLength % Number of points for trajectory generation according to 
+                                  % specified time horizon 
         
         minimumAcceleration % Minimum longitudinal acceleration [m/s^2]
         maximumAcceleration % Maximum longitudinal acceleration [m/s^2]
@@ -51,32 +52,41 @@ classdef DecisionGeneration
             obj.spaceDiscretisation = spaceDiscretisation;
             
             a_lateral_max = 30; % Maximum allowed lateral acceleration
-            obj.TrajectoryGenerator = TrajectoryGeneration(obj.Ts, obj.Th, obj.RoadTrajectory, curvature_max, a_lateral_max);
+            obj.TrajectoryGenerator = TrajectoryGeneration(obj.Ts, obj.Th, obj.RoadTrajectory, ...
+                                                           curvature_max, a_lateral_max);
         end
         
         function decisions = calculateDecisions_Ego(obj, state, d_goal, time)
         % Calculate candidate trajectories (decisions) for different driving modes 
             
             % FreeDrive
-            decisionsFD = obj.getDecisionsForDrivingMode(state, d_goal, 1, obj.maximumAcceleration, 'FreeDrive', time);
+            decisionsFD = obj.getDecisionsForDrivingMode(state, d_goal, 1, ...
+                                                         obj.maximumAcceleration, 'FreeDrive', time);
 
-            % TODO: For v <= 0, LC might be unfeasible vehicle following might result in the same as EmergencyBrake
+            % TODO: For v <= 0, LC might be unfeasible vehicle following might result in the same 
+            %as EmergencyBrake
+            
             % VehicleFollowing
-            decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, obj.minimumAcceleration, 0, 'VehicleFollowing', time);
+            decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, obj.minimumAcceleration, ...
+                                                         0, 'VehicleFollowing', time);
 
             % ChangeLane
             d_otherLane = obj.getOppositeLane(d_goal, obj.LaneWidth);
             decisionsCL = obj.getDecisionsForLaneChange(state, d_otherLane, 0, 0, time);
 
             % EmergencyBrake
-            decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, obj.emergencyAcceleration, obj.emergencyAcceleration, 'EmergencyBrake', time);
+            decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, ...
+                                                         obj.emergencyAcceleration, ...
+                                                         obj.emergencyAcceleration, ...
+                                                         'EmergencyBrake', time);
             
             % All possible decisions
             % TODO: Find order for eficient tree expansion
             decisions = [decisionsCL; decisionsEB; decisionsVF; decisionsFD];
         end
         
-        function decisions = getDecisionsForDrivingMode(obj, state, d_goal, acc_lower, acc_upper, name_DrivingMode, time)
+        function decisions = getDecisionsForDrivingMode(obj, state, d_goal, acc_lower, ...
+                                                        acc_upper, name_DrivingMode, time)
         % Get the decisions for a driving mode for different accelerations
             
             number_decisions = length(acc_lower:1:acc_upper);
@@ -95,11 +105,14 @@ classdef DecisionGeneration
                 d_trajectory = d_goal*ones(1, size(s_trajectory, 2));
                 
                 % Future state prediction
-                [~, futureOrientation] = Frenet2Cartesian(s_trajectory(end), d_trajectory(end), obj.RoadTrajectory);
-                futureState = State(s_trajectory(end), d_trajectory(end), futureOrientation, v_trajectory(end));
+                [~, futureOrientation] = Frenet2Cartesian(s_trajectory(end), d_trajectory(end), ...
+                                                         obj.RoadTrajectory);
+                futureState = State(s_trajectory(end), d_trajectory(end), futureOrientation, ...
+                                    v_trajectory(end));
                 
                 % Discrete trajectory
-                occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory, d_trajectory, time);
+                occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory, ...
+                                                    d_trajectory, time);
                 TS  = CellChecker.createTSfromCells(occupiedCells);
                 
                 newDecision = Decision(TS, true, futureState, description, [], []);
@@ -122,26 +135,32 @@ classdef DecisionGeneration
                 description = ['ChangeLane', '_{T', num2str(durManeuver), '}'];
                 
                 [trajectoryFrenet, trajectoryCartesian, trajectorySpeed, ~, isFeasibleTrajectory] = ...
-                    obj.TrajectoryGenerator.calculateLaneChangingTrajectory(state.s, state.d, d_dot, d_ddot, d_goal, ...
-                                                                           state.speed, obj.vEgo_ref, acc, ...
-                                                                           durManeuver);
+                    obj.TrajectoryGenerator.calculateLaneChangingTrajectory(state.s, state.d, ...
+                                                                            d_dot, d_ddot, d_goal, ...
+                                                                            state.speed, ...
+                                                                            obj.vEgo_ref, acc, ...
+                                                                            durManeuver);
                 s_trajectory = trajectoryFrenet(:, 1)';
                 d_trajectory = trajectoryFrenet(:, 2)';
 
                 % Future state prediction
                 futureOrientation = trajectoryCartesian(end, 3);
-                futureState = State(s_trajectory(end), d_trajectory(end), futureOrientation, trajectorySpeed(end));
+                futureState = State(s_trajectory(end), d_trajectory(end), futureOrientation, ...
+                                    trajectorySpeed(end));
                 
-                occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory, d_trajectory, time);
+                occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory, ...
+                                                    d_trajectory, time);
                 
                 TS  = CellChecker.createTSfromCells(occupiedCells);
                 
-                newDecision = Decision(TS, isFeasibleTrajectory, futureState, description, trajectoryFrenet, trajectoryCartesian);
+                newDecision = Decision(TS, isFeasibleTrajectory, futureState, description, ...
+                                       trajectoryFrenet, trajectoryCartesian);
                 [decisions, id_decision] = newDecision.addDecisionToArray(decisions, id_decision);
             end  
         end
         
-        function [decisions, futureStates] = calculateDecisions_Other(obj, states, currentDepth, time)
+        function [decisions, futureStates] = calculateDecisions_Other(obj, states, currentDepth, ...
+                                                                      time)
         % Get possible decisions for all other vehicles 
             
             % TODO: Maybe only necessary to get occupied cells for surrounding vehicles    
@@ -173,7 +192,11 @@ classdef DecisionGeneration
                 end
                 
                 % Decision: Keep Lane 
-                [decision_KL, futureStates_KL] = obj.getDecisionForKeepLane_Other(s_min, v_min, s_max, v_max, state.d, descriptionVehicle, time);
+                [decision_KL, futureStates_KL] = obj.getDecisionForKeepLane_Other(s_min, v_min, ...
+                                                                                  s_max, v_max, ...
+                                                                                  state.d, ...
+                                                                                  descriptionVehicle, ...
+                                                                                  time);
                 futureStates(1:2, id_otherVehicle) = futureStates_KL;
                 [decisions, id_decision] = decision_KL.addDecisionToArray(decisions, id_decision);
             end
@@ -181,7 +204,10 @@ classdef DecisionGeneration
             decisions = decisions(1:id_decision-1);
         end 
         
-        function [decision_KL, futureStates_KL] = getDecisionForKeepLane_Other(obj, s_min, v_min, s_max, v_max, d, descriptionVehicle, time)
+        function [decision_KL, futureStates_KL] = getDecisionForKeepLane_Other(obj, s_min, v_min, ...
+                                                                               s_max, v_max, d, ...
+                                                                               descriptionVehicle, ...
+                                                                               time)
         % Get the decision to keep lane for other vehicle    
             
             descriptionDecision = [descriptionVehicle, 'Keep Lane'];
@@ -189,11 +215,13 @@ classdef DecisionGeneration
             % Calculate other vehicle's trajectory for a_min and a_max
             [s_trajectory_min, v_trajectory_min] = ...
                 obj.TrajectoryGenerator.calculateLongitudinalTrajectory(s_min, v_min, ...
-                                                                       obj.maximumVelocity, obj.minimumAcceleration, ...
+                                                                       obj.maximumVelocity, ...
+                                                                       obj.minimumAcceleration, ...
                                                                        obj.trajectoryReferenceLength);
             [s_trajectory_max, v_trajectory_max] = ...
                 obj.TrajectoryGenerator.calculateLongitudinalTrajectory(s_max, v_max, ...
-                                                                       obj.maximumVelocity, obj.maximumAcceleration, ...
+                                                                       obj.maximumVelocity, ...
+                                                                       obj.maximumAcceleration, ...
                                                                        obj.trajectoryReferenceLength);
 
             d_trajectory = d*ones(1, size(s_trajectory_min, 2));
@@ -206,12 +234,18 @@ classdef DecisionGeneration
             
             futureStates_KL = [futureState_min, futureState_max];
 
-            TS = obj.calculateTS_Other(s_trajectory_min, d_trajectory, s_trajectory_max, d_trajectory, time);
+            TS = obj.calculateTS_Other(s_trajectory_min, d_trajectory, s_trajectory_max, ...
+                                       d_trajectory, time);
 
-            decision_KL = Decision(TS, true, [futureState_min; futureState_max], descriptionDecision, [], []);
+            decision_KL = Decision(TS, true, [futureState_min; futureState_max], ...
+                                   descriptionDecision, [], []);
         end
         
-        function [decision_CL, futureStates_CL] = getDecisionForChangeLane_Other(obj, s_min, v_min, s_max, v_max, d, descriptionVehicle, time)
+        function [decision_CL, futureStates_CL] = getDecisionForChangeLane_Other(obj, s_min, ...
+                                                                                 v_min, s_max, ...
+                                                                                 v_max, d, ...
+                                                                                 descriptionVehicle, ...
+                                                                                 time)
         % Get the decision to change lane for other vehicle for static maneuver with a=0, T=4s  
             
             decision_CL = Decision([], [], [], [], [], []);
@@ -221,42 +255,53 @@ classdef DecisionGeneration
             d_goal = obj.getOppositeLane(d, obj.LaneWidth);
             [trajectoryFrenet_min, ~, ~, ~, isFeasiblTrajectory_min] = ...
                 obj.TrajectoryGenerator.calculateLaneChangingTrajectory(s_min, d, 0, 0, d_goal, ...
-                                                                       v_min, obj.maximumVelocity, 0, ...
-                                                                       4);
+                                                                       v_min, ...
+                                                                       obj.maximumVelocity, 0, 4);
             % Trajectories must be feasible                                                       
             if isFeasiblTrajectory_min    
                 [trajectoryFrenet_max, ~, ~, ~, isFeasiblTrajectory_max] = ...
-                    obj.TrajectoryGenerator.calculateLaneChangingTrajectory(s_max, d, 0, 0, d_goal, ...
-                                                                           v_max, obj.maximumVelocity, 0, ...
-                                                                           4);
+                    obj.TrajectoryGenerator.calculateLaneChangingTrajectory(s_max, d, 0, 0, ...
+                                                                            d_goal, v_max, ...
+                                                                            obj.maximumVelocity, ...
+                                                                            0, 4);
                 if isFeasiblTrajectory_max
                     % Future state prediction (Min)
-                    futureState_min = State(trajectoryFrenet_min(end, 1), d_goal, 'don''t care', v_min);
+                    futureState_min = State(trajectoryFrenet_min(end, 1), d_goal, 'don''t care', ...
+                                            v_min);
 
                     % Future state prediction (Max)
-                    futureState_max = State(trajectoryFrenet_max(end, 1), d_goal, 'don''t care', v_max);
+                    futureState_max = State(trajectoryFrenet_max(end, 1), d_goal, 'don''t care', ...
+                                            v_max);
                     
                     futureStates_CL = [futureState_min, futureState_max];
 
-                    TS = obj.calculateTS_Other(trajectoryFrenet_min(:, 1), trajectoryFrenet_min(:, 2), ...
-                                               trajectoryFrenet_max(:, 1), trajectoryFrenet_max(:, 2), time);
+                    TS = obj.calculateTS_Other(trajectoryFrenet_min(:, 1), ...
+                                               trajectoryFrenet_min(:, 2), ...
+                                               trajectoryFrenet_max(:, 1), ...
+                                               trajectoryFrenet_max(:, 2), time);
                     
-                    decision_CL = Decision(TS, true, [futureState_min; futureState_max], descriptionDecision, [], []);
+                    decision_CL = Decision(TS, true, [futureState_min; futureState_max], ...
+                                           descriptionDecision, [], []);
                 end
             end
         end
         
-        function TS = calculateTS_Other(obj, s_trajectory_min, d_trajectory_min, s_trajectory_max, d_trajectory_max, time)
+        function TS = calculateTS_Other(obj, s_trajectory_min, d_trajectory_min, ...
+                                        s_trajectory_max, d_trajectory_max, time)
         % Calculate transition system (TS) for other vehicle
             
             % Calculate occupied cells for other vehicle
-            occupiedCells_min = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_min, d_trajectory_min, time);
-            occupiedCells_max = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_max, d_trajectory_max, time);
+            occupiedCells_min = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_min, ...
+                                                    d_trajectory_min, time);
+            occupiedCells_max = Continuous2Discrete(obj.spaceDiscretisation, s_trajectory_max, ...
+                                                    d_trajectory_max, time);
 
             % Worst case: earliest entrance times (occupiedCells_max) 
             % latest exit times (occupiedCells_min)
-            occupiedCells_worstCase = zeros(size(occupiedCells_max, 1)+1, size(occupiedCells_max, 2)); % Preallocation
-            occupiedCells_worstCase(2:end, :) = occupiedCells_max; % Entrance times from occupiedCells_max
+            occupiedCells_worstCase = zeros(size(occupiedCells_max, 1)+1, ...
+                                            size(occupiedCells_max, 2)); % Preallocation
+            % Entrance times from occupiedCells_max
+            occupiedCells_worstCase(2:end, :) = occupiedCells_max; 
             if isempty(intersect(occupiedCells_min(1, 1:2), occupiedCells_max(1, 1:2), 'rows'))
                 % First occupied cell is not identical for min/max
                 % case, thus add the min case starting cell 
@@ -265,9 +310,13 @@ classdef DecisionGeneration
                 occupiedCells_worstCase(1, :) = [];
             end
 
-            [~, id_intersect_min, id_intersect_max] = intersect(occupiedCells_min(:, 1:2), occupiedCells_worstCase(:, 1:2), 'rows');
-            occupiedCells_worstCase(:, 4) = Inf; % Assume worst case for exit time (vehicle could potentially stop at every cell)
-            occupiedCells_worstCase(id_intersect_max, 4) = occupiedCells_min(id_intersect_min, 4); % Exit times from occupiedCells_min
+            [~, id_intersect_min, id_intersect_max] = intersect(occupiedCells_min(:, 1:2), ...
+                                                                occupiedCells_worstCase(:, 1:2), ...
+                                                                'rows');
+            % Assume worst case for exit time (vehicle could potentially stop at every cell)
+            occupiedCells_worstCase(:, 4) = Inf; 
+            % Exit times from occupiedCells_min
+            occupiedCells_worstCase(id_intersect_max, 4) = occupiedCells_min(id_intersect_min, 4); 
 
             TS = CellChecker.createTSfromCells(occupiedCells_worstCase);
         end

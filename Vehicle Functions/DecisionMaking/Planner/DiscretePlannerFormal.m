@@ -65,8 +65,9 @@ classdef DiscretePlannerFormal < DecisionMaking
             disp('@t=0s: Initial state is: ''FreeDrive''.');
         end
         
-        function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, poseOtherVehicles, speedsOtherVehicles, vEgo)
-        % Return lane change command, the current lane state and the current driving mode (see system description)
+        function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, poseOtherVehicles, ...
+                                                         speedsOtherVehicles, vEgo)
+        % Return lane change command and the current driving mode 
             
             [sEgo, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
             orientationEgo = poseEgo(3);
@@ -83,16 +84,22 @@ classdef DiscretePlannerFormal < DecisionMaking
             % Only check everey timeHorizon/partsTimeHorizon seconds because expensive operation
             % and if not changing lane
             if get_param('VehicleFollowing', 'SimulationTime') >= obj.t_ref && ~obj.isChangingLane
-                obj.t_ref = get_param('VehicleFollowing', 'SimulationTime') + obj.timeHorizon/obj.partsTimeHorizon;
+                obj.t_ref = get_param('VehicleFollowing', 'SimulationTime') + ...
+                            obj.timeHorizon/obj.partsTimeHorizon;
                 
                 % Define vehicle states
                 currentState_Ego = State(sEgo, dEgo, orientationEgo, vEgo);
                     
-                [sOther, dOther] = Cartesian2Frenet(obj.RoadTrajectory, [poseOtherVehicles(1, :)', poseOtherVehicles(2, :)']);
+                [sOther, dOther] = Cartesian2Frenet(obj.RoadTrajectory, ...
+                                                    [poseOtherVehicles(1, :)', ...
+                                                    poseOtherVehicles(2, :)']);
                 
-                currentStates_Other(1, size(poseOtherVehicles, 2)) = State([], [], [], []); % Preallocation
+                % Preallocation
+                currentStates_Other(1, size(poseOtherVehicles, 2)) = State([], [], [], []); 
                 for id_other = 1:size(poseOtherVehicles, 2)
-                    currentStates_Other(id_other) = State(sOther(id_other), dOther(id_other), poseOtherVehicles(3, id_other), speedsOtherVehicles(id_other));
+                    currentStates_Other(id_other) = State(sOther(id_other), dOther(id_other), ...
+                                                          poseOtherVehicles(3, id_other), ...
+                                                          speedsOtherVehicles(id_other));
                 end
                 
                 % TODO: Free Drive if no vehicle in front on right lane for faster computation?

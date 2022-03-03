@@ -45,7 +45,8 @@ classdef CellChecker
             end
         
             newNodes = setdiff(dG2Add.Nodes, dG.Nodes);
-            [~, id_newEdges] = setdiff(string(dG2Add.Edges.EndNodes), string(dG.Edges.EndNodes), 'rows');
+            [~, id_newEdges] = setdiff(string(dG2Add.Edges.EndNodes), string(dG.Edges.EndNodes), ...
+                                       'rows');
             newEdges = dG2Add.Edges.EndNodes(id_newEdges, :);
             
             dG = addnode(dG, newNodes);
@@ -58,20 +59,28 @@ classdef CellChecker
             isSafe = true;
             unsafeStates = [];
             
-            [overlappingStates, id_overlapping_TS1, id_overlapping_TS2] = intersect(TS1.states, TS2.states);
+            [overlappingStates, id_overlapping_TS1, id_overlapping_TS2] = intersect(TS1.states, ...
+                                                                                    TS2.states);
             
             if ~isempty(overlappingStates)
-                [isSafe, unsafeStates] = CellChecker.isSafeTemporalDiff(TS1, TS2, id_overlapping_TS1, id_overlapping_TS2);
+                [isSafe, unsafeStates] = CellChecker.isSafeTemporalDiff(TS1, TS2, ...
+                                                                        id_overlapping_TS1, ...
+                                                                        id_overlapping_TS2);
             end
         end
 
-        function [isSafe, unsafeStates] = isSafeTemporalDiff(TS1, TS2, id_state2check_TS1, id_state2check_TS2)
+        function [isSafe, unsafeStates] = isSafeTemporalDiff(TS1, TS2, id_state2check_TS1, ...
+                                                             id_state2check_TS2)
         % Check whether the temporal difference between relevant equal states of  
         % two transition systems are safe against each other
             
             unsafeStates = [];
-            isSafeEntranceTime = TS1.entranceTime(id_state2check_TS1) > TS2.exitTime(id_state2check_TS2); % Enter after other has left ...OR... 
-            isSafeExitTime = TS1.exitTime(id_state2check_TS1) < TS2.entranceTime(id_state2check_TS2); % Exit before other has entered
+            % Enter after other has left ...OR... 
+            isSafeEntranceTime = ...
+                TS1.entranceTime(id_state2check_TS1) > TS2.exitTime(id_state2check_TS2); 
+            % Exit before other has entered
+            isSafeExitTime = ...
+                TS1.exitTime(id_state2check_TS1) < TS2.entranceTime(id_state2check_TS2); 
             isSafe = all(isSafeEntranceTime | isSafeExitTime); 
                  
             if ~isSafe

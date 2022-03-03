@@ -3,29 +3,34 @@ function prepare_simulation(options)
     
     %% Default values
     arguments
-        options.road             (4,3) double =  [0      0   0;     % Road trajectory according to MOBATSim map format
-                                                  1000   0   0;
+        options.road             (4,3) double =  [0      0   0; % Road trajectory according to 
+                                                  1000   0   0; % MOBATSim map format
                                                   0      0   0;
                                                   0      0   0]; 
          
-        options.n_other         (1,1) double = 2;                   % Number of other vehicles
+        options.n_other         (1,1) double = 2;               % Number of other vehicles
                                               
         % Structure:[dataEgoVehicle, dataOtherVehicle1, ..., dataOtherVehicleN]
         % Kinematic initial conditions
-        options.s_0             (1,:) double = [0, 60, 40];         % Initial Frenet s-coordinate [m]
-        options.d_0             (1,:) double = [0, 0, 3.7];         % (Initial) Frenet d-coordinate [m]
-        options.v_0             (1,:) double = [20, 10, 13];        % Initial longitudinal velocity [m/s]
-        options.v_ref           (1,:) double = [20, 10, 13];        % Reference longitudinal velocity [m/s]       
+        options.s_0             (1,:) double = [0, 60, 40];     % Initial Frenet s-coordinate [m]
+        options.d_0             (1,:) double = [0, 0, 3.7];     % (Initial) Frenet d-coordinate [m]
+        options.v_0             (1,:) double = [20, 10, 13];    % Initial longitudinal velocity [m/s]
+        options.v_ref           (1,:) double = [20, 10, 13];    % Reference longitudinal velocity [m/s]       
         
-        options.planner         (1,1) string = 'FORMAL';            % Mode of discrete planner
+        options.planner         (1,1) string = 'FORMAL';        % Mode of discrete planner
                                % Alternative = 'MANUAL'
         
-        options.lateral         (1,1) string = 'STANLEY';           % Mode of lateral control
+        options.lateral         (1,1) string = 'STANLEY';       % Mode of lateral control
                                % Alternative = 'PURE_PURSUIT'
-        options.Th              (1,1) double = 5;                   % Time horizon for trajectory genereation [s]
+        options.Th              (1,1) double = 5;               % Time horizon for trajectory 
+                                                                % genereation [s]
         
-        options.sigmaS          (1,1) double = 0.2;                 % Standard deviation for measuring other vehicles' s-coordinate [m]
-        options.sigmaV          (1,1) double = 0.2;                 % Standard deviation for measuring other vehicles' speeds [m/s]
+        options.sigmaS          (1,1) double = 0.2;             % Standard deviation for 
+                                                                % measuring other vehicles' 
+                                                                % s-coordinate [m]
+        options.sigmaV          (1,1) double = 0.2;             % Standard deviation for 
+                                                                % measuring other vehicles' 
+                                                                 % speeds [m/s]
     end
     
     %% Road
@@ -90,7 +95,8 @@ function prepare_simulation(options)
     Ts = 0.01; % Sample time [s] for trajectory generation
 
     trajectoryGeneration.timeHorizon = options.Th;
-    trajectoryGeneration.partsTimeHorizon = 5; % Divide time horizon into partsTimeHorizon equal parts
+    trajectoryGeneration.partsTimeHorizon = 5; % Divide time horizon into partsTimeHorizon 
+                                               % equal parts
     
     %% Uncertainty
     uncertainty.sigmaS = options.sigmaS;
@@ -110,7 +116,10 @@ function prepare_simulation(options)
     %% Space Discretisation
     discreteCells.cell_length = 5; % Cell length in s-coordinate [m]
     discreteCells.laneCell_width = 3; % Width of right/left lane cell [m]
-    spaceDiscretisation = discretiseContinuousSpace(road.trajectory, road.laneWidth, discreteCells.cell_length, discreteCells.laneCell_width); % Discretisation of continuous space
+    % Discretisation of continuous space
+    spaceDiscretisation = discretiseContinuousSpace(road.trajectory, road.laneWidth, ...
+                                                    discreteCells.cell_length, ...
+                                                    discreteCells.laneCell_width); 
     
     %% Assign Variables in Base-Workspace
     assignin('base', 'road', road); 

@@ -19,8 +19,10 @@ classdef LocalTrajectoryPlanner < matlab.System
     properties(Access = protected)        
         d_destination % Reference lateral destination (right or left lane)
         
-        laneChangingTrajectoryFrenet % Planned trajectory for lane changing in Frenet coordinates [s, d] 
-        laneChangingTrajectoryCartesian % Planned trajectory for lane changing in Cartesian coordinates [x, y, orientation]
+        laneChangingTrajectoryFrenet % Planned trajectory for lane changing in Frenet coordinates 
+                                     % [s, d] 
+        laneChangingTrajectoryCartesian % Planned trajectory for lane changing in Cartesian 
+                                        % coordinates [x, y, orientation]
         
         TrajectoryGenerator % Generate trajectories
     end
@@ -40,7 +42,9 @@ classdef LocalTrajectoryPlanner < matlab.System
             
             curvature_max = tan(obj.steerAngle_max)/obj.wheelBase; % Maximum allowed curvature
             a_lateral_max = 30; % Maximum allowed lateral acceleration
-            obj.TrajectoryGenerator = TrajectoryGeneration(obj.Ts, obj.timeHorizon, obj.RoadTrajectory, curvature_max, a_lateral_max);
+            obj.TrajectoryGenerator = TrajectoryGeneration(obj.Ts, obj.timeHorizon, ...
+                                                           obj.RoadTrajectory, curvature_max, ...
+                                                           a_lateral_max);
         end
         
         function planReferenceTrajectory(obj, changeLaneCmd, s, d, v)
@@ -69,19 +73,23 @@ classdef LocalTrajectoryPlanner < matlab.System
 
                 t = get_param('VehicleFollowing', 'SimulationTime');
 
-                fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
+                fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, ...
+                        durationManeuver);
             end
         end
         
         function [s_ref, d_ref] = getNextFrenetTrajectoryWaypoints(obj, s, v, numberWPs)
-        % Get the next waypoint(s) for current trajectory according to current s in Frenet coordinates
+        % Get the next waypoint(s) for current trajectory according to current s in Frenet 
+        % coordinates
             
             if ~isempty(obj.laneChangingTrajectoryFrenet)
                 s_trajectory =  obj.laneChangingTrajectoryFrenet(:, 1); 
                 ID_nextWP = sum(s >= s_trajectory) + 1;
                 
-                if ID_nextWP > size(obj.laneChangingTrajectoryFrenet, 1) % No more lane changing points left
-                    % Reset lane changing trajectory, if passed all lane changing points in trajectory
+                if ID_nextWP > size(obj.laneChangingTrajectoryFrenet, 1) % No more lane changing 
+                                                                         % points left
+                    % Reset lane changing trajectory, if passed all lane changing points in 
+                    % trajectory
                     obj.laneChangingTrajectoryFrenet = [];
                     
                     % Get Waypoints ahead staying on the same lane
@@ -90,15 +98,20 @@ classdef LocalTrajectoryPlanner < matlab.System
                 end
                 
                 % Add points from lane changing trajectory
-                numberResidualLaneChangingPoints = size(obj.laneChangingTrajectoryFrenet, 1) - (ID_nextWP-1);
+                numberResidualLaneChangingPoints = ...
+                    size(obj.laneChangingTrajectoryFrenet, 1) - (ID_nextWP-1);
                 numberPointsFromLaneChanging = min(numberResidualLaneChangingPoints, numberWPs);
-                s_ref = obj.laneChangingTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 1);
-                d_ref = obj.laneChangingTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 2);
+                s_ref = ...
+                    obj.laneChangingTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 1);
+                d_ref = ...
+                    obj.laneChangingTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 2);
                 
-                % Add points for straight movement staying on the same lane if no more lane changing points left
+                % Add points for straight movement staying on the same lane if no more 
+                % lane changing points left
                 numberPointsFromRoadTrajectory = numberWPs - numberPointsFromLaneChanging;
                 if numberPointsFromRoadTrajectory > 0
-                    [s_add, d_add] = obj.getNextRoadTrajectoryWaypoints(s_ref(end), v, numberPointsFromRoadTrajectory);
+                    [s_add, d_add] = obj.getNextRoadTrajectoryWaypoints(s_ref(end), v, ...
+                                                                        numberPointsFromRoadTrajectory);
                     s_ref = [s_ref; s_add];
                     d_ref = [d_ref; d_add];
                 end
@@ -110,7 +123,8 @@ classdef LocalTrajectoryPlanner < matlab.System
         function [s_ref, d_ref] = getNextRoadTrajectoryWaypoints(obj, s, v, numberPoints)
         % Get next waypoints for staying on the same lane and following the road trajectory
             
-            s_ref = s + linspace(v*obj.Ts, numberPoints*v*obj.Ts, numberPoints)'; % Linear spacing according to current velocity
+            % Linear spacing according to current velocity
+            s_ref = s + linspace(v*obj.Ts, numberPoints*v*obj.Ts, numberPoints)';
             d_ref = obj.d_destination*ones(numberPoints, 1);
         end
     end

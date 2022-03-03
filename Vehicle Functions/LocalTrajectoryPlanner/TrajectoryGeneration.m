@@ -59,8 +59,10 @@ classdef TrajectoryGeneration
             % Calculate trajectory for complete maneuver
             t_maneuver = 0:obj.Ts:durationManeuver; 
             
-            d_trajectory = a0 + a1*t_maneuver + a2*t_maneuver.^2 + a3*t_maneuver.^3 + a4*t_maneuver.^4 + a5*t_maneuver.^5;
-            d_dot_trajectory = a1 + 2*a2*t_maneuver + 3*a3*t_maneuver.^2 + 4*a4*t_maneuver.^3 + 5*a5*t_maneuver.^4;
+            d_trajectory = a0 + a1*t_maneuver + a2*t_maneuver.^2 + a3*t_maneuver.^3 + ...
+                           a4*t_maneuver.^4 + a5*t_maneuver.^5;
+            d_dot_trajectory = a1 + 2*a2*t_maneuver + 3*a3*t_maneuver.^2 + 4*a4*t_maneuver.^3 + ...
+                               5*a5*t_maneuver.^4;
             d_ddot_trajectory = 2*a2 + 6*a3*t_maneuver + 12*a4*t_maneuver.^2 + 20*a5*t_maneuver.^3;
             d_dddot_trajectory = 6*a3 + 24*a4*t_maneuver + 60*a5*t_maneuver.^2;
             
@@ -74,8 +76,11 @@ classdef TrajectoryGeneration
                 
                 trajectoryFrenet = [s_current, d_current];
                 
-                [position_current, roadOrientation_current] = Frenet2Cartesian(s_current, d_current, obj.RoadTrajectory);
-                trajectoryCartesian = [position_current(1), position_current(2), roadOrientation_current];
+                [position_current, roadOrientation_current] = Frenet2Cartesian(s_current, ...
+                                                                               d_current, ...
+                                                                               obj.RoadTrajectory);
+                trajectoryCartesian = [position_current(1), position_current(2), ...
+                                       roadOrientation_current];
                 
                 cost = Inf;
                 return
@@ -99,7 +104,8 @@ classdef TrajectoryGeneration
             if durationManeuver < obj.Th
                 t_longitudinal = durationManeuver+obj.Ts:obj.Ts:obj.Th; 
                 
-                % Calculate initial displacement and velocity for t_longitudinal_0 = durationManeuver+obj.Ts
+                % Calculate initial displacement and velocity for 
+                % t_longitudinal_0 = durationManeuver+obj.Ts
                 [s_0, v_0] = ReachabilityAnalysis.predictLongitudinalFutureState(s_trajectory(end), ...
                     v_trajectory(end), v_ref, a_ref, 0, obj.Ts);
                 
@@ -111,7 +117,8 @@ classdef TrajectoryGeneration
                 % to the calculated lane changing trajectory
                 s_trajectory = [s_trajectory, s_trajectory_straight];
                 v_trajectory = [v_trajectory, v_trajectory_straight];
-                s_dot_trajectory = [s_dot_trajectory, v_trajectory_straight]; % For straight trajectory s_dot = v
+                s_dot_trajectory = [s_dot_trajectory, v_trajectory_straight]; % For straight 
+                                                                              % trajectory s_dot = v
                 
                 d_trajectory = [d_trajectory, d_destination*ones(1, length(t_longitudinal))];
                 d_dot_trajectory = [d_dot_trajectory, zeros(1, length(t_longitudinal))];
@@ -119,8 +126,10 @@ classdef TrajectoryGeneration
                 d_dddot_trajectory = [d_dddot_trajectory, zeros(1, length(t_longitudinal))];
             end
             
-            [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory', d_trajectory', obj.RoadTrajectory);
-            % The road orientation needs to be added (See documentation: "Calculate Trajectory for Lane Changing")
+            [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory', ...
+                                                                                d_trajectory', ...
+                                                                                obj.RoadTrajectory);
+            % Road orientation needs to be added
             orientation = atan2(d_dot_trajectory, s_dot_trajectory)' + roadOrientation;
             
             trajectoryFrenet = [s_trajectory', d_trajectory'];
@@ -132,8 +141,12 @@ classdef TrajectoryGeneration
             cost = 0.5*sum(d_dddot_trajectory.^2);
         end
         
-        function [s_trajectory, v_trajectory] = calculateLongitudinalTrajectory(obj, s_0, v_0, v_max, acceleration, trajectoryLength)
-        % Calculate longitudinal trajectory according to the longitudinal reachability analysis using each time step
+        function [s_trajectory, v_trajectory] = calculateLongitudinalTrajectory(obj, s_0, v_0, ...
+                                                                                v_max, ...
+                                                                                acceleration, ...
+                                                                                trajectoryLength)
+        % Calculate longitudinal trajectory according to the longitudinal reachability analysis 
+        % using each time step
             
             v_trajectory = zeros(1, trajectoryLength);
             s_trajectory = zeros(1, trajectoryLength);
@@ -165,7 +178,8 @@ classdef TrajectoryGeneration
             % a_lateral = v(1:end-1)'.^2.*curvature; 
             
             isFeasibleCurvature = all(abs(curvature) < obj.curvature_max);
-            isFeasibleCentrifugalAcceleration = all(abs(a_lateral) < obj.a_lateral_max); % Placeholder for a_lateral_max
+            % Placeholder for a_lateral_max
+            isFeasibleCentrifugalAcceleration = all(abs(a_lateral) < obj.a_lateral_max); 
             
             isFeasible = isFeasibleCurvature && isFeasibleCentrifugalAcceleration;
         end

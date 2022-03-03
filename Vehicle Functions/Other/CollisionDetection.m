@@ -32,16 +32,22 @@ classdef CollisionDetection < matlab.System
             % Center of rectangle vehicle is needed to check if circle
             % around vehicles are overlapping
             centerPointEgo = getVehicleCenterPoint(poseEgo, obj.wheelBaseEgo);
-            centerPointOtherVehicles = getVehicleCenterPoint(poseOtherVehicles, obj.wheelBaseOtherVehicles);
+            centerPointOtherVehicles = getVehicleCenterPoint(poseOtherVehicles, ...
+                                                             obj.wheelBaseOtherVehicles);
             
             % Only check for collision if vehicles are close 
-            euclidianDistance = obj.calculateEuclidianDistance(centerPointEgo, centerPointOtherVehicles);
+            euclidianDistance = obj.calculateEuclidianDistance(centerPointEgo, ...
+                                                               centerPointOtherVehicles);
             checkForCollision = euclidianDistance <= obj.radiusEgo + obj.radiusOtherVehicles;
             if any(checkForCollision)
-                [~, ~, HitboxEgo] = createRectangleVehicle(centerPointEgo, poseEgo(3), obj.dimensionsEgo);
+                [~, ~, HitboxEgo] = createRectangleVehicle(centerPointEgo, poseEgo(3), ...
+                                                           obj.dimensionsEgo);
                 
                 for id_otherVehicle = find(checkForCollision)
-                    [~, ~, HitboxOtherVehicle] = createRectangleVehicle(centerPointOtherVehicles(:, id_otherVehicle), poseOtherVehicles(3, id_otherVehicle), obj.dimensionsOtherVehicles(:, id_otherVehicle));
+                    [~, ~, HitboxOtherVehicle] = ...
+                        createRectangleVehicle(centerPointOtherVehicles(:, id_otherVehicle), ...
+                                               poseOtherVehicles(3, id_otherVehicle), ...
+                                               obj.dimensionsOtherVehicles(:, id_otherVehicle));
                     
                     % Check if rectangles are overlapping
                     isCollided = obj.checkIntersection(HitboxOtherVehicle, HitboxEgo);

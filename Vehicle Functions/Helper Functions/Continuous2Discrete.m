@@ -1,5 +1,6 @@
 function discreteCells = Continuous2Discrete(spaceDiscretisation, s, d, time)
-% Maps continuous (s, d)-tuple(s) to discrete rectangle cell(s) and stores the entrance and exit time to each cell
+% Maps continuous (s, d)-tuple(s) to discrete rectangle cell(s) and stores the entrance and 
+% exit time to each cell
 % discreteCell: [idxRow, idxColumn, time_enter, time_exit]
     
     % Converting cell array to matrix makes it easier and faster
