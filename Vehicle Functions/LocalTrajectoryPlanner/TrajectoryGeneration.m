@@ -23,7 +23,7 @@ classdef TrajectoryGeneration
             obj.a_lateral_max = a_lateral_max;
         end
         
-        function [trajectoryFrenet, trajectoryCartesian, v_trajectory, cost, isFeasibleTrajectory] = ...
+        function [trajectoryFrenet, trajectoryCartesian] = ...
                     calculateLaneChangingTrajectory(obj, s_current, d_current, d_dot_current, ...
                                                     d_ddot_current, d_destination, v_current, ...
                                                     v_ref, a_ref, durationManeuver)
@@ -57,7 +57,7 @@ classdef TrajectoryGeneration
             a5 = X(6);
             
             % Calculate trajectory for complete maneuver
-            t_maneuver = 0:obj.Ts:durationManeuver; 
+            t_maneuver = (0:obj.Ts:durationManeuver)'; 
             
             d_trajectory = a0 + a1*t_maneuver + a2*t_maneuver.^2 + a3*t_maneuver.^3 + ...
                            a4*t_maneuver.^4 + a5*t_maneuver.^5;
@@ -67,22 +67,23 @@ classdef TrajectoryGeneration
             d_dddot_trajectory = 6*a3 + 24*a4*t_maneuver + 60*a5*t_maneuver.^2;
             
             % Calculate velocity profile according to reference acceleration 
-            [~, v_trajectory] = obj.calculateLongitudinalTrajectory(s_current, v_current, v_ref, ...
-                                                                    a_ref, length(t_maneuver));
-            
+            longitudinalTrajectory = obj.calculateLongitudinalTrajectory(s_current, d_current, ...
+                                                                         v_current, v_ref, ...
+                                                                         a_ref, durationManeuver);
+                                                                
+            v_trajectory = longitudinalTrajectory.velocity;
             if any(v_trajectory.^2 < d_dot_trajectory.^2)
                 % Trajectory not feasible
-                isFeasibleTrajectory = false;
-                
-                trajectoryFrenet = [s_current, d_current];
+                trajectoryFrenet = FrenetTrajectory(0, s_current, d_current, v_current, false, Inf);
                 
                 [position_current, roadOrientation_current] = Frenet2Cartesian(s_current, ...
                                                                                d_current, ...
                                                                                obj.RoadTrajectory);
-                trajectoryCartesian = [position_current(1), position_current(2), ...
-                                       roadOrientation_current];
+                trajectoryCartesian = CartesianTrajectory(0, position_current(1), ...
+                                                          position_current(2), ...
+                                                          roadOrientation_current, v_current, ...
+                                                          false, Inf);
                 
-                cost = Inf;
                 return
             end
             
@@ -90,7 +91,7 @@ classdef TrajectoryGeneration
             s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
             
             % Calculate uture prediction for s-trajectory along the road
-            s_trajectory = zeros(1, length(t_maneuver)); 
+            s_trajectory = zeros(length(t_maneuver), 1); 
             s = s_current;
             for k = 1:length(t_maneuver) % Numerical integration
                 s_trajectory(k) = s;
@@ -102,54 +103,63 @@ classdef TrajectoryGeneration
             % If the maneuver duration is shorter than the specified time horizon, 
             % a longitudinal trajectory following the destination lane needs to be added
             if durationManeuver < obj.Th
-                t_longitudinal = durationManeuver+obj.Ts:obj.Ts:obj.Th; 
-                
                 % Calculate initial displacement and velocity for 
                 % t_longitudinal_0 = durationManeuver+obj.Ts
                 [s_0, v_0] = ReachabilityAnalysis.predictLongitudinalFutureState(s_trajectory(end), ...
                     v_trajectory(end), v_ref, a_ref, 0, obj.Ts);
                 
-                [s_trajectory_straight, v_trajectory_straight] = ...
-                    obj.calculateLongitudinalTrajectory(s_0, v_0, v_ref, a_ref, ...
-                                                        length(t_longitudinal));
+                straightTrajectory = ...
+                    obj.calculateLongitudinalTrajectory(s_0, d_destination, v_0, v_ref, a_ref, ...
+                                                        obj.Th-durationManeuver-obj.Ts);
                 
                 % Update whole lane changing trajectory by adding a longitudinal trajectory 
                 % to the calculated lane changing trajectory
-                s_trajectory = [s_trajectory, s_trajectory_straight];
-                v_trajectory = [v_trajectory, v_trajectory_straight];
-                s_dot_trajectory = [s_dot_trajectory, v_trajectory_straight]; % For straight 
-                                                                              % trajectory s_dot = v
+                s_trajectory = [s_trajectory; straightTrajectory.s];
+                v_trajectory = [v_trajectory; straightTrajectory.velocity];
+                s_dot_trajectory = [s_dot_trajectory; straightTrajectory.velocity]; % For straight 
+                                                                                    % trajectory 
+                                                                                    % s_dot = v
                 
-                d_trajectory = [d_trajectory, d_destination*ones(1, length(t_longitudinal))];
-                d_dot_trajectory = [d_dot_trajectory, zeros(1, length(t_longitudinal))];
-                d_ddot_trajectory = [d_ddot_trajectory, zeros(1, length(t_longitudinal))];
-                d_dddot_trajectory = [d_dddot_trajectory, zeros(1, length(t_longitudinal))];
+                d_trajectory = [d_trajectory; straightTrajectory.d];
+                d_dot_trajectory = [d_dot_trajectory; zeros(straightTrajectory.length, 1)];
+                d_ddot_trajectory = [d_ddot_trajectory; zeros(straightTrajectory.length, 1)];
+                d_dddot_trajectory = [d_dddot_trajectory; zeros(straightTrajectory.length, 1)];
+                
+                t_maneuver = [t_maneuver; straightTrajectory.time+durationManeuver+obj.Ts];
             end
             
-            [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory', ...
-                                                                                d_trajectory', ...
+            [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory, ...
+                                                                                d_trajectory, ...
                                                                                 obj.RoadTrajectory);
             % Road orientation needs to be added
-            orientation = atan2(d_dot_trajectory, s_dot_trajectory)' + roadOrientation;
+            orientation = atan2(d_dot_trajectory, s_dot_trajectory) + roadOrientation;
             
-            trajectoryFrenet = [s_trajectory', d_trajectory'];
-            trajectoryCartesian = [laneChangingPositionCartesian, orientation];
-            
-            isFeasibleTrajectory = obj.isFeasibleTrajectory(trajectoryCartesian, d_ddot_trajectory);
-            
+            isFeasibleTrajectory = obj.checkFeasibleTrajectory(laneChangingPositionCartesian(:, 1), ...
+                                                               laneChangingPositionCartesian(:, 2), ...
+                                                               orientation, d_ddot_trajectory);
+                                                        
             % Cost function according to jerk
             cost = 0.5*sum(d_dddot_trajectory.^2);
+            
+            trajectoryFrenet = FrenetTrajectory(t_maneuver, s_trajectory, d_trajectory, v_trajectory, ...
+                                                isFeasibleTrajectory, cost);
+            trajectoryCartesian = CartesianTrajectory(t_maneuver, ...
+                                                      laneChangingPositionCartesian(:, 1), ...
+                                                      laneChangingPositionCartesian(:, 2), ...
+                                                      orientation, v_trajectory, ...
+                                                      isFeasibleTrajectory, cost);
         end
         
-        function [s_trajectory, v_trajectory] = calculateLongitudinalTrajectory(obj, s_0, v_0, ...
-                                                                                v_max, ...
-                                                                                acceleration, ...
-                                                                                trajectoryLength)
+        function trajectoryFrenet = calculateLongitudinalTrajectory(obj, s_0, d_0, v_0, v_max, ...
+                                                                    acceleration, duration)
         % Calculate longitudinal trajectory according to the longitudinal reachability analysis 
         % using each time step
             
-            v_trajectory = zeros(1, trajectoryLength);
-            s_trajectory = zeros(1, trajectoryLength);
+            time = (0:obj.Ts:duration)'; % Start with 0 (relative time)
+            trajectoryLength = length(time);
+            v_trajectory = zeros(trajectoryLength, 1);
+            s_trajectory = zeros(trajectoryLength, 1);
+            d_trajectory = d_0*ones(trajectoryLength, 1);
             
             % Future prediction for displacement s, and velocityv
             s = s_0; 
@@ -160,14 +170,13 @@ classdef TrajectoryGeneration
                 [s, v] = ReachabilityAnalysis.predictLongitudinalFutureState(s, v, v_max, ...
                     acceleration, 0, obj.Ts); % Prediction just for next time step
             end
+            
+            trajectoryFrenet = FrenetTrajectory(time, s_trajectory, d_trajectory, v_trajectory, ...
+                                                true, 0);
         end
         
-        function isFeasible = isFeasibleTrajectory(obj, trajectory, a_lateral)
+        function isFeasible = checkFeasibleTrajectory(obj, x, y, orientation, a_lateral)
         % Check if trajectory is feasible accoording to lateral acceleration and trajectory curvature
-            
-            x = trajectory(:, 1);
-            y = trajectory(:, 2);
-            orientation = trajectory(:, 3);
             
             delta_orientation = diff(orientation);
             delta_position = sqrt((diff(x)).^2 + (diff(y)).^2);

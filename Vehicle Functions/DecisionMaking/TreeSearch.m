@@ -76,16 +76,12 @@ classdef TreeSearch
             parentNode = DigraphTree.getNodeName(parentID, [state_Ego, states_Other]);
             maxNode = [];
             
-            time_trajectory = 0:obj.Ts:obj.Th;
-            
             % Decisions Ego
-            decisions_Ego = obj.DecisionGenerator.calculateDecisions_Ego(state_Ego, d_goal, ...
-                                                                         time_trajectory);
+            decisions_Ego = obj.DecisionGenerator.calculateDecisions_Ego(state_Ego, d_goal);
 
             % Decisions other vehicles
             [decisions_Other, possibleFutureStates_Other] = ...
-                obj.DecisionGenerator.calculateDecisions_Other(states_Other, depthCurrent, ...
-                                                               time_trajectory);
+                obj.DecisionGenerator.calculateDecisions_Other(states_Other, depthCurrent);
             
             % Safety check
             for id_decision = length(decisions_Ego):-1:1 % Reverse to remove unsafe decisions 

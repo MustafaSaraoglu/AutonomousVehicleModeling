@@ -58,7 +58,7 @@ classdef LocalTrajectoryPlanner < matlab.System
                 [d_oppositeLane, destinationLane] = obj.getOppositeLane(d, obj.LaneWidth);
                 obj.d_destination = d_oppositeLane;
                
-                [trajectoryFrenet, trajectoryCartesian, ~, ~, ~] = ...
+                [trajectoryFrenet, trajectoryCartesian] = ...
                     obj.TrajectoryGenerator.calculateLaneChangingTrajectory...
                         (s, d, 0, 0, d_oppositeLane, v, obj.vEgo_ref, obj.maximumAcceleration, ...
                          durationManeuver);
@@ -66,8 +66,8 @@ classdef LocalTrajectoryPlanner < matlab.System
                 obj.laneChangingTrajectoryFrenet = trajectoryFrenet;
                 obj.laneChangingTrajectoryCartesian = trajectoryCartesian;
 
-                x_trajectory = obj.laneChangingTrajectoryCartesian(:, 1);
-                y_trajectory = obj.laneChangingTrajectoryCartesian(:, 2);
+                x_trajectory = obj.laneChangingTrajectoryCartesian.x;
+                y_trajectory = obj.laneChangingTrajectoryCartesian.y;
 
                 plot(x_trajectory, y_trajectory, 'Color', 'green');
 
@@ -82,12 +82,11 @@ classdef LocalTrajectoryPlanner < matlab.System
         % Get the next waypoint(s) for current trajectory according to current s in Frenet 
         % coordinates
             
-            if ~isempty(obj.laneChangingTrajectoryFrenet)
-                s_trajectory =  obj.laneChangingTrajectoryFrenet(:, 1); 
-                ID_nextWP = sum(s >= s_trajectory) + 1;
+            if ~isempty(obj.laneChangingTrajectoryFrenet) 
+                ID_nextWP = sum(s >= obj.laneChangingTrajectoryFrenet.s) + 1;
                 
-                if ID_nextWP > size(obj.laneChangingTrajectoryFrenet, 1) % No more lane changing 
-                                                                         % points left
+                if ID_nextWP > obj.laneChangingTrajectoryFrenet.length% No more lane changing 
+                                                                          % points left
                     % Reset lane changing trajectory, if passed all lane changing points in 
                     % trajectory
                     obj.laneChangingTrajectoryFrenet = [];
@@ -99,12 +98,12 @@ classdef LocalTrajectoryPlanner < matlab.System
                 
                 % Add points from lane changing trajectory
                 numberResidualLaneChangingPoints = ...
-                    size(obj.laneChangingTrajectoryFrenet, 1) - (ID_nextWP-1);
+                    obj.laneChangingTrajectoryFrenet.length - (ID_nextWP-1);
                 numberPointsFromLaneChanging = min(numberResidualLaneChangingPoints, numberWPs);
                 s_ref = ...
-                    obj.laneChangingTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 1);
+                    obj.laneChangingTrajectoryFrenet.s(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1));
                 d_ref = ...
-                    obj.laneChangingTrajectoryFrenet(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1), 2);
+                    obj.laneChangingTrajectoryFrenet.d(ID_nextWP:ID_nextWP+(numberPointsFromLaneChanging-1));
                 
                 % Add points for straight movement staying on the same lane if no more 
                 % lane changing points left
