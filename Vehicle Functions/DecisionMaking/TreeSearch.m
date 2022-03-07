@@ -94,12 +94,12 @@ classdef TreeSearch
                     continue
                 end
                 
-                TS_Ego = decision_Ego.TS;
                 safety = 0;
                 for id_other = 1:length(decisions_Other)
                     decision_Other = decisions_Other(id_other);
-                    TS_Other = decision_Other.TS;
-                    [~, unsafeDiscreteStates] = CellChecker.isSafeTransitions(TS_Ego, TS_Other);
+                    [~, unsafeDiscreteStates] = ...
+                        DiscreteTrajectory.isSafeTransitions(decision_Ego.trajectoryDiscrete, ...
+                                                             decision_Other.trajectoryDiscrete);
                     
                     % TODO: Safety saturation [0, 9]?
                     newSafety = ...

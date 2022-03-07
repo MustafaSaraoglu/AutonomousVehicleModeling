@@ -2,7 +2,7 @@ classdef Decision
 % Decision for maneuvers
     
     properties
-        TS % Discrete transition system for maneuver
+        trajectoryDiscrete % Discrete trajectory for maneuver
         isFeasible % Feasibility of maneuver
         futureState % Future state after executing maneuver
         description % Maneuver description
@@ -11,11 +11,11 @@ classdef Decision
     end
     
     methods
-        function obj = Decision(TS, isFeasible, futureState, description, trajectoryFrenet_LC, ...
-                                trajectoryCartesian_LC)
+        function obj = Decision(trajectoryDiscrete, isFeasible, futureState, description, ...
+                                trajectoryFrenet_LC, trajectoryCartesian_LC)
             %DECISION Construct an instance of this class
             if nargin > 0
-                obj.TS = TS;
+                obj.trajectoryDiscrete = trajectoryDiscrete;
                 obj.isFeasible = isFeasible; 
                 obj.futureState = futureState;
                 obj.description = description;

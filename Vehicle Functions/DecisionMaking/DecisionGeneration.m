@@ -108,9 +108,8 @@ classdef DecisionGeneration
                 
                 % Discrete trajectory
                 trajectoryDiscrete = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet);
-                TS  = CellChecker.createTSfromCells(trajectoryDiscrete);
                 
-                newDecision = Decision(TS, true, futureState, description, [], []);
+                newDecision = Decision(trajectoryDiscrete, true, futureState, description, [], []);
                 [decisions, id_decision] = newDecision.addDecisionToArray(decisions, id_decision);
             end
         end
@@ -142,10 +141,9 @@ classdef DecisionGeneration
                 
                 trajectoryDiscrete = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet);
                 
-                TS  = CellChecker.createTSfromCells(trajectoryDiscrete);
-                
-                newDecision = Decision(TS, trajectoryFrenet.isFeasible(), futureState, ...
-                                       description, trajectoryFrenet, trajectoryCartesian);
+                newDecision = Decision(trajectoryDiscrete, trajectoryFrenet.isFeasible(), ...
+                                       futureState, description, trajectoryFrenet, ...
+                                       trajectoryCartesian);
                 [decisions, id_decision] = newDecision.addDecisionToArray(decisions, id_decision);
             end  
         end
@@ -222,9 +220,10 @@ classdef DecisionGeneration
             
             futureStates_KL = [futureState_min, futureState_max];
 
-            TS = obj.calculateTS_Other(trajectoryFrenet_min, trajectoryFrenet_max);
+            discreteTrajectory = ...
+                obj.calculateDiscreteTrajectory_Other(trajectoryFrenet_min, trajectoryFrenet_max);
 
-            decision_KL = Decision(TS, true, [futureState_min; futureState_max], ...
+            decision_KL = Decision(discreteTrajectory, true, [futureState_min; futureState_max], ...
                                    descriptionDecision, [], []);
         end
         
@@ -261,16 +260,21 @@ classdef DecisionGeneration
                     
                     futureStates_CL = [futureState_min, futureState_max];
 
-                    TS = obj.calculateTS_Other(trajectoryFrenet_min, trajectoryFrenet_max);
+                    discreteTrajectory = ...
+                        obj.calculateDiscreteTrajectory_Other(trajectoryFrenet_min, ...
+                                                              trajectoryFrenet_max);
                     
-                    decision_CL = Decision(TS, true, [futureState_min; futureState_max], ...
+                    decision_CL = Decision(discreteTrajectory, true, ...
+                                           [futureState_min; futureState_max], ...
                                            descriptionDecision, [], []);
                 end
             end
         end
         
-        function TS = calculateTS_Other(obj, trajectoryFrenet_min, trajectoryFrenet_max)
-        % Calculate transition system (TS) for other vehicle
+        function trajectoryDiscrete_worst = calculateDiscreteTrajectory_Other(obj, ...
+                                                                              trajectoryFrenet_min, ...
+                                                                              trajectoryFrenet_max)
+        % Calculate worst case discrete trajectory for other vehicle
             
             % Calculate discrete trajectories for other vehicle
             trajectoryDiscrete_min = Continuous2Discrete(obj.spaceDiscretisation, ...
@@ -306,8 +310,6 @@ classdef DecisionGeneration
             % Relax by considering known possible latest exit times from trajectoryDiscrete_min
             trajectoryDiscrete_worst.exitTimes(id_intersect_worst) = ...
                 trajectoryDiscrete_min.exitTimes(id_intersect_min); 
-
-            TS = CellChecker.createTSfromCells(trajectoryDiscrete_worst);
         end
     end
     
