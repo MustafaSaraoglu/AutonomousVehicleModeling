@@ -107,8 +107,8 @@ classdef DecisionGeneration
                                     futureOrientation, trajectoryFrenet.velocity(end));
                 
                 % Discrete trajectory
-                occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet);
-                TS  = CellChecker.createTSfromCells(occupiedCells);
+                trajectoryDiscrete = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet);
+                TS  = CellChecker.createTSfromCells(trajectoryDiscrete);
                 
                 newDecision = Decision(TS, true, futureState, description, [], []);
                 [decisions, id_decision] = newDecision.addDecisionToArray(decisions, id_decision);
@@ -140,9 +140,9 @@ classdef DecisionGeneration
                 futureState = State(trajectoryFrenet.s(end), trajectoryFrenet.d(end), ...
                                     futureOrientation, trajectoryFrenet.velocity(end));
                 
-                occupiedCells = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet);
+                trajectoryDiscrete = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet);
                 
-                TS  = CellChecker.createTSfromCells(occupiedCells);
+                TS  = CellChecker.createTSfromCells(trajectoryDiscrete);
                 
                 newDecision = Decision(TS, trajectoryFrenet.isFeasible(), futureState, ...
                                        description, trajectoryFrenet, trajectoryCartesian);
@@ -272,33 +272,42 @@ classdef DecisionGeneration
         function TS = calculateTS_Other(obj, trajectoryFrenet_min, trajectoryFrenet_max)
         % Calculate transition system (TS) for other vehicle
             
-            % Calculate occupied cells for other vehicle
-            occupiedCells_min = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet_min);
-            occupiedCells_max = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet_max);
+            % Calculate discrete trajectories for other vehicle
+            trajectoryDiscrete_min = Continuous2Discrete(obj.spaceDiscretisation, ...
+                                                         trajectoryFrenet_min);
+            trajectoryDiscrete_max = Continuous2Discrete(obj.spaceDiscretisation, ...
+                                                         trajectoryFrenet_max);
 
-            % Worst case: earliest entrance times (occupiedCells_max) 
-            % latest exit times (occupiedCells_min)
-            occupiedCells_worstCase = zeros(size(occupiedCells_max, 1)+1, ...
-                                            size(occupiedCells_max, 2)); % Preallocation
-            % Entrance times from occupiedCells_max
-            occupiedCells_worstCase(2:end, :) = occupiedCells_max; 
-            if isempty(intersect(occupiedCells_min(1, 1:2), occupiedCells_max(1, 1:2), 'rows'))
-                % First occupied cell is not identical for min/max
-                % case, thus add the min case starting cell 
-                occupiedCells_worstCase(1, :) = occupiedCells_min(1, :);
+            % Assume worst case: 
+            % ------------------
+            % Earliest entrance times from trajectoryDiscrete_max (max. possible acceleration):
+            % --> Vehicle cannot enter cell before these times
+            % Latest exit times from trajectoryDiscrete_min (min. possible acceleration):
+            % --> Vehicle cannot exit after these times
+
+            % First occupied cells may not be identical for min/max case due to uncertainty
+            cellDif = trajectoryDiscrete_max.cells(1, 1) - trajectoryDiscrete_min.cells(1, 1);
+            if cellDif ~= 0
+                trajectoryDiscrete_start = ...
+                    DiscreteTrajectory(trajectoryDiscrete_min.cells(1:cellDif, :), ...
+                                       trajectoryDiscrete_min.entranceTimes(1:cellDif), ...
+                                       trajectoryDiscrete_min.exitTimes(1:cellDif));
+                trajectoryDiscrete_worst = trajectoryDiscrete_start.append(trajectoryDiscrete_max);
             else
-                occupiedCells_worstCase(1, :) = [];
+                trajectoryDiscrete_worst = trajectoryDiscrete_max;
             end
-
-            [~, id_intersect_min, id_intersect_max] = intersect(occupiedCells_min(:, 1:2), ...
-                                                                occupiedCells_worstCase(:, 1:2), ...
+            
+            % Find overlapping cells with min case
+            [~, id_intersect_min, id_intersect_worst] = intersect(trajectoryDiscrete_min.cells, ...
+                                                                trajectoryDiscrete_worst.cells, ...
                                                                 'rows');
-            % Assume worst case for exit time (vehicle could potentially stop at every cell)
-            occupiedCells_worstCase(:, 4) = Inf; 
-            % Exit times from occupiedCells_min
-            occupiedCells_worstCase(id_intersect_max, 4) = occupiedCells_min(id_intersect_min, 4); 
+            % Assume worst case for exit time (vehicle could potentially stop at any cell)
+            trajectoryDiscrete_worst.exitTimes(:) = Inf; 
+            % Relax by considering known possible latest exit times from trajectoryDiscrete_min
+            trajectoryDiscrete_worst.exitTimes(id_intersect_worst) = ...
+                trajectoryDiscrete_min.exitTimes(id_intersect_min); 
 
-            TS = CellChecker.createTSfromCells(occupiedCells_worstCase);
+            TS = CellChecker.createTSfromCells(trajectoryDiscrete_worst);
         end
     end
     

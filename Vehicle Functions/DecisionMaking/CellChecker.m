@@ -9,48 +9,19 @@ classdef CellChecker
     end
     
     methods (Static)
-        function TS = createTSfromCells(discreteCells)
+        function TS = createTSfromCells(discreteTrajectory)
         % Create a transition system containing the discrete states (transition from state to next 
         % state in the list) and the entrance and exit time to each state
             
-            X_cell = discreteCells(:, 1);
-            Y_cell = discreteCells(:, 2);
-            t_enter = discreteCells(:, 3);
-            t_exit = discreteCells(:, 4);
+            X_cell = discreteTrajectory.cells(:, 1);
+            Y_cell = discreteTrajectory.cells(:, 2);
             
             states = ["X" + string(X_cell), "Y" + string(Y_cell)];
             uStates = states(:, 1) + states(:, 2);
             
             TS.states = uStates;
-            TS.entranceTime = t_enter;
-            TS.exitTime = t_exit;
-            TS.X = X_cell;
-            TS.Y = Y_cell;
-        end
-        
-        function dG = createDigraph(states)
-        % Create a digraph from states
-           
-            % TODO: Multiple cells are occupied at the same time
-            idx = length(states);
-            dG = digraph(states(1:(idx-1)), states(2:idx));
-        end
-        
-        function dG = mergeDigraphs(dG, dG2Add)
-        % Merge two digraphs
-            
-            if isempty(dG)
-                dG = dG2Add;
-                return
-            end
-        
-            newNodes = setdiff(dG2Add.Nodes, dG.Nodes);
-            [~, id_newEdges] = setdiff(string(dG2Add.Edges.EndNodes), string(dG.Edges.EndNodes), ...
-                                       'rows');
-            newEdges = dG2Add.Edges.EndNodes(id_newEdges, :);
-            
-            dG = addnode(dG, newNodes);
-            dG = addedge(dG, newEdges(:, 1), newEdges(:, 2));
+            TS.entranceTime = discreteTrajectory.entranceTimes;
+            TS.exitTime = discreteTrajectory.exitTimes;
         end
         
         function [isSafe, unsafeStates] = isSafeTransitions(TS1, TS2)
