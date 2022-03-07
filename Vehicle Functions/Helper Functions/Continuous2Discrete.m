@@ -25,18 +25,20 @@ function discreteCells = Continuous2Discrete(spaceDiscretisation, s, d, time)
         
         % Do not duplicate cells
         cells = cells(~ismember(cells, discreteCells(:, 1:2), 'rows'), :); 
+        if isempty(cells)
+            continue
+        end
                 
         % Because at most 4 cells can be occupied, idx increases dynamically
         idx_next = idx + size(cells, 1);
         
-        if ~isempty(cells)
-            discreteCells(idx:idx_next-1, 1:2) = cells;
-            discreteCells(idx:idx_next-1, 3) = time(i); % Entrance time
-            if ~isempty(idx_prev)
-                discreteCells(idx_prev, 4) = time(i); % Exit time is entrance time of next cell
-            end
-            idx_prev = idx:idx_next-1;
+        discreteCells(idx:idx_next-1, 1:2) = cells;
+        discreteCells(idx:idx_next-1, 3) = time(i); % Entrance time
+        if ~isempty(idx_prev)
+            discreteCells(idx_prev, 4) = time(i); % Exit time is entrance time of next cell
         end
+        idx_prev = idx:idx_next-1;
+            
         idx = idx_next;
     end
     
