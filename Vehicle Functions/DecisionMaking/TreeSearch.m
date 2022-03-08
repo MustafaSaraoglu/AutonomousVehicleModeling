@@ -226,7 +226,7 @@ classdef TreeSearch
         function value = evaluate(obj, safety, state)
         % Evaluate safety and state
            
-            liveness = state.s + state.speed*obj.Th; % - state.d; to go back to right lane 
+            liveness = state.s + state.speed*obj.Th - state.d; to go back to right lane 
             value = Values(safety, liveness);
         end
     end
