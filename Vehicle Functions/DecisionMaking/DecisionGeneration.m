@@ -55,29 +55,45 @@ classdef DecisionGeneration
         function decisions = calculateDecisions_Ego(obj, state, d_goal)
         % Calculate candidate trajectories (decisions) for different driving modes 
             
-            % FreeDrive
-            decisionsFD = obj.getDecisionsForDrivingMode(state, d_goal, 1, ...
-                                                         obj.maximumAcceleration, 'FreeDrive');
-
-            % TODO: For v <= 0, LC might be unfeasible vehicle following might result in the same 
-            %as EmergencyBrake
+            accFD_min = 1;
+            accVF_min = obj.minimumAcceleration;
+            accVF_max = 0;
+            accEB = obj.emergencyAcceleration;
+        
+            % For speed close to maximum speed, acceleration >= 0 results in the same final state
+            % --> Free Drive as preference (instead of Vehicle Following)
+            if state.speed >= obj.vEgo_ref - eps
+                % FreeDrive: acc = acc_max
+                accFD_min = obj.maximumAcceleration;
+                % VehicleFollowing: acc < 0       
+                accVF_max = -1;
+            % For speed close to 0, acceleration <= 0 results in same final state
+            % --> Vehicle Following as preference (instead of Emergency Brake)
+            elseif state.speed <= 0 + eps
+                % VehicleFollowing: acc = 0       
+                accVF_min = 0;
+                % Emergency Break: ignore
+                accEB = [];
+            end
             
+            % FreeDrive
+            decisionsFD = obj.getDecisionsForDrivingMode(state, d_goal, accFD_min, ...
+                                                        obj.maximumAcceleration, 'FreeDrive');
+               
             % VehicleFollowing
-            decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, obj.minimumAcceleration, ...
-                                                         0, 'VehicleFollowing');
+            decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, accVF_min, ...
+                                                         accVF_max, 'VehicleFollowing');
 
             % ChangeLane
             d_otherLane = obj.getOppositeLane(d_goal, obj.LaneWidth);
             decisionsCL = obj.getDecisionsForLaneChange(state, d_otherLane, 0, 0);
 
             % EmergencyBrake
-            decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, ...
-                                                         obj.emergencyAcceleration, ...
-                                                         obj.emergencyAcceleration, ...
+            decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, accEB, accEB, ...
                                                          'EmergencyBrake');
             
             % All possible decisions
-            % TODO: Find order for eficient tree expansion
+            % TODO: Find order for eficient tree expansion (alpha-beta pruning)
             decisions = [decisionsCL; decisionsEB; decisionsVF; decisionsFD];
         end
         
@@ -86,6 +102,10 @@ classdef DecisionGeneration
         % Get the decisions for a driving mode for different accelerations
             
             number_decisions = length(acc_lower:1:acc_upper);
+            if number_decisions == 0
+                decisions = [];
+                return
+            end
 
             decisions(number_decisions, 1) = Decision([], [], [], [], [], []);
             id_decision = 1;
