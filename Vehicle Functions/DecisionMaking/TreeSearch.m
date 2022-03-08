@@ -40,10 +40,8 @@ classdef TreeSearch
                 dG_initial = DigraphTree.initialise(initNode, [1, 0, 1]);
 
                 obj.depthBound = depth; % Remember depth boundary for each iteration
-                alpha_0.safety = -Inf;
-                alpha_0.liveness = -Inf;
-                beta_0.safety = Inf;
-                beta_0.liveness = Inf;
+                alpha_0 = Values(-Inf, -Inf);
+                beta_0 = Values(Inf, Inf);
 
                 % Best decisions iteratively
                 [bestDecision_iteration, value_iteration, dG_iteration, ~] = ...
@@ -67,8 +65,7 @@ classdef TreeSearch
             
             decisionMax_Ego = []; % Decision of current depth, that maximises future value
             decisionsNext_Ego = []; % Next planned decisions (starting with most recent one)
-            value_max.safety = -Inf;
-            value_max.liveness = -Inf;
+            value_max = Values(-Inf, -Inf);
             
             depth2go = depth2go - 1;
             depthCurrent = obj.depthBound - depth2go;
@@ -180,8 +177,7 @@ classdef TreeSearch
         % For other vehicles choose the action, which is considered the most unsafe
             
             decisionsNext_Ego = [];
-            value_min.safety = Inf;
-            value_min.liveness = Inf;
+            value_min = Values(Inf, Inf);
             
             parentNode = DigraphTree.getNodeName(parentID, state_Ego);
             minNode = [];
@@ -202,22 +198,21 @@ classdef TreeSearch
                 if isempty(decisionsFuture_Ego)
                     decisionsNext_Ego = [];
                     minNode = [];
-                    value_min.safety = -Inf;
-                    value_min.liveness = -Inf;
+                    value_min = Values(-Inf, -Inf);
                     break % These decisions are unsafe if at least one combination of the
                           % other vehicles' possible future states might be unsafe
-                elseif value.safety <= value_min.safety
-                    if Values.isLess(value, value_min)
-                        value_min = value;
-                        decisionsNext_Ego = decisionsFuture_Ego;
-                        minNode = childNode;
-                        
-                        beta = Values.Min(beta, value_min);
-                        if Values.isLessEqual(beta, alpha)
-                            break
-                        end
-                    end   
                 end
+                
+                if Values.isLess(value, value_min)
+                    value_min = value;
+                    decisionsNext_Ego = decisionsFuture_Ego;
+                    minNode = childNode;
+
+                    beta = Values.Min(beta, value_min);
+                    if Values.isLessEqual(beta, alpha)
+                        break
+                    end
+                end   
             end
             
             if ~isempty(minNode)
@@ -229,9 +224,8 @@ classdef TreeSearch
         function value = evaluate(obj, safety, state)
         % Evaluate safety and state
            
-            value.safety = safety;
             liveness = state.s + state.speed*obj.Th; % - state.d; to go back to right lane 
-            value.liveness = liveness;
+            value = Values(safety, liveness);
         end
     end
 end
