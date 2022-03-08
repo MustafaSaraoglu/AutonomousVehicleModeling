@@ -46,7 +46,7 @@ classdef TreeSearch
                 % Best decisions iteratively
                 [bestDecision_iteration, value_iteration, dG_iteration, ~] = ...
                     obj.planMaxManeuver(state_Ego0, d_destination, states_Other0, alpha_0, ...
-                                        beta_0, 0, dG_initial, ID_global, depth);
+                                        beta_0, 0, dG_initial, ID_global, depth, true);
                 dG_final{depth} = dG_iteration;
                 obj.safety_limit(obj.depthBound) = value_iteration.safety;
                 if ~isempty(bestDecision_iteration)
@@ -60,7 +60,7 @@ classdef TreeSearch
         
         function [decisionsNext_Ego, value_max, graph, parentNode] = ...
                     planMaxManeuver(obj, state_Ego, d_goal, states_Other, alpha, beta, ...
-                                    parentSafety, graph, parentID, depth2go)
+                                    parentSafety, graph, parentID, depth2go, usePruning)
         % Plan and decide for a safe maneuver according to specified searching depth
             
             decisionMax_Ego = []; % Decision of current depth, that maximises future value
@@ -103,14 +103,16 @@ classdef TreeSearch
                         parentSafety - obj.discount^(depthCurrent-1)*length(unsafeDiscreteStates);
                     safety = min(safety, newSafety);
                     
-                    if safety < obj.safety_limit(depthCurrent) % Better option available previously
+                    if usePruning && safety < obj.safety_limit(depthCurrent) % Better option 
+                                                                             % available previously
                         % Remove unsafer decisions
                         decisions_Ego(id_decision) = [];
                         break
                     end
                 end
                 
-                if safety >= obj.safety_limit(depthCurrent) % Only consider safer/as safe decisions 
+                if ~usePruning || safety >= obj.safety_limit(depthCurrent) % Only consider safer/as 
+                                                                           % safe decisions 
                     % Add safe decision to digraph
                     [graph, childNode, childID] = DigraphTree.expand(graph, parentNode, ...
                         decision_Ego.futureState, decision_Ego.description, ...
@@ -145,7 +147,7 @@ classdef TreeSearch
                         [decisionsFuture_Ego, value, graph, childNode] = ...
                             obj.planMinManeuver(futureState_Ego, futureState_Ego.d, ...
                                                 futureStatesCombinations_Other, alpha, beta, ...
-                                                safety, graph, childID, depth2go);
+                                                safety, graph, childID, depth2go, usePruning);
                     end
 
                     % Max behaviour: Ego vehicle
@@ -156,7 +158,7 @@ classdef TreeSearch
                         maxNode = childNode;
                         
                         alpha = Values.Max(alpha, value_max);
-                        if Values.isLessEqual(beta, alpha) 
+                        if usePruning && Values.isLessEqual(beta, alpha) 
                             break
                         end
                     end    
@@ -173,7 +175,7 @@ classdef TreeSearch
         
         function [decisionsNext_Ego, value_min, graph, parentNode] = ...
                 planMinManeuver(obj, state_Ego, d_futureGoal, stateCombinations_Other, alpha, ...
-                                beta, parentSafety, graph, parentID, depth2go)
+                                beta, parentSafety, graph, parentID, depth2go, usePruning)
         % For other vehicles choose the action, which is considered the most unsafe
             
             decisionsNext_Ego = [];
@@ -192,7 +194,7 @@ classdef TreeSearch
                     
                 [decisionsFuture_Ego, value, graph, childNode] = ...
                     obj.planMaxManeuver(state_Ego, d_futureGoal, futureStates_Other, alpha, ...
-                                        beta, parentSafety, graph, childID, depth2go);
+                                        beta, parentSafety, graph, childID, depth2go, usePruning);
                 
                 % Min behaviour: Other vehicles
                 if isempty(decisionsFuture_Ego)
@@ -209,7 +211,7 @@ classdef TreeSearch
                     minNode = childNode;
 
                     beta = Values.Min(beta, value_min);
-                    if Values.isLessEqual(beta, alpha)
+                    if usePruning && Values.isLessEqual(beta, alpha)
                         break
                     end
                 end   
