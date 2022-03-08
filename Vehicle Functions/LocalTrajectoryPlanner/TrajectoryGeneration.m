@@ -67,12 +67,10 @@ classdef TrajectoryGeneration
             d_dddot_trajectory = 6*a3 + 24*a4*t_maneuver + 60*a5*t_maneuver.^2;
             
             % Calculate velocity profile according to reference acceleration 
-            longitudinalTrajectory = obj.calculateLongitudinalTrajectory(s_current, d_current, ...
-                                                                         v_current, v_ref, ...
-                                                                         a_ref, durationManeuver);
-                                                                
-            v_trajectory = longitudinalTrajectory.velocity;
-            if any(v_trajectory.^2 < d_dot_trajectory.^2)
+            v_trajectory = obj.predictVelocityMotion(v_current, v_ref, a_ref, t_maneuver);
+            
+            % Avoid complex values!
+            if any(v_trajectory.^2 < d_dot_trajectory.^2) 
                 % Trajectory not feasible
                 trajectoryFrenet = FrenetTrajectory(0, s_current, d_current, v_current, false, Inf);
                 
@@ -90,7 +88,7 @@ classdef TrajectoryGeneration
             % Calculate velocity in s-direction 
             s_dot_trajectory = sqrt(v_trajectory.^2 - d_dot_trajectory.^2); 
             
-            % Calculate uture prediction for s-trajectory along the road
+            % Calculate future prediction for s-trajectory along the road
             s_trajectory = zeros(length(t_maneuver), 1); 
             s = s_current;
             for k = 1:length(t_maneuver) % Numerical integration
@@ -100,32 +98,26 @@ classdef TrajectoryGeneration
                 s = s + s_dot_trajectory(k)*obj.Ts; 
             end
             
-            % If the maneuver duration is shorter than the specified time horizon, 
+            % If the duration for the lane change is shorter than the specified time horizon, 
             % a longitudinal trajectory following the destination lane needs to be added
             if durationManeuver < obj.Th
-                % Calculate initial displacement and velocity for 
-                % t_longitudinal_0 = durationManeuver+obj.Ts
-                [s_0, v_0] = ReachabilityAnalysis.predictLongitudinalFutureState(s_trajectory(end), ...
-                    v_trajectory(end), v_ref, a_ref, 0, obj.Ts);
+                t_straight = (durationManeuver:obj.Ts:obj.Th)';
+                [s_straight, v_straight] = obj.predictMotion(s_trajectory(end), ...
+                                                             v_trajectory(end), v_ref, a_ref, ...
+                                                             t_straight-durationManeuver);
                 
-                straightTrajectory = ...
-                    obj.calculateLongitudinalTrajectory(s_0, d_destination, v_0, v_ref, a_ref, ...
-                                                        obj.Th-durationManeuver-obj.Ts);
+                % Append trajectory
+                length_trajectory = obj.Th/obj.Ts+1;
+                t_maneuver(end:length_trajectory) = t_straight; 
                 
-                % Update whole lane changing trajectory by adding a longitudinal trajectory 
-                % to the calculated lane changing trajectory
-                s_trajectory = [s_trajectory; straightTrajectory.s];
-                v_trajectory = [v_trajectory; straightTrajectory.velocity];
-                s_dot_trajectory = [s_dot_trajectory; straightTrajectory.velocity]; % For straight 
-                                                                                    % trajectory 
-                                                                                    % s_dot = v
+                s_trajectory(end:length_trajectory) = s_straight;
+                v_trajectory(end:length_trajectory) = v_straight;
+                s_dot_trajectory(end:length_trajectory) = v_straight; % For straight traj. s_dot = v
                 
-                d_trajectory = [d_trajectory; straightTrajectory.d];
-                d_dot_trajectory = [d_dot_trajectory; zeros(straightTrajectory.length, 1)];
-                d_ddot_trajectory = [d_ddot_trajectory; zeros(straightTrajectory.length, 1)];
-                d_dddot_trajectory = [d_dddot_trajectory; zeros(straightTrajectory.length, 1)];
-                
-                t_maneuver = [t_maneuver; straightTrajectory.time+durationManeuver+obj.Ts];
+                d_trajectory(end:length_trajectory) = d_destination; 
+                d_dot_trajectory(end:length_trajectory) = 0;
+                d_ddot_trajectory(end:length_trajectory) = 0;
+                d_dddot_trajectory(end:length_trajectory) = 0;
             end
             
             [laneChangingPositionCartesian, roadOrientation] = Frenet2Cartesian(s_trajectory, ...
@@ -134,7 +126,7 @@ classdef TrajectoryGeneration
             % Road orientation needs to be added
             orientation = atan2(d_dot_trajectory, s_dot_trajectory) + roadOrientation;
             
-            isFeasibleTrajectory = obj.checkFeasibleTrajectory(laneChangingPositionCartesian(:, 1), ...
+            isFeasibleTrajectory = obj.checkFeasibilityTrajectory(laneChangingPositionCartesian(:, 1), ...
                                                                laneChangingPositionCartesian(:, 2), ...
                                                                orientation, d_ddot_trajectory);
                                                         
@@ -152,30 +144,17 @@ classdef TrajectoryGeneration
         
         function trajectoryFrenet = calculateLongitudinalTrajectory(obj, s_0, d_0, v_0, v_max, ...
                                                                     acceleration, duration)
-        % Calculate longitudinal trajectory according to the longitudinal reachability analysis 
-        % using each time step
+        % Calculate longitudinal trajectory according to the double integrator model 
             
             time = (0:obj.Ts:duration)'; % Start with 0 (relative time)
-            trajectoryLength = length(time);
-            v_trajectory = zeros(trajectoryLength, 1);
-            s_trajectory = zeros(trajectoryLength, 1);
-            d_trajectory = d_0*ones(trajectoryLength, 1);
-            
-            % Future prediction for displacement s, and velocityv
-            s = s_0; 
-            v = v_0;
-            for k = 1:trajectoryLength 
-                v_trajectory(k) = v;
-                s_trajectory(k) = s;
-                [s, v] = ReachabilityAnalysis.predictLongitudinalFutureState(s, v, v_max, ...
-                    acceleration, 0, obj.Ts); % Prediction just for next time step
-            end
+            [s_trajectory, v_trajectory] = obj.predictMotion(s_0, v_0, v_max, acceleration, time);
+            d_trajectory = d_0*ones(length(time), 1);
             
             trajectoryFrenet = FrenetTrajectory(time, s_trajectory, d_trajectory, v_trajectory, ...
                                                 true, 0);
         end
         
-        function isFeasible = checkFeasibleTrajectory(obj, x, y, orientation, a_lateral)
+        function isFeasible = checkFeasibilityTrajectory(obj, x, y, orientation, a_lateral)
         % Check if trajectory is feasible accoording to lateral acceleration and trajectory curvature
             
             delta_orientation = diff(orientation);
@@ -191,6 +170,33 @@ classdef TrajectoryGeneration
             isFeasibleCentrifugalAcceleration = all(abs(a_lateral) < obj.a_lateral_max); 
             
             isFeasible = isFeasibleCurvature && isFeasibleCentrifugalAcceleration;
+        end
+    end
+       
+    methods(Static)
+        function [s, v] = predictMotion(s_0, v_0, v_limit, a, time)
+        % Restricted equation of motion for displacement and velocity according to double integrator
+            
+            s = s_0 + v_0*time + 0.5*a*time.^2;
+            v = v_0 + a*time;
+            if any(v > v_limit) % Not faster than limit velocity
+                id_limit = find(v>v_limit, 1);
+                s(v>v_limit) = s(id_limit) + v_limit*(time(v>v_limit) - time(id_limit));
+                v(v>v_limit) = v_limit;
+            end
+            if any(v < 0) % No backward motion
+                id_limit = find(v<0, 1);
+                s(v<0) = s(id_limit);
+                v(v<0) = 0;
+            end
+        end
+        
+        function v = predictVelocityMotion(v_0, v_limit, a, time)
+         % Restricted equation of motion for velocity according to double integrator
+            
+            v = v_0 + a*time;
+            v(v>v_limit) = v_limit; % Not faster than limit velocity
+            v(v<0) = 0; % No backward motion
         end
     end
 end
