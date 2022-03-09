@@ -144,14 +144,14 @@ function prepare_simulation(options)
     modelName = 'VehicleFollowing';
     load_system(modelName);
     open_system(modelName);
-    
+     
     %% Set Planner Mode
     % Set Variant Subsystem
-    set_param('VehicleFollowing/Ego - PID/Discrete Planner', 'modePlanner', planner.mode);
+    set_param('VehicleFollowing/Ego Vehicle/Discrete Planner', 'modePlanner', planner.mode);
     
     %% Set Lateral Mode
     % Set Variant Subsystem
-    set_param('VehicleFollowing/Ego - PID/Lateral Control', 'modeLateral', lateral.mode);
+    set_param('VehicleFollowing/Ego Vehicle/Lateral Control', 'modeLateral', lateral.mode);
     
 end
 
