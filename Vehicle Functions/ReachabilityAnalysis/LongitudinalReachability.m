@@ -9,7 +9,8 @@ classdef LongitudinalReachability < ReachabilityAnalysis
     properties(Access = private)
         counter % Counter to stop at correct simulation time
         futureStatePrediction % Store future state predictions for verification
-        err_s_v % Error between predicted s and actual s and predicted velocity and actual velocity [t, deltaS, deltaV]
+        err_s_v % Error between predicted s and actual s and predicted velocity and actual 
+                % velocity [t, deltaS, deltaV]
     end
 
     methods(Access = protected)
@@ -19,7 +20,8 @@ classdef LongitudinalReachability < ReachabilityAnalysis
 
             obj.counter = 0;
             obj.futureStatePrediction = [];
-            time = (obj.timeHorizon:obj.timeHorizon:str2double(get_param('VehicleFollowing', 'StopTime')))';
+            time = (obj.timeHorizon:obj.timeHorizon:str2double(get_param('VehicleFollowing', ...
+                                                                'StopTime')))';
             obj.err_s_v = [time, zeros(length(time), 2)];
         end
 
@@ -43,8 +45,12 @@ classdef LongitudinalReachability < ReachabilityAnalysis
                     obj.err_s_v(obj.counter, 2:3) = error_s_v';
                 end 
                 
-                [sFuture, vFuture] = ReachabilityAnalysis.predictLongitudinalFutureState(initialState(1), ...
-                    initialState(2), obj.maximumVelocity, aLead_ref, obj.k_timeHorizon, obj.Ts);
+                [sFuture, vFuture] = ...
+                    ReachabilityAnalysis.predictLongitudinalFutureState(initialState(1), ...
+                                                                        initialState(2), ...
+                                                                        obj.maximumVelocity, ...
+                                                                        aLead_ref, ...
+                                                                        obj.k_timeHorizon, obj.Ts);
                 obj.futureStatePrediction = [sFuture; vFuture];
                 obj.counter = obj.counter + 1; 
             end

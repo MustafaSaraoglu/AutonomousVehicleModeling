@@ -1,4 +1,5 @@
-function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, laneCell_width)
+function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWidth, cell_length, ...
+                                                         laneCell_width)
 % Divide road into discrete cells using Frenet Coordinates 
 % return cell array containing the corner points of each discrete cell
 % represented by the corresponding row and column index in the cell array
@@ -26,12 +27,13 @@ function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWid
 
     number_rows = ceil(routeLength/cell_length);
     number_columns = 5; % Divide road width into 5 cells
-    spaceDiscretisation = cell(number_rows, number_columns); % Preallocate spaceDiscretisation cell array
+    spaceDiscretisation = cell(number_rows, number_columns); % Preallocate 
 
     for row = 1:number_rows
         s_start = (row-1)*cell_length;
         s_end = s_start + cell_length;
-        if row == number_rows % Check last row in case could not divide perfectly into equal sized cells
+        if row == number_rows % Check last row in case could not divide perfectly into equal 
+                              % sized cells
             s_end = routeLength;
         end
 
@@ -45,13 +47,18 @@ function spaceDiscretisation = discretiseContinuousSpace(roadTrajectory, laneWid
                     d_end = -laneWidth/2 + roadBoundryCell_width + laneCell_width;
                 case 3 % Center of the road cell
                     d_start = -laneWidth/2 + roadBoundryCell_width + laneCell_width;
-                    d_end = -laneWidth/2 + roadBoundryCell_width + laneCell_width + roadCenterCell_width;
+                    d_end = -laneWidth/2 + roadBoundryCell_width + laneCell_width + ...
+                            roadCenterCell_width;
                 case 4 % Left lane cell
-                    d_start = -laneWidth/2 + roadBoundryCell_width + laneCell_width + roadCenterCell_width;
-                    d_end = -laneWidth/2 + roadBoundryCell_width + 2*laneCell_width + roadCenterCell_width;
+                    d_start = -laneWidth/2 + roadBoundryCell_width + laneCell_width + ...
+                              roadCenterCell_width;
+                    d_end = -laneWidth/2 + roadBoundryCell_width + 2*laneCell_width + ...
+                            roadCenterCell_width;
                 case 5 % Left road boundry cell
-                    d_start = -laneWidth/2 + roadBoundryCell_width + 2*laneCell_width + roadCenterCell_width;
-                    d_end = -laneWidth/2 + 2*roadBoundryCell_width + 2*laneCell_width + roadCenterCell_width;
+                    d_start = -laneWidth/2 + roadBoundryCell_width + 2*laneCell_width + ...
+                              roadCenterCell_width;
+                    d_end = -laneWidth/2 + 2*roadBoundryCell_width + 2*laneCell_width + ...
+                            roadCenterCell_width;
             end
 
             spaceDiscretisation{row, column} = [s_start, s_end; d_start, d_end];

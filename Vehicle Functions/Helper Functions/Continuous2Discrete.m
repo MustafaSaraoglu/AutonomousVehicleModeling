@@ -1,44 +1,49 @@
-function discreteCells = Continuous2Discrete(spaceDiscretisation, s, d, time)
-% Maps continuous (s, d)-tuple(s) to discrete rectangle cell(s) and stores the entrance and exit time to each cell
-% discreteCell: [idxRow, idxColumn, time_enter, time_exit]
-    
+function discreteTrajectory = Continuous2Discrete(spaceDiscretisation, frenetTrajectory)
+% Maps continuous Frenet trajectory to discrete rectangle cell containing the entrance and 
+% exit time to each cell (discrete trajectory)
+
     % Converting cell array to matrix makes it easier and faster
     spaceDiscretisationMatrix = cell2mat(spaceDiscretisation);
     
+    % Rows and columns in space discretisation
     rows = spaceDiscretisationMatrix(1:2:end, 1:2); 
     columns = (reshape(spaceDiscretisationMatrix(2, :), 2, []))';
     
     % Preallocate: At most 4 cells can be occupied for one (s, d) tuple
-    discreteCells = zeros(4*length(s), 4); 
+    occupiedCells = zeros(4*frenetTrajectory.length, 2); 
+    entranceTimes = -Inf*ones(4*frenetTrajectory.length, 1); 
+    exitTimes = Inf*ones(4*frenetTrajectory.length, 1); 
     idx = 1;
-    % Store index of previous iteration to get exit time, 
-    % which can first be known in the next iteration
-    idx_prev = []; 
-    for i = 1:length(s)
+    idx_prev = []; % Store previous index to set exit time after knowing next entrance time
+    for i = 1:frenetTrajectory.length
         % Find row and column to given (s, d) tuple
-        idxRow = (find(s(i)>=rows(:, 1) & s(i)<=rows(:, 2)))';
-        idxColumn = (find(d(i)>=columns(:, 1) & d(i)<=columns(:, 2)))';
+        idxRow = (find(frenetTrajectory.s(i)>=rows(:, 1) & frenetTrajectory.s(i)<=rows(:, 2)))';
+        idxColumn = (find(frenetTrajectory.d(i)>=columns(:, 1) & ...
+                     frenetTrajectory.d(i)<=columns(:, 2)))';
         
-        % All combination are necessary to find the corrisponding discrete cells
-        cells = (combvec(idxRow, idxColumn))';
+        % All combination if in between discrete cells
+        newCells = (combvec(idxRow, idxColumn))';
         
-        % Do not duplicate cells
-        cells = cells(~ismember(cells, discreteCells(:, 1:2), 'rows'), :); 
+        % Skip cells that are already in discrete trajectory
+        newCells = newCells(~ismember(newCells, occupiedCells, 'rows'), :); 
+        if isempty(newCells)
+            continue
+        end
                 
         % Because at most 4 cells can be occupied, idx increases dynamically
-        idx_next = idx + size(cells, 1);
+        idx_next = idx + size(newCells, 1);
         
-        if ~isempty(cells)
-            discreteCells(idx:idx_next-1, 1:2) = cells;
-            discreteCells(idx:idx_next-1, 3) = time(i); % Entrance time
-            if ~isempty(idx_prev)
-                discreteCells(idx_prev, 4) = time(i); % Exit time is entrance time of next cell
-            end
-            idx_prev = idx:idx_next-1;
+        occupiedCells(idx:idx_next-1, :) = newCells;
+        entranceTimes(idx:idx_next-1) = frenetTrajectory.time(i); % Entrance time
+        if ~isempty(idx_prev)
+            exitTimes(idx_prev) = frenetTrajectory.time(i); % Exit time is entrance time of next cell
         end
+        idx_prev = idx:idx_next-1;
+            
         idx = idx_next;
     end
+    exitTimes(idx_prev) = Inf; % Exit time for last cell is unknown 
     
-    discreteCells = discreteCells(1:idx-1, :); % [idxRow(cell1), idxColumn(cell1); idxRow(cell2), ...]
-    discreteCells(idx_prev, 4) = Inf; % Exit time for last cell is unknown 
+    discreteTrajectory = ...
+        DiscreteTrajectory(occupiedCells(1:idx-1, :), entranceTimes(1:idx-1), exitTimes(1:idx-1));
 end

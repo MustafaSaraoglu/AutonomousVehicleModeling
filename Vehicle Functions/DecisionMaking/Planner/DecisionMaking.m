@@ -1,4 +1,5 @@
-classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagates & matlab.system.mixin.SampleTime & matlab.system.mixin.CustomIcon
+classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagates & ...
+                          matlab.system.mixin.SampleTime & matlab.system.mixin.CustomIcon
 % Select driving mode and decide if to execute lane changing maneuver 
 
 % Driving Mode

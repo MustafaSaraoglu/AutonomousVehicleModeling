@@ -37,18 +37,25 @@ classdef DiscretePlannerManual < DecisionMaking
             disp('@t=0s: Initial state is: ''RightLane_FreeDrive''.');
         end
         
-        function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles, vEgo)
-        % Return lane change command, the current lane state and the current driving mode (see system description)
+        function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, ...
+                                                         distances2surroundingVehicles, ...
+                                                         speedsOtherVehicles, vEgo)
+        % Return lane change command and the current driving mode 
             
             [~, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
             
             obj.previousState = obj.currentState;
-            [drivingMode, changeLaneCmd] = obj.makeDecision(dEgo, vEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles);
+            [drivingMode, changeLaneCmd] = obj.makeDecision(dEgo, vEgo, ids_surroundingVehicles, ...
+                                                            distances2surroundingVehicles, ...
+                                                            speedsOtherVehicles);
             
             obj.displayNewState(obj.currentState, obj.previousState);
         end
         
-        function [drivingMode, changeLaneCmd] = makeDecision(obj, dEgo, vEgo, ids_surroundingVehicles, distances2surroundingVehicles, speedsOtherVehicles)
+        function [drivingMode, changeLaneCmd] = makeDecision(obj, dEgo, vEgo, ...
+                                                             ids_surroundingVehicles, ...
+                                                             distances2surroundingVehicles, ...
+                                                             speedsOtherVehicles)
         % Make decision about driving mode and whether to change lane    
             
             vLead = []; % No detection
@@ -68,7 +75,8 @@ classdef DiscretePlannerManual < DecisionMaking
             % Possible states: Check draw.io
             switch obj.currentState 
                 case obj.states('RightLane_FreeDrive')
-                    if obj.isVehicleClose(distance2frontSameLane) && not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) 
+                    if obj.isVehicleClose(distance2frontSameLane) && ...
+                            not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) 
                         obj.currentState = obj.states('RightLane_VehicleFollowing');
                     end
                     
@@ -86,9 +94,12 @@ classdef DiscretePlannerManual < DecisionMaking
                         obj.currentState = obj.states('RightLane_FreeDrive');
                     end
                     
-                    if obj.isVehicleClose(distance2frontSameLane) && not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && ...
-                            obj.isVehicleSlower(vEgo, vLead) && not(obj.isCloseToReferenceSpeed(vEgo, obj.vEgo_ref)) && ...
-                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane))
+                    if obj.isVehicleClose(distance2frontSameLane) && ...
+                            not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && ...
+                            obj.isVehicleSlower(vEgo, vLead) && ...
+                            not(obj.isCloseToReferenceSpeed(vEgo, obj.vEgo_ref)) && ...
+                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, ...
+                                                        distance2rearOtherLane))
                         obj.currentState = obj.states('ToLeftLane_FreeDrive');
                         
                         changeLaneCmd = obj.T_LC; % To left lane
@@ -105,7 +116,9 @@ classdef DiscretePlannerManual < DecisionMaking
                     end
 
                 case obj.states('LeftLane_FreeDrive')
-                    if obj.isVehicleClose(distance2frontSameLane) && not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane)
+                    if obj.isVehicleClose(distance2frontSameLane) && ...
+                            not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && ...
+                            obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane)
                         obj.currentState = obj.states('LeftLane_VehicleFollowing');
                     end
                     
@@ -114,7 +127,8 @@ classdef DiscretePlannerManual < DecisionMaking
                     end
                     
                     if not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && ...
-                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane))
+                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, ...
+                                                        distance2rearOtherLane))
                         obj.currentState = obj.states('ToRightLane_FreeDrive');
                         
                         changeLaneCmd = obj.T_LC; % To right lane
@@ -125,12 +139,14 @@ classdef DiscretePlannerManual < DecisionMaking
                         obj.currentState = obj.states('LeftLane_EmergencyBrake');
                     end
                     
-                    if obj.isVehicleIVeryFar(distance2frontSameLane) && obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane)
+                    if obj.isVehicleIVeryFar(distance2frontSameLane) && ...
+                            obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane)
                         obj.currentState = obj.states('LeftLane_FreeDrive');
                     end
                     
                     if not(obj.isVehicleInFrontVeryClose(distance2frontSameLane)) && ...
-                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, distance2rearOtherLane))
+                            not(obj.isOtherLaneOccupied(distance2frontOtherLane, ...
+                                                        distance2rearOtherLane))
                         obj.currentState = obj.states('ToRightLane_FreeDrive');
                         
                         changeLaneCmd = obj.T_LC; % To right lane
@@ -243,8 +259,10 @@ classdef DiscretePlannerManual < DecisionMaking
             isClose = v >= 0.95*v_ref;
         end
         
-        function isOccupied = isOtherLaneOccupied(distanceToFrontVehicleOtherLane, distanceToRearVehicleOtherLane)
-            isOccupied = distanceToFrontVehicleOtherLane < 50 || distanceToRearVehicleOtherLane > -50;
+        function isOccupied = isOtherLaneOccupied(distanceToFrontVehicleOtherLane, ...
+                                                  distanceToRearVehicleOtherLane)
+            isOccupied = distanceToFrontVehicleOtherLane < 50 || ...
+                         distanceToRearVehicleOtherLane > -50;
         end
         
         function isReached = isReachedLeftLane(d, laneWidth, tolerance)
