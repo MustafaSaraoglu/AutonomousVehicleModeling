@@ -135,7 +135,7 @@ classdef LocalTrajectoryPlanner < matlab.System
             d_oppositeLane = 0;
             destinationLane = 'right lane';
         
-            if d_currentLane == 0
+            if abs(d_currentLane) < 0.1 % Some threshold value in case the nominal d value is very small
                 d_oppositeLane = laneWidth;
                 destinationLane = 'left lane';
             end
