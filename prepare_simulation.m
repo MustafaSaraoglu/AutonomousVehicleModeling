@@ -108,7 +108,7 @@ function prepare_simulation(options)
 
     constraints.a_min = -3; % Minimum allowed longitudinal acceleration [m/s^2]
     constraints.a_max = 2; % Maximum allowed longitudinal acceleration [m/s^2]
-    constraints.a_emergency = -5; % Longitudinal acceleration for emergency break [m/s^2]
+    constraints.a_emergency = -5; % Longitudinal acceleration for emergency brake [m/s^2]
 
     constraints.steerAngle_max = pi/4; % Maximum allowed steering angle [rad]
     constraints.angularVelocity_max = 0.1; % Maximum angular velocity [rad/s]
