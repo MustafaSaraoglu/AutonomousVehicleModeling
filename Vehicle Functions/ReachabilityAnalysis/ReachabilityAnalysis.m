@@ -133,9 +133,6 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
         % longitudinal velocity v_future) according to an itnitial state 
         % and a constant acceleration in k+1 time steps
             
-            if v_0 < 0
-                v_0 = 0;
-            end
             initialState = [s_0; v_0];
             
             A_matrix = ReachabilityAnalysis.calculate_A_matrix(k, Ts);
@@ -147,18 +144,23 @@ classdef ReachabilityAnalysis < matlab.System & handle & matlab.system.mixin.Pro
             
             % Maximum future velocity should be in [0, v_max],
             % Modify displacement accordingly
-            if futureState(2, :) < 0 
-                futureState(2, :) = 0;
-                t_stop = -v_0/acceleration; % v(t) = 0 = acc*t + v_0 if acc = const.
-                futureState(1, :) = s_0 + 0.5*v_0.*t_stop;
-            elseif futureState(2, :) > v_max
-                futureState(2) = v_max;
-                if acceleration == 0
-                    t_v_max = 0;
+            isGoingBackwards = futureState(2, :) < 0;
+            if any(isGoingBackwards) 
+                futureState(2, isGoingBackwards) = 0;
+                t_stop = -v_0(isGoingBackwards)/acceleration; % v(t) = 0 = acc*t + v_0 if acc = const.
+                futureState(1, isGoingBackwards) = s_0(isGoingBackwards) + ...
+                                                    0.5*v_0((isGoingBackwards)).*t_stop;
+            end
+            
+            isTooFast = futureState(2, :) > v_max;
+            if any(isTooFast)
+                futureState(2, isTooFast) = v_max;
+                if acceleration == 0 % Prevent division by 0
+                    t_v_max = zeros(1, sum(isTooFast));
                 else
-                    t_v_max = (v_max - v_0)/acceleration; % v(t) = v_max = acc*t + v_0 if acc = const.
+                    t_v_max = (v_max - v_0(isTooFast))/acceleration; % v(t) = v_max = acc*t + v_0 if acc = const.
                 end
-                futureState(1, :) = s_0 + v_max*(k+1)*Ts - 0.5*(v_max - v_0).*t_v_max;
+                futureState(1, isTooFast) = s_0(isTooFast) + v_max*(k+1)*Ts - 0.5*(v_max - v_0(isTooFast)).*t_v_max;
             end
             
             s_future = futureState(1, :);

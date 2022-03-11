@@ -198,6 +198,8 @@ classdef DecisionGeneration
                     s_max = state.s;
                     v_max = state.speed; 
                 end
+                v_min = max(v_min, 0); % No backward motion
+                v_max = min(v_max, obj.maximumVelocity); % Not faster than maximum velocity
                 
                 % Decision: Keep Lane 
                 [decision_KL, futureStates_KL] = obj.getDecisionForKeepLane_Other(s_min, v_min, ...
