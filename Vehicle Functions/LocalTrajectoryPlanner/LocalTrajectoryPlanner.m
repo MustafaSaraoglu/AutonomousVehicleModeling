@@ -132,12 +132,10 @@ classdef LocalTrajectoryPlanner < matlab.System
         function [d_oppositeLane, destinationLane] = getOppositeLane(d_currentLane, laneWidth)
         % Get lane opposite to current lane
             
-            tolerance = 0.01; % Accepted tolerance if not exactly on the lane
-        
             d_oppositeLane = 0;
             destinationLane = 'right lane';
         
-            if abs(d_currentLane) <= tolerance
+            if abs(d_currentLane) < 0.1 % Some threshold value in case the nominal d value is very small
                 d_oppositeLane = laneWidth;
                 destinationLane = 'left lane';
             end
