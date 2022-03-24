@@ -12,25 +12,25 @@ function prepare_simulation(options)
                                               
         % Structure:[dataEgoVehicle, dataOtherVehicle1, ..., dataOtherVehicleN]
         % Kinematic initial conditions
-        options.s_0             (1,:) double = [0, 60, 40];     % Initial Frenet s-coordinate [m]
-        options.d_0             (1,:) double = [0, 0, 3.7];     % (Initial) Frenet d-coordinate [m]
-        options.v_0             (1,:) double = [20, 10, 13];    % Initial longitudinal velocity [m/s]
-        options.v_ref           (1,:) double = [20, 10, 13];    % Reference longitudinal velocity [m/s]       
+        options.s_0             (1,:) double = [0, 60, 40];  % Initial Frenet s-coordinate [m]
+        options.d_0             (1,:) double = [0, 0, 3.7];  % (Initial) Frenet d-coordinate [m]
+        options.v_0             (1,:) double = [20, 10, 13]; % Initial longitudinal velocity [m/s]
+        options.v_ref           (1,:) double = [20, 10, 13]; % Reference longitudinal velocity [m/s]       
         
-        options.planner         (1,1) string = 'FORMAL';        % Mode of discrete planner
+        options.planner         (1,1) string = 'FORMAL';     % Mode of discrete planner
                                % Alternative = 'MANUAL'
         
-        options.lateral         (1,1) string = 'STANLEY';       % Mode of lateral control
+        options.lateral         (1,1) string = 'STANLEY';    % Mode of lateral control
                                % Alternative = 'PURE_PURSUIT'
-        options.Th              (1,1) double = 5;               % Time horizon for trajectory 
-                                                                % genereation [s]
+        options.Th              (1,1) double = 5;            % Time horizon for trajectory 
+                                                             % genereation [s]
         
-        options.sigmaS          (1,1) double = 0.2;             % Standard deviation for 
-                                                                % measuring other vehicles' 
-                                                                % s-coordinate [m]
-        options.sigmaV          (1,1) double = 0.2;             % Standard deviation for 
-                                                                % measuring other vehicles' 
-                                                                 % speeds [m/s]
+        options.sigmaS          (1,1) double = 0.2;          % Standard deviation for 
+                                                             % measuring other vehicles' 
+                                                             % s-coordinate [m]
+        options.sigmaV          (1,1) double = 0.2;          % Standard deviation for 
+                                                             % measuring other vehicles' 
+                                                             % speeds [m/s]
     end
     
     %% Road

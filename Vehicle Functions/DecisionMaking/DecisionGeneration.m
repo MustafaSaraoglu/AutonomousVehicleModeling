@@ -94,7 +94,8 @@ classdef DecisionGeneration
             
             % All possible decisions
             % TODO: Find order for eficient tree expansion (alpha-beta pruning)
-            decisions = [decisionsCL; decisionsEB; decisionsVF; decisionsFD];
+            % (Last decision gets expanded first)
+            decisions = [decisionsEB; decisionsVF; decisionsFD; decisionsCL];
         end
         
         function decisions = getDecisionsForDrivingMode(obj, state, d_goal, acc_lower, ...

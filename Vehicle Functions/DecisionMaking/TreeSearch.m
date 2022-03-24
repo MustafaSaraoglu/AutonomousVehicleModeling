@@ -48,12 +48,12 @@ classdef TreeSearch
                     obj.planMaxManeuver(state_Ego0, d_destination, states_Other0, alpha_0, ...
                                         beta_0, 0, dG_initial, ID_global, depth, true);
                 dG_final{depth} = dG_iteration;
-                obj.safety_limit(obj.depthBound) = value_iteration.safety;
                 if ~isempty(bestDecision_iteration)
                     % Minimum Violation Planning:
                     % Take solution of previous iteration if no safe
                     % option was found in this iteration
                     bestDecision_total = bestDecision_iteration;
+                    obj.safety_limit(obj.depthBound) = value_iteration.safety;
                 end
             end
         end
@@ -226,7 +226,7 @@ classdef TreeSearch
         function value = evaluate(obj, safety, state)
         % Evaluate safety and state
            
-            liveness = state.s + state.speed*obj.Th - state.d;
+            liveness = round(state.s, 1) + round(state.speed, 1)*obj.Th - abs(round(state.d, 1));
             value = Values(safety, liveness);
         end
     end
