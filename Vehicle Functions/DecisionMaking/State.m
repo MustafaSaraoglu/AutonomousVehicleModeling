@@ -33,7 +33,7 @@ classdef State
         % Get all possible state combinations for each decision of each
         % vehicle
             
-            % n_stateCombinations = \prod_{i=1}^{n_vehicles} n_states_{i}
+            % n_{stateCombinations} = \prod_{i=1}^{n_{vehicles}} n_{states_{i}} 
             n_vehicles = size(states, 2);
             
             for id_vehicle = 1:n_vehicles
