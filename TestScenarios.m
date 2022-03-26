@@ -94,11 +94,11 @@ hold on;
 plot(out.s, out.d, 'Color', 'r', 'LineWidth', 5);
 plot(out.s_other(:, 1), ones(length(out.tout), 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
 plot(out.s_other(:, 2), ones(1, length(out.tout))*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
-legend('d_{1}(s)', 'd_{2}(s)', 'd_{3}(s)');
+% legend('d_{1}(s)', 'd_{2}(s)', 'd_{3}(s)');
 
-% plot(out.s(1:50:end), out.d(1:50:end), 'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-% plot(out.s_other(1:50:end, 1), out.d_other(1:50:end, 1), 'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-% plot(out.s_other(1:50:end, 2), out.d_other(1:50:end, 2), 'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s(1:50:end), out.d(1:50:end), 'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:50:end, 1), out.d_other(1:50:end, 1), 'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:50:end, 2), out.d_other(1:50:end, 2), 'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
 hold off;
 title('Formal Planner');
 xlabel('Longitudinal distance s [m]');
