@@ -60,23 +60,28 @@ ylabel('Lateral Offset d [m]', 'FontSize', 50);
 legend('d(t)', 'd_{ref}(t)', 'FontSize', 50);
 set(gca, 'FontSize', 50);
 
-%% Scenario 2: Manual vs Formal Speed Performance___________________________________________________
-%% Manual
+%% Scenario 2: Rule-Based vs Formal Speed Performance_______________________________________________
+%% Rule-Based
+t_sim = 14;
 prepare_simulation('s_0', [0, 12, 0], 'd_0', [0, 0, 3.7], ...
     'v_0', [15, 8, 30], 'v_ref', [15, 8, 0], 'planner', 'MANUAL'); % With uncertainty
-out = run_simulation('simTime', 14);
+out = run_simulation('simTime', t_sim);
 
 figure;
+n_points = length(out.tout);
 grid on;
 hold on;
 plot(out.s, out.d, 'Color', 'r', 'LineWidth', 5);
-plot(out.s_other(:, 1), ones(length(out.tout), 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
-plot(out.s_other(:, 2), ones(1, length(out.tout))*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
-%legend('d_{ego}(s)', 'd_{other1}(s)', 'd_{other2}(s)', 'FontSize', 50);
+%plot(out.s_other(:, 1), ones(n_points, 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
+%plot(out.s_other(:, 2), ones(n_points, 1)*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
+%legend('d_{1}(s)', 'd_{2}(s)', 'd_{3}(s)', 'FontSize', 50);
 
-plot(out.s(1:200:end), out.d(1:200:end), 'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-plot(out.s_other(1:200:end, 1), out.d_other(1:200:end, 1), 'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-plot(out.s_other(1:200:end, 2), out.d_other(1:200:end, 2), 'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 1), out.d_other(1:round(n_points/t_sim):end, 1), ...
+     'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 2), out.d_other(1:round(n_points/t_sim):end, 2),...
+    'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s(1:round(n_points/t_sim):end), out.d(1:round(n_points/t_sim):end), ...
+     'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
 hold off;
 title('Rule-Based Planner', 'FontSize', 50);
 xlabel('Longitudinal distance s [m]', 'FontSize', 50);
@@ -84,48 +89,57 @@ ylabel('Lateral Offset d [m]', 'FontSize', 50);
 set(gca, 'FontSize', 50);
 
 %% Formal
+t_sim = 14;
 prepare_simulation('s_0', [0, 12, 0], 'd_0', [0, 0, 3.7], ...
     'v_0', [15, 8, 30], 'v_ref', [15, 8, 0], 'planner', 'FORMAL'); % With uncertainty
-out = run_simulation('simTime', 14);
+out = run_simulation('simTime', t_sim);
 
 figure;
+n_points = length(out.tout);
 grid on;
 hold on;
 plot(out.s, out.d, 'Color', 'r', 'LineWidth', 5);
-plot(out.s_other(:, 1), ones(length(out.tout), 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
-plot(out.s_other(:, 2), ones(1, length(out.tout))*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
-% legend('d_{1}(s)', 'd_{2}(s)', 'd_{3}(s)');
+%plot(out.s_other(:, 1), ones(n_points, 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
+%plot(out.s_other(:, 2), ones(n_points, 1)*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
+%legend('d_{1}(s)', 'd_{2}(s)', 'd_{3}(s)', 'FontSize', 50);
 
-plot(out.s(1:200:end), out.d(1:200:end), 'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-plot(out.s_other(1:200:end, 1), out.d_other(1:200:end, 1), 'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-plot(out.s_other(1:200:end, 2), out.d_other(1:200:end, 2), 'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 1), out.d_other(1:round(n_points/t_sim):end, 1), ...
+     'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 2), out.d_other(1:round(n_points/t_sim):end, 2),...
+     'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s(1:round(n_points/t_sim):end), out.d(1:round(n_points/t_sim):end), ...
+     'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
 hold off;
-title('Formal Planner');
-xlabel('Longitudinal distance s [m]');
-ylabel('Lateral Offset d [m]');
+title('Formal Planner', 'FontSize', 50);
+xlabel('Longitudinal distance s [m]', 'FontSize', 50);
+ylabel('Lateral Offset d [m]', 'FontSize', 50);
 set(gca, 'FontSize', 50);
 
-%% Scenario 3: Manual vs Formal Safety Performance__________________________________________________
-%% Manual
+%% Scenario 3: Rule-Based vs Formal Safety Performance______________________________________________
+%% Rule-Based
+t_sim = 17;
 prepare_simulation('n_other', 3, 's_0', [140, 185, 0, 200], 'd_0', [0, 0, 3.7, 3.7], ...
     'v_0', [15, 13, 25, 14], 'v_ref', [15, 13, 25, 14], 'planner', 'MANUAL'); % With uncertainty
 out = run_simulation('simTime', 17);
 
-prepare_simulation('s_0', [0, 12, 0], 'd_0', [0, 0, 3.7], ...
-    'v_0', [15, 8, 30], 'v_ref', [15, 8, 0], 'planner', 'MANUAL'); % With uncertainty
-out = run_simulation('simTime', 14);
-
 figure;
+n_points = length(out.tout);
 grid on;
 hold on;
 plot(out.s, out.d, 'Color', 'r', 'LineWidth', 5);
-plot(out.s_other(:, 1), ones(length(out.tout), 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
-plot(out.s_other(:, 2), ones(1, length(out.tout))*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
-%legend('d_{ego}(s)', 'd_{other1}(s)', 'd_{other2}(s)', 'FontSize', 50);
+%plot(out.s_other(:, 1), ones(n_points, 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
+%plot(out.s_other(:, 2), ones(n_points, 1)*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
+%plot(out.s_other(:, 3), ones(n_points, 1)*out.d_other(:, 3), 'Color', 'g', 'LineWidth', 5);
+%legend('d_{1}(s)', 'd_{2}(s)', 'd_{3}(s)', 'd_{4}(s)', 'FontSize', 50);
 
-plot(out.s(1:200:end), out.d(1:200:end), 'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-plot(out.s_other(1:200:end, 1), out.d_other(1:200:end, 1), 'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-plot(out.s_other(1:200:end, 2), out.d_other(1:200:end, 2), 'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 1), out.d_other(1:round(n_points/t_sim):end, 1), ...
+     'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 2), out.d_other(1:round(n_points/t_sim):end, 2), ...
+     'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 3), out.d_other(1:round(n_points/t_sim):end, 3), ...
+     'Color', 'g', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s(1:round(n_points/t_sim):end), out.d(1:round(n_points/t_sim):end), ...
+     'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
 hold off;
 title('Rule-Based Planner', 'FontSize', 50);
 xlabel('Longitudinal distance s [m]', 'FontSize', 50);
@@ -133,23 +147,31 @@ ylabel('Lateral Offset d [m]', 'FontSize', 50);
 set(gca, 'FontSize', 50);
 
 %% Formal
+t_sim = 17;
 prepare_simulation('n_other', 3, 's_0', [140, 185, 0, 200], 'd_0', [0, 0, 3.7, 3.7], ...
     'v_0', [15, 13, 25, 14], 'v_ref', [15, 13, 25, 14], 'planner', 'FORMAL'); % With uncertainty
-out = run_simulation('simTime', 17);
+out = run_simulation('simTime', t_sim);
 
 figure;
+n_points = length(out.tout);
 grid on;
 hold on;
 plot(out.s, out.d, 'Color', 'r', 'LineWidth', 5);
-plot(out.s_other(:, 1), ones(length(out.tout), 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
-plot(out.s_other(:, 2), ones(1, length(out.tout))*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
-% legend('d_{1}(s)', 'd_{2}(s)', 'd_{3}(s)');
+%plot(out.s_other(:, 1), ones(n_points, 1)*out.d_other(:, 1), 'Color', 'b', 'LineWidth', 5);
+%plot(out.s_other(:, 2), ones(n_points, 1)*out.d_other(:, 2), 'Color', 'c', 'LineWidth', 5);
+%plot(out.s_other(:, 3), ones(n_points, 1)*out.d_other(:, 3), 'Color', 'g', 'LineWidth', 5);
+%legend('d_{1}(s)', 'd_{2}(s)', 'd_{3}(s)', 'd_{4}(s)', 'FontSize', 50);
 
-plot(out.s(1:200:end), out.d(1:200:end), 'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-plot(out.s_other(1:200:end, 1), out.d_other(1:200:end, 1), 'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
-plot(out.s_other(1:200:end, 2), out.d_other(1:200:end, 2), 'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 1), out.d_other(1:round(n_points/t_sim):end, 1), ...
+     'Color', 'b', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 2), out.d_other(1:round(n_points/t_sim):end, 2), ...
+     'Color', 'c', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s_other(1:round(n_points/t_sim):end, 3), out.d_other(1:round(n_points/t_sim):end, 3), ...
+     'Color', 'g', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
+plot(out.s(1:round(n_points/t_sim):end), out.d(1:round(n_points/t_sim):end), ...
+     'Color', 'r', 'Marker', 'o', 'LineStyle', 'none', 'LineWidth', 5);
 hold off;
-title('Formal Planner');
-xlabel('Longitudinal distance s [m]');
-ylabel('Lateral Offset d [m]');
+title('Formal Planner', 'FontSize', 50);
+xlabel('Longitudinal distance s [m]', 'FontSize', 50);
+ylabel('Lateral Offset d [m]', 'FontSize', 50);
 set(gca, 'FontSize', 50);
