@@ -3,7 +3,7 @@ function ISE_d = error_d(paramsToBeOptimized)
 % paramsToBeOptimized = [Kp, Ki, Kd, forwardMotionGain] / only Kp
 
 	% Prepare simulation
-    mdl = 'VehicleFollowing';
+    mdl = 'ManeuverPlanning';
     
     %% With PID
 %     assignin('base', 'Kp', paramsToBeOptimized(1));

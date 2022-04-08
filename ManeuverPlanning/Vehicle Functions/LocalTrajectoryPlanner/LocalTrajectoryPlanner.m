@@ -71,7 +71,7 @@ classdef LocalTrajectoryPlanner < matlab.System
 
                 plot(x_trajectory, y_trajectory, 'Color', 'green');
 
-                t = get_param('VehicleFollowing', 'SimulationTime');
+                t = get_param('ManeuverPlanning', 'SimulationTime');
 
                 fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, ...
                         durationManeuver);

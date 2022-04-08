@@ -84,8 +84,8 @@ classdef DiscretePlannerFormal < DecisionMaking
             
             % Only check everey timeHorizon/partsTimeHorizon seconds because expensive operation
             % and if not changing lane
-            if get_param('VehicleFollowing', 'SimulationTime') >= obj.t_ref && ~obj.isChangingLane
-                obj.t_ref = get_param('VehicleFollowing', 'SimulationTime') + ...
+            if get_param('ManeuverPlanning', 'SimulationTime') >= obj.t_ref && ~obj.isChangingLane
+                obj.t_ref = get_param('ManeuverPlanning', 'SimulationTime') + ...
                             obj.timeHorizon/obj.partsTimeHorizon;
                 
                 % Define vehicle states

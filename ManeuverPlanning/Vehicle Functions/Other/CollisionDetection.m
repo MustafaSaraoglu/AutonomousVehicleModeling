@@ -54,7 +54,7 @@ classdef CollisionDetection < matlab.System
                     
                     if isCollided
                         if ~obj.isCollisionDetected
-                            t = get_param('VehicleFollowing', 'SimulationTime');
+                            t = get_param('ManeuverPlanning', 'SimulationTime');
 
                             fprintf('@t=%fs: Collision with other vehicle %i.\n', t, id_otherVehicle);
                             obj.isCollisionDetected = true;

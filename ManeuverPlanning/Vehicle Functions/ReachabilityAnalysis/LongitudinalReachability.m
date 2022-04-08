@@ -20,7 +20,7 @@ classdef LongitudinalReachability < ReachabilityAnalysis
 
             obj.counter = 0;
             obj.futureStatePrediction = [];
-            time = (obj.timeHorizon:obj.timeHorizon:str2double(get_param('VehicleFollowing', ...
+            time = (obj.timeHorizon:obj.timeHorizon:str2double(get_param('ManeuverPlanning', ...
                                                                 'StopTime')))';
             obj.err_s_v = [time, zeros(length(time), 2)];
         end
@@ -38,7 +38,7 @@ classdef LongitudinalReachability < ReachabilityAnalysis
         function verifyReachabilityAnalysis(obj, initialState)
         % Track error between predicted state and actual state every time horizon seconds
            
-            if get_param('VehicleFollowing', 'SimulationTime') > obj.counter*obj.timeHorizon
+            if get_param('ManeuverPlanning', 'SimulationTime') > obj.counter*obj.timeHorizon
                 aLead_ref = 0; % TODO: Other than constant velocity
                 if ~isempty(obj.futureStatePrediction)
                     error_s_v = obj.futureStatePrediction - initialState;

@@ -62,7 +62,7 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
                 key_newState = stateNames(id);
                 name_newState = key_newState{:};
                 
-                t = get_param('VehicleFollowing', 'SimulationTime');
+                t = get_param('ManeuverPlanning', 'SimulationTime');
                 
                 fprintf('@t=%fs: Switched to State: ''%s''.\n', t, name_newState);
             end
