@@ -1,0 +1,30 @@
+classdef Node
+    %NODE Summary of this class goes here
+    %   Detailed explanation goes here
+    
+    properties
+        source
+        id
+        state
+        actions
+    end
+    
+    methods
+        function obj = Node(source,state,actions)
+            %NODE Construct an instance of this class
+            obj.source = source;
+            obj.id = counter();
+            obj.state = state;
+            obj.actions = actions; 
+        end
+        
+        function childNode = expand(obj,maneuver)
+            childNode.source = obj.id;
+            childNode.id = counter();
+            
+            childNode.state = 404;
+            childNode. = obj.Property1 + maneuver;
+        end
+    end
+end
+

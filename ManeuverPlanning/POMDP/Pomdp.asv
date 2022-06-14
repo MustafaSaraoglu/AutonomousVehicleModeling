@@ -1,0 +1,20 @@
+clear all;
+load('decisionInputData.mat');
+
+Planner = obj;
+clear obj;
+
+MotionPrimitives = {'FD','EB','LC'};
+
+%% POMDP Generation
+% Create root node
+RootNode = cell(1,2); % Cell to capture arbitrary data types // {id,state}
+RootNode{1} = 1; % first state id
+RootNode{2} = currentState_Ego; % the state data
+
+% Determine available ego actions
+for 
+
+
+% Determine Rewards for children states
+% Make children states parent states and expand again
