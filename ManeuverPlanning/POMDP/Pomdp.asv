@@ -4,16 +4,37 @@ load('decisionInputData.mat');
 Planner = obj;
 clear obj;
 
-MotionPrimitives = {'FD','EB','LC'};
-
-%% POMDP Generation
-% Create root node
-RootNode = cell(1,2); % Cell to capture arbitrary data types // {id,state}
-RootNode{1} = 1; % first state id
-RootNode{2} = currentState_Ego; % the state data
 
 % Determine available ego actions
-for 
+counter(0);
+Maneuvers = {'FD','EB','LC'};
+
+
+rootNodes = [];
+leafNodes = [];
+newleafNodes = [];
+%% POMDP Generation
+% Create root node
+leafNode = Node(0,0,currentState_Ego,Maneuvers,UnsafetyValue);
+
+for maneuver = Maneuvers
+    %expand the root node for each maneuever
+    newleafNode = leafNode.expand(maneuver);
+    %Calculate unsafety value
+    for otherVehicle = otherVehicles
+        
+        % Calculate PDF of Other Vehicles
+        % UnsafetyValue = Area under curve 
+        % newleafNode.UnSafetyValue = UnsafetyValue
+    
+    end
+    newleafNodes = [newleafNodes newleafNode];
+
+end
+
+% Make leafNode a rootNode
+rootNodes = [rootNodes leafNode];
+leafNodes = [leafNodes newleafNodes];
 
 
 % Determine Rewards for children states
