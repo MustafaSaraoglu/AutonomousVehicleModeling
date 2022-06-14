@@ -109,6 +109,14 @@ classdef DiscretePlannerFormal < DecisionMaking
                     obj.SearchTree.iterativeMinimax(currentState_Ego, currentStates_Other, ...
                                                     obj.d_destination);
                     
+                %% Plot the tree:
+%                 figure(2);
+%                 dG_iteration = dG{2};
+%                 plot(dG_iteration, 'EdgeLabel',...
+%                 dG_iteration.Edges.Power, 'EdgeColor',...
+%                 cell2mat(dG_iteration.Edges.Color), 'NodeColor',...
+%                 cell2mat(dG_iteration.Nodes.Color), 'Layout', 'layered');
+                %%
                 nextDecision = bestDecision_Ego(1);
                 description_nextDecision = strsplit(nextDecision.description, '_');
                 nextState = description_nextDecision{1};
