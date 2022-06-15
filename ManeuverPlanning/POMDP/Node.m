@@ -66,8 +66,35 @@ classdef Node
             
             s = [allNodes.sourceNodeID];
             t = [allNodes.targetNodeID];
+            
+            
+            
+            
             G = digraph(s,t);
-            plot(G,'Layout','layered');
+            G.Edges.Labels =string([allNodes.sourceEdgeName])'; % Edge labels: Maneuvers
+            G.Nodes.UnsafetyValues = [allNodes.UnsafetyValue]'; % Node labels: Unsafety values
+            
+            idx = [allNodes.id];
+            Pruned_idx= idx([allNodes.UnsafetyValue]>0.02);% Mark unsafe nodes Red
+            Safest_idx = idx([allNodes.UnsafetyValue]<0.00001); % Mark safest nodes Green
+            
+            h=plot(G,'NodeLabel',G.Nodes.UnsafetyValues,'EdgeLabel',G.Edges.Labels,'Layout','layered');
+            
+            
+            highlight(h,Safest_idx,'NodeColor','g')
+            
+            % Propagate pruned nodes if all children are pruned also mark parent node red
+            AllChildrenPruned_idx = [];
+            while true
+                [~,AllChildrenPruned_idx] = find(histcounts([allNodes(Pruned_idx).sourceNodeID])==3);
+                
+                if all(ismember(AllChildrenPruned_idx,Pruned_idx))
+                    break;
+                else
+                    Pruned_idx = unique([Pruned_idx AllChildrenPruned_idx]);
+                end
+            end
+            highlight(h,Pruned_idx,'NodeColor','r')
             
         end
     end
