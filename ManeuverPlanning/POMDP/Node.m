@@ -96,6 +96,12 @@ classdef Node
             end
             highlight(h,Pruned_idx,'NodeColor','r')
             
+            % Highlight edges that lead to unsafe nodes
+            unsafeEdges_idx=ismember(G.Edges.EndNodes(:,2), Pruned_idx);
+            unsafeSourceTargetPairs =G.Edges.EndNodes(unsafeEdges_idx,:);
+            
+            highlight(h,unsafeSourceTargetPairs(:,1),unsafeSourceTargetPairs(:,2),'EdgeColor','r');
+            
         end
     end
 end
