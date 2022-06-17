@@ -88,7 +88,7 @@ end
 
 allNodes = [rootNodes leafNodes];
 
-Node.plotTree(allNodes,leafNodes,unsafeBoundaryValue);
+GameTree.plot(allNodes,leafNodes,unsafeBoundaryValue);
 
 
 
