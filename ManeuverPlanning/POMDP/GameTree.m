@@ -1,9 +1,17 @@
 classdef GameTree
     %GAMETREE Summary of this class goes here
     %   Detailed explanation goes here
+    properties
+        digraph
+        visualization
+    end
     
-    methods (Static)
-        function plot(allNodes,leafNodes,unsafeBoundaryValue)
+    methods
+        function obj = GameTree(rootNodes,leafNodes,unsafeBoundaryValue)
+            
+            % Make an array of all nodes
+            allNodes = [rootNodes leafNodes];
+            
             % Plot the tree using all the calculated nodes and edges
             % creating a digraph: source node -> edge -> target node
             s = [allNodes.sourceNodeID];
@@ -50,9 +58,14 @@ classdef GameTree
             highlight(h,SafePath_idx);
             % Highlight all the edges leading to the safe state
             highlight(h,SafePath_idx(2:end),SafePath_idx(1:end-1))
+            
+            obj.digraph = G;
+            obj.visualization = h;
         end
+    end
         
-        
+        methods (Static)
+            
         
         function Pruned_idx = findUnsafeNodes(allNodes,idx, unsafeBoundaryValue)
             

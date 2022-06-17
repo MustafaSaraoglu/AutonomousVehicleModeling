@@ -19,7 +19,7 @@ classdef Maneuver
         
     end
     methods (Static)
-        function maneuvers = getallActions();
+        function maneuvers = getallActions()
             
             maneuvers = {FreeDrive('FD'), EmergencyBrake('EB'), LaneChanging('LC')};
         

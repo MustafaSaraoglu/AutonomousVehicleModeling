@@ -3,7 +3,7 @@ classdef LaneChanging < Maneuver
     %   Detailed explanation goes here
     
     methods (Static)
-        function [speed_new, s_new, d_new, orientation_new] = apply(state,deltaT)
+        function nextState = apply(state,deltaT)
             %Apply Lane Changing
             speed_new = state.speed;
             s_new = state.s + speed_new*deltaT;
@@ -13,7 +13,8 @@ classdef LaneChanging < Maneuver
                 d_new = 0;
             end
             orientation_new = state.orientation;
-            %nextState = [speed_new, s_new, d_new, orientation_new];
+            
+            nextState = State(s_new,d_new,orientation_new,speed_new);
         end
     end
 end
