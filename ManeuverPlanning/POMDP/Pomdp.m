@@ -19,7 +19,10 @@ unsafeBoundaryValue = 0.02;
 currentState_Ego.speed = 4; % Speed reduced from 8 to 4
 
 % Determine available ego actions
-Maneuvers = {'FD','EB','LC'}; % TODO Later: create a "maneuver class" to also contain the reachability formulations
+%Maneuvers = {'FD','EB','LC'}; % TODO Later: create a "maneuver class" to also contain the reachability formulations
+%Maneuvers = {FreeDrive('FD'), EmergencyBrake('EB'), LaneChanging('LC')};
+Maneuvers = Maneuver.getallActions();
+
 
 %% Tree Generation
 % Start by creating the root node
@@ -72,7 +75,7 @@ for depth = 1:maxDepth
                 
             end
         else
-            disp(strcat(num2str(leafNode.sourceNodeID),'-', leafNode.sourceEdgeName{1},'-','pruned'));
+            disp(strcat(num2str(leafNode.sourceNodeID),'-', leafNode.sourceEdgeName{1}.name,'-','pruned'));
         end
         
         % Make leafNode a rootNode

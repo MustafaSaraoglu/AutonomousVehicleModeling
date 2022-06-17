@@ -11,7 +11,8 @@ classdef GameTree
             G = digraph(s,t);
             
             % Change the labels of the digraph
-            G.Edges.Labels =string([allNodes.sourceEdgeName])'; % Edge labels: Maneuvers
+            %G.Edges.Labels =string([allNodes.sourceEdgeName])'; % Edge labels: Maneuvers
+            G.Edges.Labels = cellfun(@getName,[allNodes.sourceEdgeName],'UniformOutput',false)';
             G.Nodes.UnsafetyValues = [allNodes.UnsafetyValue]'; % Node labels: Unsafety values
             
             idx = [allNodes.id];
