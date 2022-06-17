@@ -19,14 +19,11 @@ classdef GameTree
             G = digraph(s,t);
             
             % Change the labels of the digraph
-            %G.Edges.Labels =string([allNodes.sourceEdgeName])'; % Edge labels: Maneuvers
             G.Edges.Labels = cellfun(@getName,[allNodes.sourceEdgeName],'UniformOutput',false)';
             G.Nodes.UnsafetyValues = [allNodes.UnsafetyValue]'; % Node labels: Unsafety values
             
             idx = [allNodes.id];
             Safest_idx = idx([allNodes.UnsafetyValue]<0.00001); % Mark safest nodes Green
-            
-            
             
             % Plot the tree from top down using 'Layout','layered'
             h=plot(G,'NodeLabel',G.Nodes.UnsafetyValues,'EdgeLabel',G.Edges.Labels,'Layout','layered');
@@ -46,12 +43,10 @@ classdef GameTree
             unsafeSourceTargetPairs = GameTree.findUnsafeEdges(G,Pruned_idx);
             highlight(h,unsafeSourceTargetPairs(:,1),unsafeSourceTargetPairs(:,2),'EdgeColor','r');
             
-            % Find the safest state and track back to the initial state
-            [val,idx_safest] = min([leafNodes.UnsafetyValue]);
-            disp(['Safest state value: ',num2str(val)]);
-            SafestNode = leafNodes(idx_safest);
-            
-            % Get the safe nodes ids
+            % Find the highest liveness value among the safest states
+            SafestNode = GameTree.findTheBestState(leafNodes,Safest_idx);
+
+            % Get the safe node's id and track back to the initial state
             SafePath_idx = GameTree.findTheSafestPath(allNodes,SafestNode);
             
             % Highlight all the nodes from initial state to the safest state
@@ -63,9 +58,29 @@ classdef GameTree
             obj.visualization = h;
         end
     end
+    
+    methods (Static)
         
-        methods (Static)
+        function bestDecision = findTheBestState(leafNodes,AllNodes_Safest_idx)
+            %Safest leaf nodes
+            SafestLeafNodes = leafNodes(ismember([leafNodes.id],AllNodes_Safest_idx));
             
+            if length(SafestLeafNodes)>1 % If there are more than one safest node
+                % Compare liveness value for the best decision
+                [Live_val, idx] = max([vertcat(SafestLeafNodes.state).s]);
+                bestDecision = SafestLeafNodes(idx); 
+                Safe_val = bestDecision.UnsafetyValue;
+            else
+                % Just choose the safest ~ minimum unsafe
+                [Safe_val,idx_best] = min([leafNodes.UnsafetyValue]);
+                Live_val = leafNodes(idx_best).state.s;
+                bestDecision = leafNodes(idx_best);
+            end
+
+            disp(['Safest state value: ',num2str(Safe_val)]);
+            disp(['Liveness state value: ',num2str(Live_val)]);
+        end
+        
         
         function Pruned_idx = findUnsafeNodes(allNodes,idx, unsafeBoundaryValue)
             

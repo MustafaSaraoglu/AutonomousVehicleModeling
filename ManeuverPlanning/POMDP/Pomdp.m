@@ -4,7 +4,7 @@
 
 % Traffic situation - 1 Ego Vehicle, 3 Other Vehicles
 currentState_Ego = State(150,0,0,4); % Initial state for the Ego Vehicle (which decides for the maneuvers)
-currentStates_Other = [State(95,0,0,8) State(150,3.7000,0,2) State(165,0,0,6)]; % Initial state for the Other Vehicles
+currentStates_Other = [State(95,0,0,8) State(150,3.7000,0,2) State(165,0,0,9)]; % Initial state for the Other Vehicles
 
 
 counter(0); % initialize the counter to later count the states in the tree
