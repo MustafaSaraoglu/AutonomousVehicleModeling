@@ -7,7 +7,7 @@ currentState_Ego = State(150,0,0,4); % Initial state for the Ego Vehicle (which 
 currentStates_Other = [State(95,0,0,8) State(150,3.7000,0,2) State(165,0,0,9)]; % Initial state for the Other Vehicles
 
 
-counter(0); % initialize the counter to later count the states in the tree
+count = 1; % Id of the first node
 maxDepth = 4; % Expand until nth depth if not pruned 
 deltaT = 2; % time horizon for each depth: deltaT seconds
 unsafeBoundaryValue = 0.02;
@@ -23,7 +23,9 @@ UnSafetyValue=0; % Initial state for decision making shouldn't be a collision st
 
 % Create the root node but since it is the only node, it should be first a
 % leaf node so that we expand it.
-leafNode = Node([],[],currentState_Ego,Maneuvers,UnSafetyValue);
+leafNode = Node([],[],count,currentState_Ego,Maneuvers,UnSafetyValue);
+count = count + 1; % Increase the Id for the next nodes
+
 leafNodes = leafNode;
 
 
@@ -39,7 +41,8 @@ for depth = 1:maxDepth
             
             for maneuver = Maneuvers
                 % Expand for each maneuever 
-                newleafNode = leafNode.expand(maneuver,deltaT);
+                newleafNode = leafNode.expand(count,maneuver,deltaT);
+                count = count + 1; % Increase the Id for the next nodes
                 
                 leafNode.targetNodeID = [leafNode.targetNodeID newleafNode.id];
                 
@@ -89,6 +92,7 @@ for depth = 1:maxDepth
     end
 end
 
+count = count - 1; % Undo the last increment
 G = GameTree(rootNodes,leafNodes,unsafeBoundaryValue);
 
 % Calculate the other vehicles' motion as a normal distribution centered around x1 = x0 + v*t

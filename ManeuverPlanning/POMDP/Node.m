@@ -12,18 +12,18 @@ classdef Node
     end
     
     methods
-        function obj = Node(sourceNodeID,sourceEdgeName,state,actions,UnsafetyValue)
+        function obj = Node(sourceNodeID,sourceEdgeName,count,state,actions,UnsafetyValue)
             %NODE Construct an instance of this class
             obj.sourceNodeID = sourceNodeID;
             obj.sourceEdgeName = sourceEdgeName;
-            obj.id = counter(); % assign id and increase the counter for the next possible nodes
+            obj.id = count; % assign id and increase the counter for the next possible nodes
             obj.state = state;
             obj.actions = cellfun(@getName,actions,'UniformOutput',false);
             obj.UnsafetyValue = UnsafetyValue;
             obj.targetNodeID = []; % To be assigned if expanded
         end
         
-        function childNode = expand(obj,maneuver,deltaT)
+        function childNode = expand(obj,count,maneuver,deltaT)
             % Expand the node based on available actions (edges out)
             %   Next states' values shall be calculated via applying the
             %   action for deltaT seconds
@@ -31,7 +31,7 @@ classdef Node
             newActions = Maneuver.getallActions();
             
             % Return the newly created child node
-            childNode = Node(obj.id, maneuver, newState, newActions,[]);
+            childNode = Node(obj.id, maneuver, count, newState, newActions,[]);
         end
     end
    
