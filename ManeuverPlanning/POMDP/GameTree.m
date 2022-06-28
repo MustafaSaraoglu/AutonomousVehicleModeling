@@ -2,6 +2,8 @@ classdef GameTree
     %GAMETREE Summary of this class goes here
     %   Detailed explanation goes here
     properties
+        chosenManeuver
+        
         digraph
         visualization
     end
@@ -53,9 +55,13 @@ classdef GameTree
             highlight(h,SafePath_idx);
             % Highlight all the edges leading to the safe state
             highlight(h,SafePath_idx(2:end),SafePath_idx(1:end-1))
+            % Output the first maneuver of the safe path
+            obj.chosenManeuver = allNodes(2).sourceEdgeName{1}.getName;
+            
             
             obj.digraph = G;
             obj.visualization = h;
+            
         end
     end
     

@@ -21,11 +21,7 @@ classdef GameTreePlanner
             obj.deltaT = deltaT;
             obj.cutOffValue_unsafety = cutOffValue_unsafety;
         end
-        function calculateBestDecision(obj,currentState_Ego,currentStates_Other,Maneuvers)
-            maxDepth = obj.maxDepth;
-            deltaT  =  obj.deltaT;
-            cutOffValue_unsafety = obj.cutOffValue_unsafety;
-            
+        function obj = calculateBestDecision(obj,currentState_Ego,currentStates_Other,Maneuvers)           
             %% Tree Generation
             % Start by creating the root node
             count = 1; % Id of the first node
@@ -37,17 +33,17 @@ classdef GameTreePlanner
             leafNodes = Node([],[],count,currentState_Ego,Maneuvers,UnSafetyValue);
             count = count + 1; % Increase the Id for the next nodes
             
-            for depth = 1:maxDepth
+            for depth = 1:obj.maxDepth
                 
                 
                 for leafNode = leafNodes
                     newleafNodes = [];
                     % Expand the root node if safe
-                    if leafNode.UnsafetyValue < cutOffValue_unsafety
+                    if leafNode.UnsafetyValue < obj.cutOffValue_unsafety
                         
                         for maneuver = Maneuvers
                             % Expand for each maneuever
-                            newleafNode = leafNode.expand(count,maneuver,deltaT);
+                            newleafNode = leafNode.expand(count,maneuver,obj.deltaT);
                             count = count + 1; % Increase the Id for the next nodes
                             
                             leafNode.targetNodeID = [leafNode.targetNodeID newleafNode.id];
@@ -59,7 +55,7 @@ classdef GameTreePlanner
                             for otherVehicle =1:length(currentStates_Other)
                                 
                                 % Calculate PDF of Other Vehicles
-                                pdf_other = Maneuver.calculatePDFofOtherVehicles(currentStates_Other(otherVehicle),deltaT,depth);
+                                pdf_other = Maneuver.calculatePDFofOtherVehicles(currentStates_Other(otherVehicle),obj.deltaT,depth);
                                 
                                 % UnsafetyValue = Ego vehicle's area under the normal distribution curve of other vehicles
                                 if abs(newleafNode.state.d - currentStates_Other(otherVehicle).d) < 0.03 % Tolerance value for "d"
@@ -99,7 +95,7 @@ classdef GameTreePlanner
             count = count - 1; % Undo the last increment
             
             % Build the tree
-            obj.tree = GameTree(rootNodes,leafNodes,cutOffValue_unsafety);
+            obj.tree = GameTree(rootNodes,leafNodes,obj.cutOffValue_unsafety);
         end
         
     end
