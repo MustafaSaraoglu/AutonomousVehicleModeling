@@ -3,13 +3,15 @@ classdef Maneuver
     
     properties
         name
+        id
     end
     
     methods
-        function obj = Maneuver(name)
+        function obj = Maneuver(name,id)
             %MANEUVER Construct an instance of this class
             %   Detailed explanation goes here
             obj.name = name;
+            obj.id = id;
         end
         
         function name = getName(obj)
@@ -21,8 +23,8 @@ classdef Maneuver
     methods (Static)
         function maneuvers = getallActions()
             
-            %maneuvers = {FreeDrive('FD'), VehicleFollowing('VF'), EmergencyBrake('EB'), LaneChanging('LC')};
-            maneuvers = {FreeDrive('FD'), LaneChanging('LC')};
+            maneuvers = {FreeDrive('FD',1), VehicleFollowing('VF',2), EmergencyBrake('EB',3), LaneChanging('LC',4)};
+            %maneuvers = {FreeDrive('FD',1), LaneChanging('LC',4)};
         
         end
         

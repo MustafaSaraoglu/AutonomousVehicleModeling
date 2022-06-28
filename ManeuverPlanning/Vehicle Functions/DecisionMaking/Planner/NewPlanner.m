@@ -52,8 +52,10 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
             % Perform one-time calculations, such as computing constants
-            obj.drivingModes = ...
-                containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
+            
+            %obj.drivingModes = ...
+            %   containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
+            obj.drivingModes = Maneuver.getallActions;
             
             obj.laneChangeCmds = ...
                 containers.Map({'CmdIdle'}, 0);
@@ -164,39 +166,19 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                 end
             end
             
-            drivingMode = obj.getStateInfo(obj.currentState);
+            %drivingMode = obj.getStateInfo(obj.currentState);
+            drivingMode = obj.drivingModes{obj.currentState}.id;
             
             obj.displayNewState(obj.currentState, obj.previousState);
         end
         
-        
-        function drivingMode = getStateInfo(obj, state)
-            % Get information about driving mode given a state
-            
-            switch state
-                case obj.states('FreeDrive')
-                    drivingMode = obj.drivingModes('FreeDrive');
-                case obj.states('VehicleFollowing')
-                    drivingMode = obj.drivingModes('VehicleFollowing');
-                case obj.states('EmergencyBrake')
-                    drivingMode = obj.drivingModes('EmergencyBrake');
-                case obj.states('ChangeLane')
-                    drivingMode = obj.drivingModes('FreeDrive');
-            end
-        end
         
         function displayNewState(obj, currentState, previousState)
             % Display state name if switched to another state
             
             if currentState ~= previousState
                 newState = currentState;
-                
-                stateNames = keys(obj.states);
-                % https://www.mathworks.com/matlabcentral/answers/98444-how-can-i-retrieve-the-key-which-belongs-to-a-specified-value-using-the-array-containers-map-in-matl
-                id = cellfun(@(x) isequal(x, newState), values(obj.states));
-                
-                key_newState = stateNames(id);
-                name_newState = key_newState{:};
+                name_newState = class(obj.drivingModes{obj.currentState});
                 
                 t = get_param('ManeuverPlanning', 'SimulationTime');
                 
