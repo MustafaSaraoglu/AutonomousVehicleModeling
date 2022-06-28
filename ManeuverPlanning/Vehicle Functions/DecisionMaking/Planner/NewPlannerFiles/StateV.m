@@ -1,4 +1,4 @@
-classdef State
+classdef StateV
     %STATE Summary of this class goes here
     
     properties
@@ -9,7 +9,7 @@ classdef State
     end
     
     methods
-        function obj = State(s,d,orientation,speed)
+        function obj = StateV(s,d,orientation,speed)
             %STATE Construct an instance of this class
             obj.s = s;
             obj.d = d;

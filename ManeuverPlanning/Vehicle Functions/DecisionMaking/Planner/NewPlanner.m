@@ -1,4 +1,5 @@
-classdef NewPlanner < DecisionMaking
+classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & ...
+        matlab.system.mixin.SampleTime & matlab.system.mixin.CustomIcon
     %NEWPLANNER Summary of this class goes here
     %   Detailed explanation goes here
     
@@ -21,34 +22,60 @@ classdef NewPlanner < DecisionMaking
         spaceDiscretisation % Space Discretisation
         
         SearchTree % Search tree to find best decision
+        vEgo_ref % Reference velocity for ego vehicle [m/s]
+        
+        LaneWidth % Width of road lane [m]
+        RoadTrajectory % Road trajectory according to MOBATSim map format
+        Ts % Sample time [s]
     end
-
+    
     % Pre-computed constants
     properties(Access = protected)
         d_destination % Reference lateral destination (right or left lane)
         isChangingLane % Return if currently executing lane changing maneuver
         
-        t_ref % Variable to store a specific simulation time of interest 
+        t_ref % Variable to store a specific simulation time of interest
+        drivingModes % Possible driving modes
+        laneChangeCmds % Possible commands for lane changing
+        plannerModes % Possible planner modes
+        
+        curvature_max % Maximum allowed curvature
+        
+        states % Possible driving states
+        currentState % Current driving state
+        previousState % Previous driving state
+        
+        toleranceReachLane % Accepted tolerance to reach destination lane
     end
     
     methods (Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            setupImpl@DecisionMaking(obj); 
+            % Perform one-time calculations, such as computing constants
+            obj.drivingModes = ...
+                containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
+            
+            obj.laneChangeCmds = ...
+                containers.Map({'CmdIdle'}, 0);
+            
+            obj.plannerModes = ...
+                containers.Map({'MANUAL', 'FORMAL'}, [1, 2]);
+            
+            obj.toleranceReachLane = 0.05;
             
             obj.d_destination = 0; % Start on right lane
             obj.isChangingLane = false;
             
-            obj.t_ref = 0; 
+            obj.t_ref = 0;
             
             curvature_max = tan(obj.steerAngle_max)/obj.wheelBase; % Maximum allowed curvature
             Ts_decision = 0.1; % Lower sample rate for fast decision generation
             DecisionGenerator = ...
                 DecisionGeneration(obj.RoadTrajectory, obj.LaneWidth, Ts_decision, obj.timeHorizon, ...
-                                   obj.minimumAcceleration, obj.maximumAcceleration, ...
-                                   obj.emergencyAcceleration, obj.maximumVelocity, obj.vEgo_ref, ...
-                                   obj.vOtherVehicles_ref, curvature_max, obj.sigmaS, ...
-                                   obj.sigmaV, obj.spaceDiscretisation);
+                obj.minimumAcceleration, obj.maximumAcceleration, ...
+                obj.emergencyAcceleration, obj.maximumVelocity, obj.vEgo_ref, ...
+                obj.vOtherVehicles_ref, curvature_max, obj.sigmaS, ...
+                obj.sigmaV, obj.spaceDiscretisation);
             obj.SearchTree = TreeSearch(obj.Ts, obj.timeHorizon, DecisionGenerator);
             
             stateNames = {...
@@ -62,16 +89,16 @@ classdef NewPlanner < DecisionMaking
                 };
             obj.states = containers.Map(stateNames(:, 1)', [stateNames{:, 2}]);
             
-            % Initial state: Free Drive and on the right lane 
+            % Initial state: Free Drive and on the right lane
             obj.currentState = obj.states('FreeDrive');
             disp('@t=0s: Initial state is: ''FreeDrive''.');
         end
         
         
-                
+        
         function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, poseOtherVehicles, ...
-                                                         speedsOtherVehicles, vEgo)
-        % Return lane change command and the current driving mode 
+                speedsOtherVehicles, vEgo)
+            % Return lane change command and the current driving mode
             
             [sEgo, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
             orientationEgo = poseEgo(3);
@@ -89,49 +116,49 @@ classdef NewPlanner < DecisionMaking
             % and if not changing lane
             if get_param('ManeuverPlanning', 'SimulationTime') >= obj.t_ref && ~obj.isChangingLane
                 obj.t_ref = get_param('ManeuverPlanning', 'SimulationTime') + ...
-                            obj.timeHorizon/obj.partsTimeHorizon;
+                    obj.timeHorizon/obj.partsTimeHorizon;
                 
                 % Define vehicle states
                 currentState_Ego = State(sEgo, dEgo, orientationEgo, vEgo);
-                    
+                
                 [sOther, dOther] = Cartesian2Frenet(obj.RoadTrajectory, ...
-                                                    [poseOtherVehicles(1, :)', ...
-                                                    poseOtherVehicles(2, :)']);
+                    [poseOtherVehicles(1, :)', ...
+                    poseOtherVehicles(2, :)']);
                 
                 % Preallocation
-                currentStates_Other(1, size(poseOtherVehicles, 2)) = State([], [], [], []); 
+                currentStates_Other(1, size(poseOtherVehicles, 2)) = State([], [], [], []);
                 for id_other = 1:size(poseOtherVehicles, 2)
                     currentStates_Other(id_other) = State(sOther(id_other), dOther(id_other), ...
-                                                          poseOtherVehicles(3, id_other), ...
-                                                          speedsOtherVehicles(id_other));
+                        poseOtherVehicles(3, id_other), ...
+                        speedsOtherVehicles(id_other));
                 end
                 
                 % TODO: Free Drive if no vehicle in front on right lane for faster computation?
                 
                 [bestDecision_Ego, dG] = ...
                     obj.SearchTree.iterativeMinimax(currentState_Ego, currentStates_Other, ...
-                                                    obj.d_destination);
-                    
+                    obj.d_destination);
+                
                 %% Plot the tree:
-%                 figure(2);
-%                 dG_iteration = dG{2};
-%                 plot(dG_iteration, 'EdgeLabel',...
-%                 dG_iteration.Edges.Power, 'EdgeColor',...
-%                 cell2mat(dG_iteration.Edges.Color), 'NodeColor',...
-%                 cell2mat(dG_iteration.Nodes.Color), 'Layout', 'layered');
+                %                 figure(2);
+                %                 dG_iteration = dG{2};
+                %                 plot(dG_iteration, 'EdgeLabel',...
+                %                 dG_iteration.Edges.Power, 'EdgeColor',...
+                %                 cell2mat(dG_iteration.Edges.Color), 'NodeColor',...
+                %                 cell2mat(dG_iteration.Nodes.Color), 'Layout', 'layered');
                 %%
                 nextDecision = bestDecision_Ego(1);
                 description_nextDecision = strsplit(nextDecision.description, '_');
                 nextState = description_nextDecision{1};
                 obj.currentState = obj.states(nextState);
-
+                
                 if strcmp(nextState, 'ChangeLane')
                     obj.isChangingLane = true;
-
+                    
                     % Round: avoid very small value differences
                     % Use either 0 or 3.7
                     obj.d_destination = round(nextDecision.futureState.d, 1);
-
+                    
                     T_LC = extractBetween(description_nextDecision{2}, '{T', '}');
                     changeLaneCmd = str2double(T_LC{1});
                 end
@@ -142,10 +169,10 @@ classdef NewPlanner < DecisionMaking
             obj.displayNewState(obj.currentState, obj.previousState);
         end
         
-                
+        
         function drivingMode = getStateInfo(obj, state)
-        % Get information about driving mode given a state
-
+            % Get information about driving mode given a state
+            
             switch state
                 case obj.states('FreeDrive')
                     drivingMode = obj.drivingModes('FreeDrive');
@@ -158,43 +185,62 @@ classdef NewPlanner < DecisionMaking
             end
         end
         
-        
+        function displayNewState(obj, currentState, previousState)
+            % Display state name if switched to another state
+            
+            if currentState ~= previousState
+                newState = currentState;
                 
+                stateNames = keys(obj.states);
+                % https://www.mathworks.com/matlabcentral/answers/98444-how-can-i-retrieve-the-key-which-belongs-to-a-specified-value-using-the-array-containers-map-in-matl
+                id = cellfun(@(x) isequal(x, newState), values(obj.states));
+                
+                key_newState = stateNames(id);
+                name_newState = key_newState{:};
+                
+                t = get_param('ManeuverPlanning', 'SimulationTime');
+                
+                fprintf('@t=%fs: Switched to State: ''%s''.\n', t, name_newState);
+            end
+        end
+        
+        
+        
         function [out1, out2] = getOutputSizeImpl(~)
             % Return size for each output port
             out1 = [1 1];
             out2 = [1 1];
-
+            
             % Example: inherit size from first input port
             % out = propagatedInputSize(obj,1);
         end
-
+        
         function [out1, out2] = getOutputDataTypeImpl(~)
             % Return data type for each output port
             out1 = "double";
             out2 = "double";
-
+            
             % Example: inherit data type from first input port
             % out = propagatedInputDataType(obj,1);
         end
-
+        
         function [out1, out2] = isOutputComplexImpl(~)
             % Return true for each output port with complex data
             out1 = false;
             out2 = false;
-
+            
             % Example: inherit complexity from first input port
             % out = propagatedInputComplexity(obj,1);
         end
-
+        
         function [out1, out2] = isOutputFixedSizeImpl(~)
             % Return true for each output port with fixed size
             out1 = true;
             out2 = true;
-
+            
             % Example: inherit fixed-size status from first input port
             % out = propagatedInputFixedSize(obj,1);
-        end   
+        end
     end
 end
 

@@ -14,7 +14,7 @@ classdef LaneChanging < Maneuver
             end
             orientation_new = state.orientation;
             
-            nextState = State(s_new,d_new,orientation_new,speed_new);
+            nextState = StateV(s_new,d_new,orientation_new,speed_new);
         end
     end
 end
