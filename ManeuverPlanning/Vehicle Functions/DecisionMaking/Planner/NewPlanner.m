@@ -143,6 +143,23 @@ classdef NewPlanner < DecisionMaking
         end
         
                 
+        function drivingMode = getStateInfo(obj, state)
+        % Get information about driving mode given a state
+
+            switch state
+                case obj.states('FreeDrive')
+                    drivingMode = obj.drivingModes('FreeDrive');
+                case obj.states('VehicleFollowing')
+                    drivingMode = obj.drivingModes('VehicleFollowing');
+                case obj.states('EmergencyBrake')
+                    drivingMode = obj.drivingModes('EmergencyBrake');
+                case obj.states('ChangeLane')
+                    drivingMode = obj.drivingModes('FreeDrive');
+            end
+        end
+        
+        
+                
         function [out1, out2] = getOutputSizeImpl(~)
             % Return size for each output port
             out1 = [1 1];
