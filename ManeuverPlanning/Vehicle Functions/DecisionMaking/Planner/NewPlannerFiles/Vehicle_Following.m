@@ -1,4 +1,4 @@
-classdef VehicleFollowing < Maneuver
+classdef Vehicle_Following < Maneuver
     %VehicleFollowing Summary of this class goes here
     %   Detailed explanation goes here
     

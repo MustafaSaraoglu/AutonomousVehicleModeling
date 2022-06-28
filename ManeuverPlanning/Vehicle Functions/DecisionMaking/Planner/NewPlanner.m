@@ -51,7 +51,6 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
     methods (Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            % Perform one-time calculations, such as computing constants
             
             %obj.drivingModes = ...
             %   containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
@@ -59,10 +58,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             
             obj.laneChangeCmds = ...
                 containers.Map({'CmdIdle'}, 0);
-            
-            obj.plannerModes = ...
-                containers.Map({'MANUAL', 'FORMAL'}, [1, 2]);
-            
+                
             obj.toleranceReachLane = 0.05;
             
             obj.d_destination = 0; % Start on right lane
