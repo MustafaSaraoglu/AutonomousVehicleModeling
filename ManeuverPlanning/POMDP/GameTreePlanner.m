@@ -11,6 +11,11 @@ classdef GameTreePlanner
         % Tree Object
         tree
         
+        % Scene that is drawn
+        currentState_Ego
+        currentStates_Other
+        scene
+        
     end
     
     methods
@@ -21,7 +26,11 @@ classdef GameTreePlanner
             obj.deltaT = deltaT;
             obj.cutOffValue_unsafety = cutOffValue_unsafety;
         end
-        function obj = calculateBestDecision(obj,currentState_Ego,currentStates_Other,Maneuvers)           
+        function obj = calculateBestDecision(obj,currentState_Ego,currentStates_Other,Maneuvers)
+            % Register all current states for drawing the scene later
+            obj.currentState_Ego = currentState_Ego;
+            obj.currentStates_Other = currentStates_Other;
+            
             %% Tree Generation
             % Start by creating the root node
             count = 1; % Id of the first node
@@ -98,6 +107,98 @@ classdef GameTreePlanner
             obj.tree = GameTree(rootNodes,leafNodes,obj.cutOffValue_unsafety);
         end
         
+        function drawScene(obj)
+            
+            currentState_Ego = obj.currentState_Ego;
+            currentStates_Other = obj.currentStates_Other;
+            
+            %% Clear previous Vehicle
+            figure(2);
+            hold on;
+            %% Vehicle Ego - Plot
+            x1 = currentState_Ego.s;
+            y1 = currentState_Ego.d;
+            yaw1 = currentState_Ego.orientation;
+            
+            centerP = [x1;y1];
+            
+            V1_HalfLength = 2; % Length = 4m
+            V1_HalfWidth = 0.8; % Width = 0.8 m
+            
+            % Creating a rectangle
+            p1 = [V1_HalfLength; V1_HalfWidth];
+            p2 = [V1_HalfLength; -V1_HalfWidth];
+            p3 = [-V1_HalfLength; -V1_HalfWidth];
+            p4 = [-V1_HalfLength; V1_HalfWidth];
+            
+            % Rotation Matrix
+            Rmatrix = [cos(yaw1) -sin(yaw1); sin(yaw1) cos(yaw1)];
+            
+            % Rotated Points
+            p1r = centerP + Rmatrix*p1;
+            p2r = centerP + Rmatrix*p2;
+            p3r = centerP + Rmatrix*p3;
+            p4r = centerP + Rmatrix*p4;
+            
+            % Connecting points
+            Hitbox_V1 = [p1r p2r p3r p4r p1r];
+            
+            cornersV1_x = transpose(Hitbox_V1(1,:));
+            cornersV1_y = transpose(Hitbox_V1(2,:));
+            
+            plot(cornersV1_x,cornersV1_y,'b'); %Vehicle 1 rectangle
+            plot(x1,y1,'*'); %Vehicle 1 center
+            
+            %% Plot Other Vehicles
+            for k = 1:length(currentStates_Other)
+                %% Vehicle 2 - Pose
+                x2 = obj.currentStates_Other(k).s;
+                y2 = obj.currentStates_Other(k).d;
+                yaw2 = obj.currentStates_Other(k).orientation;
+                
+                centerP = [x2;y2];
+                
+                V2_HalfLength = 2; % Length = 4m
+                V2_HalfWidth = 0.8; % Width = 0.8 m
+                
+                % Creating a rectangle
+                p1 = [V2_HalfLength; V2_HalfWidth];
+                p2 = [V2_HalfLength; -V2_HalfWidth];
+                p3 = [-V2_HalfLength; -V2_HalfWidth];
+                p4 = [-V2_HalfLength; V2_HalfWidth];
+                
+                % Rotation Matrix
+                
+                Rmatrix = [cos(yaw2) -sin(yaw2); sin(yaw2) cos(yaw2)];
+                
+                % Rotated Points
+                p1r = centerP + Rmatrix*p1;
+                p2r = centerP + Rmatrix*p2;
+                p3r = centerP + Rmatrix*p3;
+                p4r = centerP + Rmatrix*p4;
+                
+                % Connecting points
+                Hitbox_V2 = [p1r p2r p3r p4r p1r];
+                
+                cornersV2_x = transpose(Hitbox_V2(1,:));
+                cornersV2_y = transpose(Hitbox_V2(2,:));
+                
+                plot(cornersV2_x,cornersV2_y,'r'); %Vehicle 2 rectangle
+                plot(x2,y2,'o'); %Vehicle 2 center
+                
+            end
+            
+            
+            %% Plot the road
+            upperLine = plot([0 1000], [5.55 5.55], 'Color', 'blue');
+            midLine = plot([0 1000], [1.85 1.85],'--', 'Color', 'blue');
+            lowerLine = plot([0 1000], [-1.85 -1.85], 'Color', 'blue');
+
+            % Adjust Axis
+            axis([x1-40 x1+60 y1-30 y1+30]); % Camera following V1 as ego vehicle
+        end
+        
     end
+    
 end
 
