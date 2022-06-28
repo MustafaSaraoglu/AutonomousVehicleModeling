@@ -35,9 +35,9 @@ classdef NewTreeSearch
             obj.safety_limit = -Inf*ones(obj.searchDepth, 1); % Maximum safety level for each depth
             for depth = 1:obj.searchDepth % Iterative deepening
                 % Initialise digraph
-                ID_global = DigraphTree.getNewID(0);
-                initNode = DigraphTree.getNodeName(ID_global, [state_Ego0, states_Other0]);
-                dG_initial = DigraphTree.initialise(initNode, [1, 0, 1]);
+                ID_global = NewDigraphTree.getNewID(0);
+                initNode = NewDigraphTree.getNodeName(ID_global, [state_Ego0, states_Other0]);
+                dG_initial = NewDigraphTree.initialise(initNode, [1, 0, 1]);
 
                 obj.depthBound = depth; % Remember depth boundary for each iteration
                 alpha_0 = Values(-Inf, -Inf);
@@ -70,7 +70,7 @@ classdef NewTreeSearch
             depth2go = depth2go - 1;
             depthCurrent = obj.depthBound - depth2go;
             
-            parentNode = DigraphTree.getNodeName(parentID, [state_Ego, states_Other]);
+            parentNode = NewDigraphTree.getNodeName(parentID, [state_Ego, states_Other]);
             maxNode = [];
             
             % Decisions Ego
@@ -114,7 +114,7 @@ classdef NewTreeSearch
                 if ~usePruning || safety >= obj.safety_limit(depthCurrent) % Only consider safer/as 
                                                                            % safe decisions 
                     % Add safe decision to digraph
-                    [graph, childNode, childID] = DigraphTree.expand(graph, parentNode, ...
+                    [graph, childNode, childID] = NewDigraphTree.expand(graph, parentNode, ...
                         decision_Ego.futureState, decision_Ego.description, ...
                         [0, 1, 0], [0, 1, 0]);
                     
@@ -135,14 +135,14 @@ classdef NewTreeSearch
 
                             % Add other vehicles' possible decisions to digraph
                             [graph, leafNode, ~] = ...
-                                DigraphTree.expand(graph, childNode, ...
+                                NewDigraphTree.expand(graph, childNode, ...
                                 [state_Ego, futureStates_Other], ...
                                 ['Combination', num2str(id_statesOther)], [1, 0, 0], [1, 0, 0]);
-                            [graph, ~] = DigraphTree.updateNodeValue(graph, leafNode, value);
+                            [graph, ~] = NewDigraphTree.updateNodeValue(graph, leafNode, value);
                         end
                         
                         % Update value in graph
-                        [graph, childNode] = DigraphTree.updateNodeValue(graph, childNode, value);
+                        [graph, childNode] = NewDigraphTree.updateNodeValue(graph, childNode, value);
                     else
                         [decisionsFuture_Ego, value, graph, childNode] = ...
                             obj.planMinManeuver(futureState_Ego, futureState_Ego.d, ...
@@ -167,7 +167,7 @@ classdef NewTreeSearch
             
             if ~isempty(maxNode) 
                 [graph, parentNode] = ...
-                    DigraphTree.backpropagate(graph, maxNode, parentNode, value_max, [0, 1, 1]);
+                    NewDigraphTree.backpropagate(graph, maxNode, parentNode, value_max, [0, 1, 1]);
             end
             
             decisionsNext_Ego = [decisionMax_Ego; decisionsNext_Ego];
@@ -181,14 +181,14 @@ classdef NewTreeSearch
             decisionsNext_Ego = [];
             value_min = Values(Inf, Inf);
             
-            parentNode = DigraphTree.getNodeName(parentID, state_Ego);
+            parentNode = NewDigraphTree.getNodeName(parentID, state_Ego);
             minNode = [];
         
             for id_statesOther = 1:size(stateCombinations_Other, 1)
                 futureStates_Other = stateCombinations_Other(id_statesOther, :);
                 
                 % Add other vehicles' possible decisions to digraph
-                [graph, ~, childID] = DigraphTree.expand(graph, parentNode, ...
+                [graph, ~, childID] = NewDigraphTree.expand(graph, parentNode, ...
                         [state_Ego, futureStates_Other], ['Combination', num2str(id_statesOther)], ...
                         [1, 0, 0], [1, 0, 0]);
                     
@@ -219,7 +219,7 @@ classdef NewTreeSearch
             
             if ~isempty(minNode)
                 [graph, parentNode] = ...
-                    DigraphTree.backpropagate(graph, minNode, parentNode, value_min, [1, 0, 1]);
+                    NewDigraphTree.backpropagate(graph, minNode, parentNode, value_min, [1, 0, 1]);
             end
         end
         
