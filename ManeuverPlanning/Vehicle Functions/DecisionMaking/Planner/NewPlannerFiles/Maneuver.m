@@ -23,8 +23,8 @@ classdef Maneuver
     methods (Static)
         function maneuvers = getallActions()
             
-            maneuvers = {FreeDrive('FD',1), Vehicle_Following('VF',2), EmergencyBrake('EB',3), LaneChanging('LC',4)};
-            %maneuvers = {FreeDrive('FD',1), LaneChanging('LC',4)};
+            maneuvers = {FreeDrive('FD',1), Vehicle_Following('VF',2), EmergencyBrake('EB',3), LaneChanging('LC',1)};
+            %maneuvers = {FreeDrive('FD',1), LaneChanging('LC',1)};
         
         end
         

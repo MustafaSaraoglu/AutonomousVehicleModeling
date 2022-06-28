@@ -51,30 +51,24 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
     methods (Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            
-            %obj.drivingModes = ...
-            %   containers.Map({'FreeDrive', 'VehicleFollowing', 'EmergencyBrake'}, [1, 2, 3]);
-            obj.drivingModes = Maneuver.getallActions;
-            
-            obj.laneChangeCmds = ...
-                containers.Map({'CmdIdle'}, 0);
-                
-            obj.toleranceReachLane = 0.05;
-            
             obj.d_destination = 0; % Start on right lane
+            obj.toleranceReachLane = 0.05;
             obj.isChangingLane = false;
-            
             obj.t_ref = 0;
             
-            curvature_max = tan(obj.steerAngle_max)/obj.wheelBase; % Maximum allowed curvature
+            obj.curvature_max = tan(obj.steerAngle_max)/obj.wheelBase; % Maximum allowed curvature
             Ts_decision = 0.1; % Lower sample rate for fast decision generation
+            
+            % Get all possible Maneuvers
+            obj.drivingModes = Maneuver.getallActions;
+            
             DecisionGenerator = ...
                 DecisionGeneration(obj.RoadTrajectory, obj.LaneWidth, Ts_decision, obj.timeHorizon, ...
                 obj.minimumAcceleration, obj.maximumAcceleration, ...
                 obj.emergencyAcceleration, obj.maximumVelocity, obj.vEgo_ref, ...
-                obj.vOtherVehicles_ref, curvature_max, obj.sigmaS, ...
+                obj.vOtherVehicles_ref, obj.curvature_max, obj.sigmaS, ...
                 obj.sigmaV, obj.spaceDiscretisation);
-            obj.SearchTree = TreeSearch(obj.Ts, obj.timeHorizon, DecisionGenerator);
+            obj.SearchTree = NewTreeSearch(obj.Ts, obj.timeHorizon, DecisionGenerator);
             
             stateNames = {...
                 % Keep Lane
@@ -88,7 +82,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             obj.states = containers.Map(stateNames(:, 1)', [stateNames{:, 2}]);
             
             % Initial state: Free Drive and on the right lane
-            obj.currentState = obj.states('FreeDrive');
+            obj.currentState = 1;
             disp('@t=0s: Initial state is: ''FreeDrive''.');
         end
         
@@ -96,6 +90,9 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
         
         function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, poseOtherVehicles, ...
                 speedsOtherVehicles, vEgo)
+            % Necessary to return some output even if there is no command
+            changeLaneCmd = 0;
+            
             % Return lane change command and the current driving mode
             
             [sEgo, dEgo] = Cartesian2Frenet(obj.RoadTrajectory, [poseEgo(1) poseEgo(2)]);
@@ -103,8 +100,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             
             obj.previousState = obj.currentState;
             
-            % Necessary to return some output even if there is no command
-            changeLaneCmd = obj.laneChangeCmds('CmdIdle');
+
             
             if obj.isChangingLane && (abs(dEgo - obj.d_destination) < 0.05)
                 obj.isChangingLane = false;
