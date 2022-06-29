@@ -1,23 +1,16 @@
-classdef Vehicle_Following < Maneuver
+classdef Vehicle_Following < NewManeuver
     %VehicleFollowing Summary of this class goes here
     %   Detailed explanation goes here
     
         methods
                 
-        function decisions = getDecisionsForDrivingMode(~, state, d_goal, accAll, name_DrivingMode,ManeuverPlanner)
+        function decisions = getDecisionsForDrivingMode(obj, state, d_goal, accAll, name_DrivingMode,ManeuverPlanner)
             % Get the decisions for a driving mode for different accelerations
             
             acc_lower = accAll(3);
             acc_upper = accAll(4);
             
-            number_decisions = length(acc_lower:1:acc_upper);
-            if number_decisions == 0
-                decisions = [];
-                return
-            end
-            
-            decisions(number_decisions, 1) = NewManeuver([], [], [], [], [], []);
-            id_decision = 1;
+            decisions = [];
             
             for acc = acc_lower:1:acc_upper
                 description = [name_DrivingMode, '_{acc', num2str(acc), '}'];
@@ -37,9 +30,11 @@ classdef Vehicle_Following < Maneuver
                 
                 % Discrete trajectory
                 trajectoryDiscrete = Continuous2Discrete(ManeuverPlanner.spaceDiscretisation, trajectoryFrenet);
+                                   
+                new_Maneuver = NewManeuver(obj.name,obj.id,obj.NewTrajectoryGenerator);
                 
-                newDecision = NewManeuver(trajectoryDiscrete, true, futureState, description, [], []);
-                [decisions, id_decision] = newDecision.addDecisionToArray(decisions, id_decision);
+                new_Maneuver = new_Maneuver.assignTrajectory(trajectoryDiscrete, true, futureState, description, [], []);
+                decisions = [decisions; new_Maneuver];
             end
         end
         

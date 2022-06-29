@@ -74,14 +74,14 @@ classdef NewTreeSearch
             parentNode = NewDigraphTree.getNodeName(parentID, [state_Ego, states_Other]);
             maxNode = [];
             
-            % Decisions Ego
+            %% All Ego Maneuvers Calculated with Trajectories
             decisions_Ego = obj.NewManeuverPlanner.calculateManeuvers_Ego(state_Ego, d_goal);
 
-            % Decisions other vehicles
+            %% All Other Vehicles' Maneuvers Calculated with Trajectories
             [decisions_Other, possibleFutureStates_Other] = ...
                 obj.NewManeuverPlanner.calculateDecisions_Other(states_Other, depthCurrent);
-            
-            % Safety check
+              
+            %% Safety check
             for id_decision = length(decisions_Ego):-1:1 % Reverse to remove unsafe decisions 
                                                          % without confusing idx
                 decision_Ego = decisions_Ego(id_decision);

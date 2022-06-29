@@ -65,7 +65,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             NewTrajectoryGenerator = NewTrajectoryGeneration(obj.Ego, obj.Road.RoadTrajectory);
             
             % Get all possible Maneuvers
-            obj.drivingModes = Maneuver.getallActions(NewTrajectoryGenerator);
+            obj.drivingModes = NewManeuver.getallActions(NewTrajectoryGenerator);
             
             % Create a maneuver planner with all the possible maneuvers
             ManeuverPlanner = ...
@@ -80,8 +80,8 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                 'VehicleFollowing', 2;
                 'EmergencyBrake', 3;
                 
-                % Change Lane
-                'ChangeLane', 4;
+                % LaneChanging
+                'LaneChanging', 4;
                 };
             obj.states = containers.Map(stateNames(:, 1)', [stateNames{:, 2}]);
             
@@ -150,7 +150,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                 nextState = description_nextDecision{1};
                 obj.currentState = obj.states(nextState);
                 
-                if strcmp(nextState, 'ChangeLane')
+                if strcmp(nextState, 'LaneChanging')
                     obj.isChangingLane = true;
                     
                     % Round: avoid very small value differences

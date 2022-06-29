@@ -4,6 +4,8 @@ classdef NewManeuverPlanner
     properties
         Maneuvers
         
+        EgoInfo % Temp solution
+        
         RoadTrajectory % Road trajectory according to MOBATSim map format
         LaneWidth % Width of road lane [m]
         
@@ -33,6 +35,7 @@ classdef NewManeuverPlanner
             %DECISIONGENERATION Construct an instance of this class
             obj.Maneuvers = Maneuvers;
             
+            obj.EgoInfo = EgoInfo;
             obj.Ts = EgoInfo.Ts;
             obj.Th = EgoInfo.timeHorizon;
             obj.curvature_max= EgoInfo.curvature_max;
@@ -87,87 +90,33 @@ classdef NewManeuverPlanner
                 if isequal(maneuverType{1}.getName,'LaneChanging')
                     % ChangeLane
                     d_otherLane = obj.getOppositeLane(d_goal, obj.LaneWidth);
-                    maneuver = obj.getDecisionsForLaneChange(state, d_otherLane, 0, 0);
-                    maneuvers = [maneuvers; maneuver];
+                    maneuver = maneuverType{1}.getDecisionsForLaneChange(state, d_otherLane, 0, 0, maneuverType{1}.getName,ManeuverPlanner);
+                    
                 else
                     ManeuverPlanner = obj;
                     maneuver = maneuverType{1}.getDecisionsForDrivingMode(state, d_goal, allAcc, maneuverType{1}.getName,ManeuverPlanner);
-                    
-                    maneuvers = [maneuvers; maneuver];
-                    
-                end
                 
+                end
+                maneuvers = [maneuvers; maneuver];
             end
                 
-%             % FreeDrive
-%             decisionsFD = obj.getDecisionsForDrivingMode(state, d_goal, accFD_min, ...
-%                                                         obj.maximumAcceleration, 'FreeDrive');
-%                
-%             % VehicleFollowing
-%             decisionsVF = obj.getDecisionsForDrivingMode(state, d_goal, accVF_min, ...
-%                                                          accVF_max, 'VehicleFollowing');
-% 
-% 
-% 
-%             % EmergencyBrake
-%             decisionsEB = obj.getDecisionsForDrivingMode(state, d_goal, accEB, accEB, ...
-%                                                          'EmergencyBrake');
-            
-            % All possible decisions
-            % TODO: Find order for eficient tree expansion (alpha-beta pruning)
-            % (Last decision gets expanded first)
-            %maneuvers = [decisionsEB; decisionsVF; decisionsFD; decisionsCL];
         end
         
-
-        
-        function decisions = getDecisionsForLaneChange(obj, state, d_goal, d_dot, d_ddot)
-        % Get the decisions for a lane change for different maneuver times
-            
-            dur_lower = min(2, obj.Th);
-        
-            number_decisions = length(dur_lower:1:obj.Th);
-
-            decisions(number_decisions, 1) = NewManeuver([], [], [], [], [], []);
-            id_decision = 1;
-            
-            acc = obj.maximumAcceleration; % Free Drive
-            for durManeuver = dur_lower:1:obj.Th
-                description = ['ChangeLane', '_{T', num2str(durManeuver), '}'];
-                
-                [trajectoryFrenet, trajectoryCartesian] = ...
-                    obj.NewTrajectoryGenerator.calculateLaneChangingTrajectory(state.s, state.d, ...
-                                                                            d_dot, d_ddot, d_goal, ...
-                                                                            state.speed, ...
-                                                                            obj.vEgo_ref, acc, ...
-                                                                            durManeuver);
-                % Future state prediction
-                futureOrientation = trajectoryCartesian.orientation(end);
-                futureState = State(trajectoryFrenet.s(end), trajectoryFrenet.d(end), ...
-                                    futureOrientation, trajectoryFrenet.velocity(end));
-                
-                trajectoryDiscrete = Continuous2Discrete(obj.spaceDiscretisation, trajectoryFrenet);
-                
-                newDecision = NewManeuver(trajectoryDiscrete, trajectoryFrenet.isFeasible(), ...
-                                       futureState, description, trajectoryFrenet, ...
-                                       trajectoryCartesian);
-                [decisions, id_decision] = newDecision.addDecisionToArray(decisions, id_decision);
-            end  
-        end
         
         function [decisions, futureStates] = calculateDecisions_Other(obj, states, currentDepth)
-        % Get possible decisions for all other vehicles 
+            % Get possible decisions for all other vehicles
             
-            % TODO: Maybe only necessary to get occupied cells for surrounding vehicles    
-            n_other = length(states); 
+            % TODO: Maybe only necessary to get occupied cells for surrounding vehicles
+            n_other = length(states);
             n_decisions = 1; % Keep Lane; n=2: +(Change Lane)
             
-            decisions(n_other*n_decisions, 1) = NewManeuver([], [], [], [], [], []); % Preallocate
+            %decisions(n_other*n_decisions, 1) = NewManeuver([], [], [], [], [], []); % Preallocate
+            decisions = [];
             futureStates(2*n_decisions, n_other) = State([], [], [], []);
             id_decision = 1;
             
             % Iteration over all other vehicles
-            for id_otherVehicle = 1:n_other 
+            for id_otherVehicle = 1:n_other
                 descriptionVehicle = ['Other Vehicle ', num2str(id_otherVehicle), ': '];
                 
                 state = states(id_otherVehicle);
@@ -176,110 +125,60 @@ classdef NewManeuverPlanner
                 if currentDepth == 1
                     % Worst case states according to uncertainty
                     s_min = state.s - 3*obj.sigmaS;
-                    v_min = state.speed - 3*obj.sigmaV; 
+                    v_min = state.speed - 3*obj.sigmaV;
                     s_max = state.s + 3*obj.sigmaS;
-                    v_max = state.speed + 3*obj.sigmaV; 
+                    v_max = state.speed + 3*obj.sigmaV;
                 else
                     s_min = state.s;
-                    v_min = state.speed; 
+                    v_min = state.speed;
                     s_max = state.s;
-                    v_max = state.speed; 
+                    v_max = state.speed;
                 end
                 v_min = max(v_min, 0); % No backward motion
                 v_max = min(v_max, obj.maximumVelocity); % Not faster than maximum velocity
                 
-                % Decision: Keep Lane 
-                [decision_KL, futureStates_KL] = obj.getDecisionForKeepLane_Other(s_min, v_min, ...
-                                                                                  s_max, v_max, ...
-                                                                                  state.d, ...
-                                                                                  descriptionVehicle);
-                futureStates(1:2, id_otherVehicle) = futureStates_KL;
-                [decisions, id_decision] = decision_KL.addDecisionToArray(decisions, id_decision);
-            end
-            
-            decisions = decisions(1:id_decision-1);
-        end 
-        
-        function [decision_KL, futureStates_KL] = getDecisionForKeepLane_Other(obj, s_min, v_min, ...
-                                                                               s_max, v_max, d, ...
-                                                                               descriptionVehicle)
-        % Get the decision to keep lane for other vehicle    
-            
-            descriptionDecision = [descriptionVehicle, 'Keep Lane'];
-
-            % Calculate other vehicle's trajectory for a_min and a_max
-            trajectoryFrenet_min = ...
-                obj.NewTrajectoryGenerator.calculateLongitudinalTrajectory(s_min, d, v_min, ...
-                                                                       obj.maximumVelocity, ...
-                                                                       obj.minimumAcceleration, ...
-                                                                       obj.Th);
-            trajectoryFrenet_max = ...
-                obj.NewTrajectoryGenerator.calculateLongitudinalTrajectory(s_max, d, v_max, ...
-                                                                       obj.maximumVelocity, ...
-                                                                       obj.maximumAcceleration, ...
-                                                                       obj.Th);
-
-            % Future state prediction (Min)
-            futureState_min = State(trajectoryFrenet_min.s(end), d, 'don''t care', ...
-                                    trajectoryFrenet_min.velocity(end));
-
-             % Future state prediction (Max)
-            futureState_max = State(trajectoryFrenet_max.s(end), d, 'don''t care', ...
-                                    trajectoryFrenet_max.velocity(end));
-            
-            futureStates_KL = [futureState_min, futureState_max];
-
-            discreteTrajectory = ...
-                obj.calculateDiscreteTrajectory_Other(trajectoryFrenet_min, trajectoryFrenet_max);
-
-            decision_KL = NewManeuver(discreteTrajectory, true, [futureState_min; futureState_max], ...
-                                   descriptionDecision, [], []);
-        end
-        
-        function [decision_CL, futureStates_CL] = getDecisionForChangeLane_Other(obj, s_min, ...
-                                                                                 v_min, s_max, ...
-                                                                                 v_max, d, ...
-                                                                                 descriptionVehicle)
-        % Get the decision to change lane for other vehicle for static maneuver with a=0, T=4s  
-            
-            decision_CL = NewManeuver([], [], [], [], [], []);
-            futureStates_CL(2, 1) = State([], [], [], []);
-            descriptionDecision = [descriptionVehicle, 'Change Lane'];
+                % Decision: Keep Lane
+                % Get the decision to keep lane for other vehicle
                 
-            d_goal = obj.getOppositeLane(d, obj.LaneWidth);
-            [trajectoryFrenet_min, ~] = ...
-                obj.NewTrajectoryGenerator.calculateLaneChangingTrajectory(s_min, d, 0, 0, d_goal, ...
-                                                                       v_min, ...
-                                                                       obj.maximumVelocity, 0, 4);
-            % Trajectories must be feasible                                                       
-            if trajectoryFrenet_min.isFeasible()    
-                [trajectoryFrenet_max, ~] = ...
-                    obj.NewTrajectoryGenerator.calculateLaneChangingTrajectory(s_max, d, 0, 0, ...
-                                                                            d_goal, v_max, ...
-                                                                            obj.maximumVelocity, ...
-                                                                            0, 4);
-                if trajectoryFrenet_max.isFeasible()
-                    % Future state prediction (Min)
-                    futureState_min = State(trajectoryFrenet_min.s(end), d_goal, 'don''t care', ...
-                                            v_min);
-
-                    % Future state prediction (Max)
-                    futureState_max = State(trajectoryFrenet_max.s(end), d_goal, 'don''t care', ...
-                                            v_max);
-                    
-                    futureStates_CL = [futureState_min, futureState_max];
-
-                    discreteTrajectory = ...
-                        obj.calculateDiscreteTrajectory_Other(trajectoryFrenet_min, ...
-                                                              trajectoryFrenet_max);
-                    
-                    decision_CL = NewManeuver(discreteTrajectory, true, ...
-                                           [futureState_min; futureState_max], ...
-                                           descriptionDecision, [], []);
-                end
+                descriptionDecision = [descriptionVehicle, 'Keep Lane'];
+                
+                % Calculate other vehicle's trajectory for a_min and a_max
+                trajectoryFrenet_min = ...
+                    obj.NewTrajectoryGenerator.calculateLongitudinalTrajectory(s_min, state.d, v_min, ...
+                    obj.maximumVelocity, ...
+                    obj.minimumAcceleration, ...
+                    obj.Th);
+                trajectoryFrenet_max = ...
+                    obj.NewTrajectoryGenerator.calculateLongitudinalTrajectory(s_max, state.d, v_max, ...
+                    obj.maximumVelocity, ...
+                    obj.maximumAcceleration, ...
+                    obj.Th);
+                
+                % Future state prediction (Min)
+                futureState_min = State(trajectoryFrenet_min.s(end), state.d, 'don''t care', ...
+                    trajectoryFrenet_min.velocity(end));
+                
+                % Future state prediction (Max)
+                futureState_max = State(trajectoryFrenet_max.s(end), state.d, 'don''t care', ...
+                    trajectoryFrenet_max.velocity(end));
+                
+                futureStates_KL = [futureState_min, futureState_max];
+                
+                discreteTrajectory = ...
+                    obj.calculateDiscreteTrajectory_Other(trajectoryFrenet_min, trajectoryFrenet_max);
+                
+                Other_NewManeuver = NewManeuver("Other",1,obj.NewTrajectoryGenerator);
+                decision_KL = Other_NewManeuver.assignTrajectory(discreteTrajectory, true, [futureState_min; futureState_max], ...
+                    descriptionDecision, [], []);
+                
+                futureStates(1:2, id_otherVehicle) = futureStates_KL;
+                
+                decisions = [decisions; decision_KL];
             end
+            
         end
         
+       
         function trajectoryDiscrete_worst = calculateDiscreteTrajectory_Other(obj, ...
                                                                               trajectoryFrenet_min, ...
                                                                               trajectoryFrenet_max)
