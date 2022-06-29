@@ -11,16 +11,16 @@ classdef NewTreeSearch
                      % in any case is more important than safety of depth d+1
         discount % Discount future safety levels
         
-        DecisionGenerator % Generate decisions
+        NewManeuverPlanner % Generate decisions
     end
     
     methods
-        function obj = NewTreeSearch(Ts, Th, DecisionGenerator)
+        function obj = NewTreeSearch(Ts, Th, NewManeuverPlanner)
             %TREESEARCH Construct an instance of this class
             obj.Ts = Ts;
             obj.Th = Th;
             
-            obj.DecisionGenerator = DecisionGenerator;
+            obj.NewManeuverPlanner = NewManeuverPlanner;
            
             obj.searchDepth = 2;
             obj.discount = 0.1; % Sf = Sf(d=1) + 0.1*Sf(d=2) + ...  + 0.1^(d_final-1)*Sf(d_final)
@@ -74,11 +74,11 @@ classdef NewTreeSearch
             maxNode = [];
             
             % Decisions Ego
-            decisions_Ego = obj.DecisionGenerator.calculateDecisions_Ego(state_Ego, d_goal);
+            decisions_Ego = obj.NewManeuverPlanner.calculateDecisions_Ego(state_Ego, d_goal);
 
             % Decisions other vehicles
             [decisions_Other, possibleFutureStates_Other] = ...
-                obj.DecisionGenerator.calculateDecisions_Other(states_Other, depthCurrent);
+                obj.NewManeuverPlanner.calculateDecisions_Other(states_Other, depthCurrent);
             
             % Safety check
             for id_decision = length(decisions_Ego):-1:1 % Reverse to remove unsafe decisions 
