@@ -12,15 +12,15 @@ classdef NewTrajectoryGeneration
     end
     
     methods
-        function obj = NewTrajectoryGeneration(Ts, Th, RoadTrajectory, curvature_max, a_lateral_max)
+        function obj = NewTrajectoryGeneration(EgoInfo, RoadTrajectory)
             %TRAJECTORYGENERATION Construct an instance of this class
-            obj.Ts = Ts;
-            obj.Th = Th;
+            obj.Ts = EgoInfo.Ts;
+            obj.Th = EgoInfo.timeHorizon;
 
             obj.RoadTrajectory = RoadTrajectory;
 
-            obj.curvature_max = curvature_max;
-            obj.a_lateral_max = a_lateral_max;
+            obj.curvature_max = EgoInfo.curvature_max;
+            obj.a_lateral_max = EgoInfo.a_lateral_max;
         end
         
         function [trajectoryFrenet, trajectoryCartesian] = ...

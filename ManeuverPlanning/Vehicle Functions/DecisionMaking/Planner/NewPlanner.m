@@ -4,71 +4,78 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
     %   Detailed explanation goes here
     
     properties(Nontunable)
-        timeHorizon % Time horizon for trajectory genereation [s]
-        partsTimeHorizon % Divide time horizon into equal parts
         
-        minimumAcceleration % Minimum longitudinal acceleration [m/s^2]
-        maximumAcceleration % Maximum longitudinal acceleration [m/s^2]
-        emergencyAcceleration % Acceleration for emergency break [m/s^2]
-        maximumVelocity % Maximum allowed longitudinal velocity [m/s]
-        vOtherVehicles_ref % Reference speed for other vehicles [m/s]
+        % Assigned to EGO INFO
+        timeHorizon             % Time horizon for trajectory genereation [s]
+        partsTimeHorizon        % Divide time horizon into equal parts  
+        Ts                      % Sample time [s]    
+        minimumAcceleration     % Minimum longitudinal acceleration [m/s^2]
+        maximumAcceleration     % Maximum longitudinal acceleration [m/s^2]
+        emergencyAcceleration   % Acceleration for emergency break [m/s^2]
+        maximumVelocity         % Maximum allowed longitudinal velocity [m/s]               
+        wheelBase               % Wheel base vehicle [m]
+        steerAngle_max          % Maximum steering angle [rad]
+        vEgo_ref                % Reference velocity for ego vehicle [m/s]
         
-        wheelBase % Wheel base vehicle [m]
-        steerAngle_max % Maximum steering angle [rad]
+        % Assigned to OTHERS INFO
+        vOtherVehicles_ref      % Reference speed for other vehicles [m/s]
+        sigmaS                  % Standard deviation for measuring other vehicles' s-coordinate [m]
+        sigmaV                  % Standard deviation for measuring other vehicles' speeds [m/s]
+             
+        % Assigned to ROAD INFO
+        LaneWidth               % Width of road lane [m]
+        RoadTrajectory          % Road trajectory according to MOBATSim map format
+        spaceDiscretisation     % Space Discretisation
         
-        sigmaS % Standard deviation for measuring other vehicles' s-coordinate [m]
-        sigmaV % Standard deviation for measuring other vehicles' speeds [m/s]
-        
-        spaceDiscretisation % Space Discretisation
-        
-        SearchTree % Search tree to find best decision
-        vEgo_ref % Reference velocity for ego vehicle [m/s]
-        
-        LaneWidth % Width of road lane [m]
-        RoadTrajectory % Road trajectory according to MOBATSim map format
-        Ts % Sample time [s]
+
     end
     
     % Pre-computed constants
     properties(Access = protected)
+        Ego     % All the constants regarding the ego vehicle
+        Others  % All the constants regarding the other vehicles
+        Road    % All the constants regarding the road information
+        
         d_destination % Reference lateral destination (right or left lane)
         isChangingLane % Return if currently executing lane changing maneuver
-        
         t_ref % Variable to store a specific simulation time of interest
+        toleranceReachLane % Accepted tolerance to reach destination lane
+        
         drivingModes % Possible driving modes
         laneChangeCmds % Possible commands for lane changing
         plannerModes % Possible planner modes
-        
-        curvature_max % Maximum allowed curvature
-        
         states % Possible driving states
         currentState % Current driving state
         previousState % Previous driving state
         
-        toleranceReachLane % Accepted tolerance to reach destination lane
+        NewTrajectoryGenerator % Trajectory Generator
+        SearchTree % Search tree to find best decision
     end
     
     methods (Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
-            obj.d_destination = 0; % Start on right lane
-            obj.toleranceReachLane = 0.05;
-            obj.isChangingLane = false;
-            obj.t_ref = 0;
+            obj.Ego     = EgoInfo(obj.Ts,obj.timeHorizon,obj.partsTimeHorizon,obj.minimumAcceleration,obj.maximumAcceleration,obj.emergencyAcceleration,obj.maximumVelocity,obj.wheelBase,obj.steerAngle_max,obj.vEgo_ref);
+            obj.Others  = OthersInfo(obj.vOtherVehicles_ref, obj.sigmaS, obj.sigmaV);
+            obj.Road    = RoadInfo(obj.RoadTrajectory, obj.LaneWidth, obj.spaceDiscretisation);
             
-            obj.curvature_max = tan(obj.steerAngle_max)/obj.wheelBase; % Maximum allowed curvature
-            Ts_decision = 0.1; % Lower sample rate for fast decision generation
+            obj.d_destination       = 0; % Start on right lane
+            obj.toleranceReachLane  = 0.05;
+            obj.isChangingLane      = false;
+            obj.t_ref               = 0;
+
+            % Create a trajectory generator
+            obj.NewTrajectoryGenerator = NewTrajectoryGeneration(obj.Ego, obj.Road.RoadTrajectory);
             
             % Get all possible Maneuvers
-            obj.drivingModes = Maneuver.getallActions;
+            obj.drivingModes = Maneuver.getallActions(obj.NewTrajectoryGenerator);
             
+            % Create a maneuver planner with all the possible maneuvers
             ManeuverPlanner = ...
-                NewManeuverPlanner(obj.RoadTrajectory, obj.LaneWidth, Ts_decision, obj.timeHorizon, ...
-                obj.minimumAcceleration, obj.maximumAcceleration, ...
-                obj.emergencyAcceleration, obj.maximumVelocity, obj.vEgo_ref, ...
-                obj.vOtherVehicles_ref, obj.curvature_max, obj.sigmaS, ...
-                obj.sigmaV, obj.spaceDiscretisation);
-            obj.SearchTree = NewTreeSearch(obj.Ts, obj.timeHorizon, ManeuverPlanner);
+                NewManeuverPlanner(obj.drivingModes,obj.Ego,obj.Road,obj.Others,obj.NewTrajectoryGenerator);
+            
+            % Create a search tree object using the Maneuver Planner
+            obj.SearchTree = NewTreeSearch(obj.Ego.Ts, obj.Ego.timeHorizon, ManeuverPlanner);
             
             stateNames = {...
                 % Keep Lane
@@ -110,7 +117,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             % and if not changing lane
             if get_param('ManeuverPlanning', 'SimulationTime') >= obj.t_ref && ~obj.isChangingLane
                 obj.t_ref = get_param('ManeuverPlanning', 'SimulationTime') + ...
-                    obj.timeHorizon/obj.partsTimeHorizon;
+                    obj.Ego.timeHorizon/obj.Ego.partsTimeHorizon;
                 
                 % Define vehicle states
                 currentState_Ego = State(sEgo, dEgo, orientationEgo, vEgo);

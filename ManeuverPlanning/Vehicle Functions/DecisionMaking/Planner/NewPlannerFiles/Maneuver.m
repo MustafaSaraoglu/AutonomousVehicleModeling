@@ -4,16 +4,22 @@ classdef Maneuver
     properties
         name
         id
+        
+        % Every maneuver has a trajectory generator
+        NewTrajectoryGenerator
+        
     end
     
     methods
-        function obj = Maneuver(name,id)
+        function obj = Maneuver(name,id,TG)
             %MANEUVER Construct an instance of this class
             %   Detailed explanation goes here
             obj.name = name;
             obj.id = id;
+            obj.NewTrajectoryGenerator =TG;
         end
         
+
         function name = getName(obj)
             name = obj.name;
         end
@@ -21,24 +27,14 @@ classdef Maneuver
         
     end
     methods (Static)
-        function maneuvers = getallActions()
+        function maneuvers = getallActions(TG)
             
-            maneuvers = {FreeDrive('FD',1), Vehicle_Following('VF',2), EmergencyBrake('EB',3), LaneChanging('LC',1)};
+            maneuvers = {FreeDrive('FreeDrive',1,TG), Vehicle_Following('VehicleFollowing',2,TG), EmergencyBrake('EmergencyBrake',3,TG), LaneChanging('LaneChanging',1,TG)};
             %maneuvers = {FreeDrive('FD',1), LaneChanging('LC',1)};
         
         end
         
         
-        function pd = calculatePDFofOtherVehicles(states,deltaT,k)
-            % Calculate the other vehicles' motion as a normal distribution centered around x1 = x0 + v*t
-            mean = states.s + states.speed*deltaT*k;
-            variance = deltaT*k;
-            pd = makedist('Normal','mu',mean,'sigma',variance);
-            
-            %range = [mean-(4*variance):0.1:mean+(4*variance)];
-            %plot(range,pdf(pd,range));
-            
-        end
     end
     methods (Abstract)
         apply(obj)
