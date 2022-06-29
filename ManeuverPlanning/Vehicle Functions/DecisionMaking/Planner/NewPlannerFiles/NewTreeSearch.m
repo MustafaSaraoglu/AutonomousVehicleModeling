@@ -15,13 +15,14 @@ classdef NewTreeSearch
     end
     
     methods
-        function obj = NewTreeSearch(Ts, Th, NewManeuverPlanner)
+        function obj = NewTreeSearch(EgoInfo, NewManeuverPlanner)
             %TREESEARCH Construct an instance of this class
-            obj.Ts = Ts;
-            obj.Th = Th;
+            obj.Ts = EgoInfo.Ts;
+            obj.Th = EgoInfo.timeHorizon;
             
             obj.NewManeuverPlanner = NewManeuverPlanner;
            
+            % Search Tree properties
             obj.searchDepth = 2;
             obj.discount = 0.1; % Sf = Sf(d=1) + 0.1*Sf(d=2) + ...  + 0.1^(d_final-1)*Sf(d_final)
                                 % Decimal: Sf = Sf(d=1),Sf(d=2)Sf(d=3)...

@@ -42,13 +42,10 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
         toleranceReachLane % Accepted tolerance to reach destination lane
         
         drivingModes % Possible driving modes
-        laneChangeCmds % Possible commands for lane changing
-        plannerModes % Possible planner modes
         states % Possible driving states
         currentState % Current driving state
         previousState % Previous driving state
         
-        NewTrajectoryGenerator % Trajectory Generator
         SearchTree % Search tree to find best decision
     end
     
@@ -65,17 +62,17 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             obj.t_ref               = 0;
 
             % Create a trajectory generator
-            obj.NewTrajectoryGenerator = NewTrajectoryGeneration(obj.Ego, obj.Road.RoadTrajectory);
+            NewTrajectoryGenerator = NewTrajectoryGeneration(obj.Ego, obj.Road.RoadTrajectory);
             
             % Get all possible Maneuvers
-            obj.drivingModes = Maneuver.getallActions(obj.NewTrajectoryGenerator);
+            obj.drivingModes = Maneuver.getallActions(NewTrajectoryGenerator);
             
             % Create a maneuver planner with all the possible maneuvers
             ManeuverPlanner = ...
-                NewManeuverPlanner(obj.drivingModes,obj.Ego,obj.Road,obj.Others,obj.NewTrajectoryGenerator);
+                NewManeuverPlanner(obj.drivingModes,obj.Ego,obj.Road,obj.Others,NewTrajectoryGenerator);
             
             % Create a search tree object using the Maneuver Planner
-            obj.SearchTree = NewTreeSearch(obj.Ego.Ts, obj.Ego.timeHorizon, ManeuverPlanner);
+            obj.SearchTree = NewTreeSearch(obj.Ego, ManeuverPlanner);
             
             stateNames = {...
                 % Keep Lane
