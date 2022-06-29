@@ -10,7 +10,7 @@ classdef EmergencyBrake < Maneuver
             d_new = state.d;
             orientation_new = state.orientation; 
             
-            nextState = StateV(s_new,d_new,orientation_new,speed_new);
+            nextState = State(s_new,d_new,orientation_new,speed_new);
         end
     end
 end
