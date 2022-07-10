@@ -1,5 +1,5 @@
 classdef NewManeuverPlanner
-% Generate decisions for ego vehicle and other vehicles
+    % Generate decisions for ego vehicle and other vehicles
     
     properties
         Maneuvers
@@ -55,28 +55,28 @@ classdef NewManeuverPlanner
             
             obj.NewTrajectoryGenerator = NewTrajectoryGenerator;
             
-
+            
         end
         
         function maneuvers = calculateManeuvers_Ego(obj, state, d_goal)
-        % Calculate candidate trajectories (decisions) for different driving modes 
+            % Calculate candidate trajectories (decisions) for different driving modes
             
             accFD_min = 1;
             accVF_min = obj.minimumAcceleration;
             accVF_max = 0;
             accEB = obj.emergencyAcceleration;
-        
+            
             % For speed close to maximum speed, acceleration >= 0 results in the same final state
             % --> Free Drive as preference (instead of Vehicle Following)
             if state.speed >= obj.vEgo_ref - eps
                 % FreeDrive: acc = acc_max
                 accFD_min = obj.maximumAcceleration;
-                % VehicleFollowing: acc < 0       
+                % VehicleFollowing: acc < 0
                 accVF_max = -1;
-            % For speed close to 0, acceleration <= 0 results in same final state
-            % --> Vehicle Following as preference (instead of Emergency Brake)
+                % For speed close to 0, acceleration <= 0 results in same final state
+                % --> Vehicle Following as preference (instead of Emergency Brake)
             elseif state.speed <= 0 + eps
-                % VehicleFollowing: acc = 0       
+                % VehicleFollowing: acc = 0
                 accVF_min = 0;
                 % Emergency Break: ignore
                 %accEB = []; % temp solution
@@ -95,11 +95,11 @@ classdef NewManeuverPlanner
                 else
                     ManeuverPlanner = obj;
                     maneuver = maneuverType{1}.getDecisionsForDrivingMode(state, d_goal, allAcc, maneuverType{1}.getName,ManeuverPlanner);
-                
+                    
                 end
                 maneuvers = [maneuvers; maneuver];
             end
-                
+            
         end
         
         
@@ -178,32 +178,30 @@ classdef NewManeuverPlanner
             
         end
         
-       
-        function trajectoryDiscrete_worst = calculateDiscreteTrajectory_Other(obj, ...
-                                                                              trajectoryFrenet_min, ...
-                                                                              trajectoryFrenet_max)
-        % Calculate worst case discrete trajectory for other vehicle
+        
+        function trajectoryDiscrete_worst = calculateDiscreteTrajectory_Other(obj, trajectoryFrenet_min, trajectoryFrenet_max)
+            % Calculate worst case discrete trajectory for other vehicle
             
             % Calculate discrete trajectories for other vehicle
             trajectoryDiscrete_min = Continuous2Discrete(obj.spaceDiscretisation, ...
-                                                         trajectoryFrenet_min);
+                trajectoryFrenet_min);
             trajectoryDiscrete_max = Continuous2Discrete(obj.spaceDiscretisation, ...
-                                                         trajectoryFrenet_max);
-
-            % Assume worst case: 
+                trajectoryFrenet_max);
+            
+            % Assume worst case:
             % ------------------
             % Earliest entrance times from trajectoryDiscrete_max (max. possible acceleration):
             % --> Vehicle cannot enter cell before these times
             % Latest exit times from trajectoryDiscrete_min (min. possible acceleration):
             % --> Vehicle cannot exit after these times
-
+            
             % First occupied cells may not be identical for min/max case due to uncertainty
             cellDif = trajectoryDiscrete_max.cells(1, 1) - trajectoryDiscrete_min.cells(1, 1);
             if cellDif ~= 0
                 trajectoryDiscrete_start = ...
                     DiscreteTrajectory(trajectoryDiscrete_min.cells(1:cellDif, :), ...
-                                       trajectoryDiscrete_min.entranceTimes(1:cellDif), ...
-                                       trajectoryDiscrete_min.exitTimes(1:cellDif));
+                    trajectoryDiscrete_min.entranceTimes(1:cellDif), ...
+                    trajectoryDiscrete_min.exitTimes(1:cellDif));
                 trajectoryDiscrete_worst = trajectoryDiscrete_start.append(trajectoryDiscrete_max);
             else
                 trajectoryDiscrete_worst = trajectoryDiscrete_max;
@@ -211,22 +209,22 @@ classdef NewManeuverPlanner
             
             % Find overlapping cells with min case
             [~, id_intersect_min, id_intersect_worst] = intersect(trajectoryDiscrete_min.cells, ...
-                                                                trajectoryDiscrete_worst.cells, ...
-                                                                'rows');
+                trajectoryDiscrete_worst.cells, ...
+                'rows');
             % Assume worst case for exit time (vehicle could potentially stop at any cell)
-            trajectoryDiscrete_worst.exitTimes(:) = Inf; 
+            trajectoryDiscrete_worst.exitTimes(:) = Inf;
             % Relax by considering known possible latest exit times from trajectoryDiscrete_min
             trajectoryDiscrete_worst.exitTimes(id_intersect_worst) = ...
-                trajectoryDiscrete_min.exitTimes(id_intersect_min); 
+                trajectoryDiscrete_min.exitTimes(id_intersect_min);
         end
     end
     
     methods(Static)
         function d_oppositeLane = getOppositeLane(d_currentLane, laneWidth)
-        % Get lane opposite to current lane
+            % Get lane opposite to current lane
             
             d_oppositeLane = 0;
-        
+            
             if d_currentLane == 0
                 d_oppositeLane = laneWidth;
             end
