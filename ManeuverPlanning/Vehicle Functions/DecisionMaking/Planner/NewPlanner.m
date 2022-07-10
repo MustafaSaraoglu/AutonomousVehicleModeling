@@ -73,18 +73,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             
             % Create a search tree object using the Maneuver Planner
             obj.SearchTree = NewTreeSearch(obj.Ego, ManeuverPlanner);
-            
-            stateNames = {...
-                % Keep Lane
-                'FreeDrive', 1;
-                'VehicleFollowing', 2;
-                'EmergencyBrake', 3;
-                
-                % LaneChanging
-                'LaneChanging', 4;
-                };
-            obj.states = containers.Map(stateNames(:, 1)', [stateNames{:, 2}]);
-            
+                       
             % Initial state: Free Drive and on the right lane
             obj.currentState = 1;
             disp('@t=0s: Initial state is: ''FreeDrive''.');
@@ -96,6 +85,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                 speedsOtherVehicles, vEgo)
             % Necessary to return some output even if there is no command
             changeLaneCmd = 0;
+            nextState = [];
             
             % Return lane change command and the current driving mode
             
@@ -105,7 +95,8 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             obj.previousState = obj.currentState;
             
 
-            
+            % Check if the vehicle is in the middle of changing lanes
+            % or has just finished now
             if obj.isChangingLane && (abs(dEgo - obj.d_destination) < 0.05)
                 obj.isChangingLane = false;
             end
@@ -123,7 +114,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                     [poseOtherVehicles(1, :)', ...
                     poseOtherVehicles(2, :)']);
                 
-                % Preallocation
+                % Preallocation for other vehicles' states
                 currentStates_Other(1, size(poseOtherVehicles, 2)) = State([], [], [], []);
                 for id_other = 1:size(poseOtherVehicles, 2)
                     currentStates_Other(id_other) = State(sOther(id_other), dOther(id_other), ...
@@ -131,8 +122,9 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                         speedsOtherVehicles(id_other));
                 end
                 
-                % TODO: Free Drive if no vehicle in front on right lane for faster computation?
+
                 
+                %% Main part of the planning algorithm where the tree is computed
                 [bestDecision_Ego, dG] = ...
                     obj.SearchTree.iterativeMinimax(currentState_Ego, currentStates_Other, ...
                     obj.d_destination);
@@ -145,10 +137,14 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                 %                 cell2mat(dG_iteration.Edges.Color), 'NodeColor',...
                 %                 cell2mat(dG_iteration.Nodes.Color), 'Layout', 'layered');
                 %%
-                nextDecision = bestDecision_Ego(1);
-                description_nextDecision = strsplit(nextDecision.description, '_');
+                nextDecision = bestDecision_Ego(1); % only apply the current best decision for depth = 1
+                
+                % Get the description text's first part
+                description_nextDecision = strsplit(nextDecision.description, '_'); 
                 nextState = description_nextDecision{1};
-                obj.currentState = obj.states(nextState);
+                
+                % Get the next maneuver id and set as the current maneuver
+                obj.currentState = nextDecision.id; % 
                 
                 if strcmp(nextState, 'LaneChanging')
                     obj.isChangingLane = true;
@@ -162,19 +158,28 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                 end
             end
             
-            %drivingMode = obj.getStateInfo(obj.currentState);
-            drivingMode = obj.drivingModes{obj.currentState}.id;
+           drivingMode = obj.getDrivingMode(obj.currentState);
             
-            obj.displayNewState(obj.currentState, obj.previousState);
+            obj.displayNewState(obj.currentState, nextState, obj.previousState);
+        end
+        
+        function drivingMode = getDrivingMode(~,currentState)
+            
+            if currentState == 1 || currentState == 4
+                % Both FreeDrive and LaneChanging output drivingMode = 1 for the Simulink switch
+                drivingMode = 1;
+            else
+                % It is the same id
+                drivingMode = currentState; 
+            end
         end
         
         
-        function displayNewState(obj, currentState, previousState)
+        function displayNewState(~, currentState, name_newState, previousState)
             % Display state name if switched to another state
             
             if currentState ~= previousState
-                newState = currentState;
-                name_newState = class(obj.drivingModes{obj.currentState});
+                %name_newState = class(obj.drivingModes{obj.currentState});
                 
                 t = get_param('ManeuverPlanning', 'SimulationTime');
                 

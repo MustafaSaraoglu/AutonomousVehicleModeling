@@ -67,11 +67,12 @@ classdef NewManeuver
     methods (Static)
         function maneuvers = getallActions(TG)
             
-            maneuvers = {FreeDrive('FreeDrive',1,TG), Vehicle_Following('VehicleFollowing',2,TG), EmergencyBrake('EmergencyBrake',3,TG), LaneChanging('LaneChanging',1,TG)};
-            %maneuvers = {FreeDrive('FD',1), LaneChanging('LC',1)};
+            maneuvers = {FreeDrive('FreeDrive',1,TG), Vehicle_Following('VehicleFollowing',2,TG), EmergencyBrake('EmergencyBrake',3,TG), LaneChanging('LaneChanging',4,TG)};
+            %maneuvers = {FreeDrive('FreeDrive',1,TG), Vehicle_Following('VehicleFollowing',2,TG), EmergencyBrake('EmergencyBrake',3,TG)};
+            %maneuvers = {FreeDrive('FreeDrive',1,TG), LaneChanging('LaneChanging',4,TG)};
             
         end
-        
+                
         
     end
 end
