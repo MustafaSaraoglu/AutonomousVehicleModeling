@@ -72,7 +72,7 @@ classdef POMDPPlanner < matlab.System & handle & matlab.system.mixin.Propagates 
                 NewManeuverPlanner(obj.drivingModes,obj.Ego,obj.Road,obj.Others,NewTrajectoryGenerator);
             
             % Create a search tree object using the Maneuver Planner
-            obj.SearchTree = NewTreeSearch(obj.Ego, ManeuverPlanner);
+            obj.SearchTree = MCTSTreeSearch(obj.Ego, ManeuverPlanner);
                        
             % Initial state: Free Drive and on the right lane
             obj.currentState = 1;
@@ -125,8 +125,8 @@ classdef POMDPPlanner < matlab.System & handle & matlab.system.mixin.Propagates 
 
                 
                 %% Main part of the planning algorithm where the tree is computed
-                [bestDecision_Ego, dG] = ...
-                    obj.SearchTree.iterativeMinimax(currentState_Ego, currentStates_Other, ...
+                [bestDecision_Ego, nextStateValues, dG] = ...
+                    obj.SearchTree.PlanManeuver(currentState_Ego, currentStates_Other, ...
                     obj.d_destination);
                 
                 %% Plot the tree:
@@ -137,11 +137,9 @@ classdef POMDPPlanner < matlab.System & handle & matlab.system.mixin.Propagates 
                 %                 cell2mat(dG_iteration.Edges.Color), 'NodeColor',...
                 %                 cell2mat(dG_iteration.Nodes.Color), 'Layout', 'layered');
                 %%
-                nextDecision = bestDecision_Ego(1); % only apply the current best decision for depth = 1
-                
-                % Get the description text's first part
-                description_nextDecision = strsplit(nextDecision.description, '_'); 
-                nextState = description_nextDecision{1};
+                nextDecision = bestDecision_Ego; % only apply the current best decision for depth = 1
+
+                nextState = nextDecision.getName;
                 
                 % Get the next maneuver id and set as the current maneuver
                 obj.currentState = nextDecision.id; % 
@@ -151,10 +149,9 @@ classdef POMDPPlanner < matlab.System & handle & matlab.system.mixin.Propagates 
                     
                     % Round: avoid very small value differences
                     % Use either 0 or 3.7
-                    obj.d_destination = round(nextDecision.futureState.d, 1);
+                    obj.d_destination = round(nextStateValues.state.d, 1);
                     
-                    T_LC = extractBetween(description_nextDecision{2}, '{T', '}');
-                    changeLaneCmd = str2double(T_LC{1});
+                    changeLaneCmd = 2; % Hard code 2 seconds of lane change
                 end
             end
             
