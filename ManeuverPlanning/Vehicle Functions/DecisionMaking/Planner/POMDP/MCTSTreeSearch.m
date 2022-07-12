@@ -184,6 +184,7 @@ classdef MCTSTreeSearch
             
             if visualize
                 f2 = figure(2);
+                f2.WindowState = 'maximized';
                 % Plot the tree from top down using 'Layout','layered'
                 h=plot(G,'NodeLabel',G.Nodes.UnsafetyValues,'EdgeLabel',G.Edges.Labels,'Layout','layered');
                 
