@@ -58,7 +58,7 @@ classdef NewManeuverPlanner
             
         end
         
-        function maneuvers = calculateManeuvers_Ego(obj, state, d_goal)
+        function maneuvers = calculateManeuvers_Ego(obj, state, d_goal, states_Other)
             % Calculate candidate trajectories (decisions) for different driving modes
             
             accFD_min = 1;
@@ -94,7 +94,7 @@ classdef NewManeuverPlanner
                     
                 else
                     ManeuverPlanner = obj;
-                    maneuver = maneuverType{1}.getDecisionsForDrivingMode(state, d_goal, allAcc, maneuverType{1}.getName,ManeuverPlanner);
+                    maneuver = maneuverType{1}.getDecisionsForDrivingMode(state, d_goal, allAcc, maneuverType{1}.getName,ManeuverPlanner, states_Other);
                     
                 end
                 maneuvers = [maneuvers; maneuver];

@@ -4,7 +4,7 @@ classdef FreeDrive < NewManeuver
     
     methods
                     
-        function decisions = getDecisionsForDrivingMode(obj, state, d_goal, accAll, name_DrivingMode,ManeuverPlanner)
+        function decisions = getDecisionsForDrivingMode(obj, state, d_goal, accAll, name_DrivingMode,ManeuverPlanner,~)
             % Get the decisions for a driving mode for different accelerations
             
             acc_lower = accAll(1);

@@ -75,7 +75,7 @@ classdef NewTreeSearch
             maxNode = [];
             
             %% All Ego Maneuvers Calculated with Trajectories
-            decisions_Ego = obj.NewManeuverPlanner.calculateManeuvers_Ego(state_Ego, d_goal);
+            decisions_Ego = obj.NewManeuverPlanner.calculateManeuvers_Ego(state_Ego, d_goal,states_Other);
 
             %% All Other Vehicles' Maneuvers Calculated with Trajectories
             [decisions_Other, possibleFutureStates_Other] = ...
