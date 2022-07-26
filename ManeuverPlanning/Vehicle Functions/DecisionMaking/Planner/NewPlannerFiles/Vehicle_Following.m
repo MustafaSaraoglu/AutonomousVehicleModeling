@@ -15,53 +15,62 @@ classdef Vehicle_Following < NewManeuver
             end
             
             acc_sequence = Vehicle_Following.MPC_Predict(MPC_States);
-            futureTrajectory = Vehicle_Following.calculateLongitudinalTrajectory(state,acc_sequence);
             
-%             wholetrajectoryFrenet =[];
-%             for acc=acc_sequence'
-%                 trajectoryFrenet = ...
-%                     ManeuverPlanner.NewTrajectoryGenerator.calculateLongitudinalTrajectory(state.s, d_goal, ...
-%                     state.speed, ...
-%                     ManeuverPlanner.vEgo_ref, acc, ...
-%                     ManeuverPlanner.Th);
-%                 
-%                 wholetrajectoryFrenet = [trajectoryFrenet trajectoryFrenet];
-%             end
+            %futureTrajectory = Vehicle_Following.calculateFutureState(state,acc_sequence);
+            
+            
+            
+            futureState = state;
+            wholetrajectoryFrenet =[];
             
             
             
             
-            
-            
-            acc_lower = accAll(3);
-            acc_upper = accAll(4);
-            
-            decisions = [];
-            
-            for acc = acc_lower:1:acc_upper
-                description = [name_DrivingMode, '_{acc', num2str(acc), '}'];
+            for acc=acc_sequence'
                 
-                % Trajectory prediction
+                timeHorizon = ManeuverPlanner.Th/length(acc_sequence); % Constant acc horizon motion time
+                
+                
                 trajectoryFrenet = ...
-                    ManeuverPlanner.NewTrajectoryGenerator.calculateLongitudinalTrajectory(state.s, d_goal, ...
-                    state.speed, ...
+                    Vehicle_Following.calculateLongitudinalTrajectory(ManeuverPlanner.Ts,futureState.s, d_goal, ...
+                    futureState.speed, ...
                     ManeuverPlanner.vEgo_ref, acc, ...
-                    ManeuverPlanner.Th);
-                % Future state prediction
-                [~, futureOrientation] = Frenet2Cartesian(trajectoryFrenet.s(end), ...
-                    trajectoryFrenet.d(end), ...
-                    ManeuverPlanner.RoadTrajectory);
+                    timeHorizon);
+                
+                % To fit the format (TODO: rework later)
+                trajectoryFrenet.s(1) = [];
+                trajectoryFrenet.d(1) = [];
+                trajectoryFrenet.velocity(1) = [];
+                trajectoryFrenet.time(1) = [];
+                trajectoryFrenet.length = trajectoryFrenet.length -1;
+
                 futureState = State(trajectoryFrenet.s(end), trajectoryFrenet.d(end), ...
-                    futureOrientation, trajectoryFrenet.velocity(end));
+                    0, trajectoryFrenet.velocity(end));
                 
-                % Discrete trajectory
-                trajectoryDiscrete = Continuous2Discrete(ManeuverPlanner.spaceDiscretisation, trajectoryFrenet);
-                
-                new_Maneuver = NewManeuver(obj.name,obj.id,obj.NewTrajectoryGenerator);
-                
-                new_Maneuver = new_Maneuver.assignTrajectory(trajectoryDiscrete, true, futureState, description, [], []);
-                decisions = [decisions; new_Maneuver];
+                wholetrajectoryFrenet = [wholetrajectoryFrenet trajectoryFrenet];
             end
+            
+            % Predicted trajectory
+            trajectoryFrenet = FrenetTrajectory((0:ManeuverPlanner.Ts:ManeuverPlanner.Th),...
+                vertcat(state.s,wholetrajectoryFrenet.s), vertcat(state.d,wholetrajectoryFrenet.d)...
+                , vertcat(state.speed,wholetrajectoryFrenet.velocity), true, 0);
+            
+            description = [name_DrivingMode, '_{acc', num2str(acc_sequence(1)), '}'];
+            
+            % Future state prediction
+            [~, futureOrientation] = Frenet2Cartesian(trajectoryFrenet.s(end), ...
+                trajectoryFrenet.d(end), ...
+                ManeuverPlanner.RoadTrajectory);
+            futureState = State(trajectoryFrenet.s(end), trajectoryFrenet.d(end), ...
+                futureOrientation, trajectoryFrenet.velocity(end));
+            
+            % Discrete trajectory
+            trajectoryDiscrete = Continuous2Discrete(ManeuverPlanner.spaceDiscretisation, trajectoryFrenet);
+            
+            new_Maneuver = NewManeuver(obj.name,obj.id,obj.NewTrajectoryGenerator);
+            
+            decisions = new_Maneuver.assignTrajectory(trajectoryDiscrete, true, futureState, description, [], []);
+            
         end
         
         
@@ -455,9 +464,10 @@ classdef Vehicle_Following < NewManeuver
             options.Diagnostics = 'off';
             acc_sequence = fmincon(fun, ini, A_ine,b_ine,A_ep,B_ep,lower_bound,upper_bound,[],options);
             warning on
+            acc_sequence = acc_sequence(1:end-1); % Remove the slack variable from the output just leave acc sequence
         end
         
-        function futureTrajectory = calculateLongitudinalTrajectory(state,acc_sequence)
+        function predictedState = calculateFutureState(state,acc_sequence)
             % Calculate the predicted positions and speeds at the changing
             % acceleration points (sequence) obtained from the MPC
             Ts = 0.5;
@@ -480,11 +490,41 @@ classdef Vehicle_Following < NewManeuver
                 (A^8)*B (A^7)*B (A^6)*B (A^5)*B (A^4)*B (A^3)*B (A^2)*B A*B B zeros(2,1); ...
                 (A^9)*B (A^8)*B (A^7)*B (A^6)*B (A^5)*B (A^4)*B (A^3)*B (A^2)*B A*B B]; ...
                 
-            futureTrajectory = A_i * ini' + B_i * acc_sequence(1:10);
-            futureTrajectory = [ini'; futureTrajectory];
+            predictedState = A_i * ini' + B_i * acc_sequence(1:10);
+            predictedState = [ini'; predictedState];
             
             
         end
+        
+        function trajectoryFrenet = calculateLongitudinalTrajectory(Ts,s_0, d_0, v_0, v_max, ...
+                acceleration, duration)
+            % Calculate longitudinal trajectory according to the double integrator model
+            
+            time = (0:Ts:duration)'; % Start with 0 (relative time)
+            [s_trajectory, v_trajectory] = Vehicle_Following.predictMotion(s_0, v_0, v_max, acceleration, time);
+            d_trajectory = d_0*ones(length(time), 1);
+            
+            trajectoryFrenet = FrenetTrajectory(time, s_trajectory, d_trajectory, v_trajectory, ...
+                true, 0);
+        end
+        
+        function [s, v] = predictMotion(s_0, v_0, v_limit, a, time)
+            % Restricted equation of motion for displacement and velocity according to double integrator
+            
+            s = s_0 + v_0*time + 0.5*a*time.^2;
+            v = v_0 + a*time;
+            if any(v > v_limit) % Not faster than limit velocity
+                id_limit = find(v>v_limit, 1);
+                s(v>v_limit) = s(id_limit) + v_limit*(time(v>v_limit) - time(id_limit));
+                v(v>v_limit) = v_limit;
+            end
+            if any(v < 0) % No backward motion
+                id_limit = find(v<0, 1);
+                s(v<0) = s(id_limit);
+                v(v<0) = 0;
+            end
+        end
+        
         
         
         
