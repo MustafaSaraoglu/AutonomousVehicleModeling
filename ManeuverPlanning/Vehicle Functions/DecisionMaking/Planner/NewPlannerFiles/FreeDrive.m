@@ -42,7 +42,7 @@ classdef FreeDrive < NewManeuver
     end
     
     methods (Static)
-        function nextState = apply(state,deltaT)
+        function nextState = apply(state,deltaT,~)
             %Apply some acceleration            
             speed_new = state.speed +1;
             s_new = state.s + speed_new*deltaT;

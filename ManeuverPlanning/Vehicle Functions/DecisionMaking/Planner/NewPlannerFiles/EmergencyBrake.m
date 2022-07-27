@@ -42,7 +42,7 @@ classdef EmergencyBrake < NewManeuver
     end
     
     methods (Static)
-        function nextState = apply(state,deltaT)
+        function nextState = apply(state,deltaT,~)
             %Apply Emergency Brake -> Acc= -5 (According to the min dec in the Simulink model)
             minDec= -5; % Constant acc motion equations
             

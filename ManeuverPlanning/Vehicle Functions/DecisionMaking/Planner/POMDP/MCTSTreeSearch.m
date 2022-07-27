@@ -74,7 +74,7 @@ classdef MCTSTreeSearch
                         
                         for maneuver = Maneuvers
                             % Expand for each maneuever
-                            newleafNode = leafNode.expand(count,maneuver,obj.deltaT);
+                            newleafNode = leafNode.expand(count,maneuver,obj.deltaT,states_Other0);
                             count = count + 1; % Increase the Id for the next nodes
                             
                             leafNode.targetNodeID = [leafNode.targetNodeID newleafNode.id];

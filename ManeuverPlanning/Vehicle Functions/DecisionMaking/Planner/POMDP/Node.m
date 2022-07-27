@@ -23,11 +23,11 @@ classdef Node
             obj.targetNodeID = []; % To be assigned if expanded
         end
         
-        function childNode = expand(obj,count,maneuver,deltaT)
+        function childNode = expand(obj,count,maneuver,deltaT,states_Other0)
             % Expand the node based on available actions (edges out)
             %   Next states' values shall be calculated via applying the
             %   action for deltaT seconds
-            newState=maneuver{1}.apply(obj.state,deltaT);
+            newState=maneuver{1}.apply(obj.state,deltaT,states_Other0);
             newActions = maneuver{1}.getallActions(maneuver{1}.NewTrajectoryGenerator);
             
             % Return the newly created child node

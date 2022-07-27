@@ -82,13 +82,33 @@ classdef Vehicle_Following < NewManeuver
     
     
     methods (Static)
-        function nextState = apply(state,deltaT)
+        function nextState = apply(state,deltaT,states_Other0)
             %Apply VehicleFollowing Maneuver
-            speed_new = state.speed;
-            s_new = state.s + speed_new*deltaT;
-            d_new = state.d;
-            orientation_new = state.orientation;
             
+            % Get the decisions for a driving mode according to the MPC acceleration sequence prediction
+            MPC_States = Vehicle_Following.findClosestVehicleOnSameLane(state,states_Other0);
+            
+            if isempty(MPC_States)
+                % Constant speed No prediction if no other vehicle around
+                s_new = state.s + deltaT* state.speed;
+                d_new = state.d;
+                orientation_new = state.orientation;
+                speed_new = state.speed;
+            else
+                acc_sequence = Vehicle_Following.MPC_Predict(MPC_States);
+                
+                futureTrajectory = Vehicle_Following.calculateFutureState(state,acc_sequence);
+                
+                % Assign <s,d,\theta,v> values
+                s_new = futureTrajectory(4); % For now hard coded for deltaT = 1 (TODO: make it flexible later)
+                d_new = state.d;
+                orientation_new = state.orientation;
+                speed_new = futureTrajectory(5); % For now hard coded for deltaT = 1
+            end
+
+
+            
+            % Create the new state
             nextState = State(s_new,d_new,orientation_new,speed_new);
         end
         
@@ -103,7 +123,7 @@ classdef Vehicle_Following < NewManeuver
             end
             
             % Get only the vehicles on the same lane
-            vehiclesOnTheSameLane = states_Other([states_Other.d]==state.d);
+            vehiclesOnTheSameLane = states_Other(abs([states_Other.d]-state.d)<0.1);
             
             if isempty(vehiclesOnTheSameLane)
                 MPC_States = [];
