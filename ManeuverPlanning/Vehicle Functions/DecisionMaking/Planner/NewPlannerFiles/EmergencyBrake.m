@@ -43,11 +43,13 @@ classdef EmergencyBrake < NewManeuver
     
     methods (Static)
         function nextState = apply(state,deltaT)
-            %Apply Emergency Brake
-            speed_new = state.speed -3;
-            s_new = state.s + speed_new*deltaT;
+            %Apply Emergency Brake -> Acc= -5 (According to the min dec in the Simulink model)
+            minDec= -5; % Constant acc motion equations
+            
+            s_new = state.s + max(((state.speed*deltaT)+(0.5)*minDec*(deltaT^2)),0); % use Max (A,0) to avoid backward motion
             d_new = state.d;
             orientation_new = state.orientation;
+            speed_new = max((state.speed+(deltaT*minDec)),0); % use Max (A,0) to avoid backward motion
             
             nextState = State(s_new,d_new,orientation_new,speed_new);
         end
