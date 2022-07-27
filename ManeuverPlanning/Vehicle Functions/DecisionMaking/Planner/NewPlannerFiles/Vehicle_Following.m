@@ -89,7 +89,7 @@ classdef Vehicle_Following < NewManeuver
             MPC_States = Vehicle_Following.findClosestVehicleOnSameLane(state,states_Other0);
             
             if isempty(MPC_States)
-                % Constant speed No prediction if no other vehicle around
+                % Constant speed prediction if no other vehicle around
                 s_new = state.s + deltaT* state.speed;
                 d_new = state.d;
                 orientation_new = state.orientation;

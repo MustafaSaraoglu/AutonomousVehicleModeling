@@ -245,9 +245,20 @@ classdef MCTSTreeSearch
             
             Pruned_idx= idx([allNodes.UnsafetyValue]>unsafeBoundaryValue);% Mark unsafe nodes Red
             
+            
+            if isempty(Pruned_idx)
+                return
+            end
+            
             % Propagate pruned nodes if all children are pruned also mark parent node red
             while true
-                [~,AllChildrenPruned_idx] = find(histcounts([allNodes(Pruned_idx).sourceNodeID])==4); % 4 must be equal to the number of maneuvers
+                
+                % Previous version (keeping for assurance purposes because it was working fine for ==3 maneuvers)
+                %[~,AllChildrenPruned_idx] = find(histcounts([allNodes(Pruned_idx).sourceNodeID])==4); % 4 must be equal to the number of maneuvers
+                
+                C = histogram([allNodes(Pruned_idx).sourceNodeID],1:max([allNodes(Pruned_idx).sourceNodeID]),"Visible","off");
+                AllChildrenPruned_idx = [allNodes(C.Values==4).id];
+                
                 
                 if all(ismember(AllChildrenPruned_idx,Pruned_idx))
                     break;
