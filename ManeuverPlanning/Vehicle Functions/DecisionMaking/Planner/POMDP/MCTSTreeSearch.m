@@ -39,7 +39,7 @@ classdef MCTSTreeSearch
            
             % Search Tree properties
             obj.maxDepth = 4; % Expand until nth depth if not pruned
-            obj.deltaT = 1; % time horizon for each depth: deltaT seconds
+            obj.deltaT = 2; % time horizon for each depth: deltaT seconds
             obj.cutOffValue_unsafety = 0.001; % UnSafety values greater than this should be pruned
         end
         
