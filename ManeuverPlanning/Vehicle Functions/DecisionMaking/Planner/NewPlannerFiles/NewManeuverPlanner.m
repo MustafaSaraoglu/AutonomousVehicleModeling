@@ -196,7 +196,10 @@ classdef NewManeuverPlanner
             % --> Vehicle cannot exit after these times
             
             % First occupied cells may not be identical for min/max case due to uncertainty
+            
             cellDif = trajectoryDiscrete_max.cells(1, 1) - trajectoryDiscrete_min.cells(1, 1);
+            
+            
             if cellDif ~= 0
                 trajectoryDiscrete_start = ...
                     DiscreteTrajectory(trajectoryDiscrete_min.cells(1:cellDif, :), ...

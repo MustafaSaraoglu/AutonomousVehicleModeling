@@ -1,5 +1,5 @@
 classdef MCTSTreeSearch
-% Search tree to find best decision
+    % Search tree to find best decision
     
     properties
         % Configurations
@@ -36,7 +36,7 @@ classdef MCTSTreeSearch
             obj.Th = EgoInfo.timeHorizon;
             
             obj.NewManeuverPlanner = NewManeuverPlanner;
-           
+            
             % Search Tree properties
             obj.maxDepth = 4; % Expand until nth depth if not pruned
             obj.deltaT = 2; % time horizon for each depth: deltaT seconds
@@ -63,7 +63,7 @@ classdef MCTSTreeSearch
             leafNodes = Node([],[],count,obj.currentState_Ego,Maneuvers,UnSafetyValue);
             count = count + 1; % Increase the Id for the next nodes
             
-                        
+            
             for depth = 1:obj.maxDepth
                 
                 
@@ -113,7 +113,7 @@ classdef MCTSTreeSearch
                         disp(strcat(num2str(leafNode.sourceNodeID),'-', leafNode.sourceEdgeName{1}.name,'-','pruned'));
                     end
                     
-
+                    
                     
                     % Make the leafNode a rootNode and add to the array
                     rootNodes = [rootNodes leafNode];
@@ -131,13 +131,19 @@ classdef MCTSTreeSearch
             
             count = count - 1; % Undo the last increment
             
+            if isempty(leafNodes)
+                %If all the leaf nodes are pruned, take them back from the
+                %root nodes and make leaf again otherwise no decision can be taken
+                [rootNodes, leafNodes] = MCTSTreeSearch.getLeafNodesfromRootNodes(rootNodes);
+            end
+            
             % Build the tree
             obj = obj.buildtheTree(rootNodes,leafNodes,obj.cutOffValue_unsafety);
             
             
             bestDecision_total = obj.chosenManeuver;
             nextState = obj.nextState;
-
+            
         end
         
         function obj = buildtheTree(obj,rootNodes,leafNodes,unsafeBoundaryValue)
@@ -145,7 +151,7 @@ classdef MCTSTreeSearch
             allNodes = [rootNodes leafNodes];
             
             % make it "true" for visualizing tree at every loop
-            visualize = true;
+            visualize = false;
             
             % Plot the tree using all the calculated nodes and edges
             % creating a digraph: source node -> edge -> target node
@@ -160,12 +166,12 @@ classdef MCTSTreeSearch
             idx = [allNodes.id];
             Safest_idx = idx([allNodes.UnsafetyValue]<0.00001); % Mark safest nodes Green
             
-
-
+            
+            
             
             % Optional: Change the Labels from just UnsafetyValues to Unsafety + Liveness values
             NodeLabels = strcat('RLoU:',num2str(G.Nodes.UnsafetyValues,'%.4f'),'/ L:',num2str([vertcat([allNodes.state]).s]','%.1f'));
-
+            
             
             % Highlight unsafe nodes with red
             Pruned_idx = MCTSTreeSearch.findUnsafeNodes(allNodes,idx, unsafeBoundaryValue);
@@ -175,11 +181,11 @@ classdef MCTSTreeSearch
             
             % Find the highest liveness value among the safest states
             SafestNode = MCTSTreeSearch.findTheBestState(leafNodes,Safest_idx);
-
+            
             % Get the safe node's id and track back to the initial state
             SafePath_idx = MCTSTreeSearch.findTheSafestPath(allNodes,SafestNode);
             
-
+            
             % Output the first maneuver of the safe path
             obj.chosenManeuver = allNodes(SafePath_idx(end-1)).sourceEdgeName{1};
             obj.nextState =  allNodes(SafePath_idx(end-1));
@@ -211,21 +217,34 @@ classdef MCTSTreeSearch
                 input("Click enter to continue!")
                 close(f2)
                 
-            end           
-
+            end
+            
         end
-
+        
         
         function value = evaluate(obj, safety, state)
-        % Evaluate safety and state
-           
+            % Evaluate safety and state
+            
             liveness = round(state.s, 1) + round(state.speed, 1)*obj.Th - abs(round(state.d, 1));
             value = Values(safety, liveness);
         end
     end
     
     methods (Static)
-                
+        
+        function [newRootNodes,leafNodes] = getLeafNodesfromRootNodes(rootNodes)
+            leafNodes = [];
+            newRootNodes = [];
+            for rn = rootNodes
+            
+                if isempty(rn.targetNodeID)
+                    leafNodes = [leafNodes rn];
+                else
+                    newRootNodes = [newRootNodes rn];
+                end
+            end
+        end
+        
         function bestDecision = findTheBestState(leafNodes,AllNodes_Safest_idx)
             %Safest leaf nodes
             SafestLeafNodes = leafNodes(ismember([leafNodes.id],AllNodes_Safest_idx));
@@ -233,7 +252,7 @@ classdef MCTSTreeSearch
             if length(SafestLeafNodes)>1 % If there are more than one safest node
                 % Compare liveness value for the best decision
                 [Live_val, idx] = max([vertcat(SafestLeafNodes.state).s]);
-                bestDecision = SafestLeafNodes(idx); 
+                bestDecision = SafestLeafNodes(idx);
                 Safe_val = bestDecision.UnsafetyValue;
             else
                 % Just choose the safest ~ minimum unsafe
@@ -241,9 +260,9 @@ classdef MCTSTreeSearch
                 Live_val = leafNodes(idx_best).state.s;
                 bestDecision = leafNodes(idx_best);
             end
-
-            disp(['Safest state value: ',num2str(Safe_val)]);
-            disp(['Liveness state value: ',num2str(Live_val)]);
+            
+            %disp(['Safest state value: ',num2str(Safe_val)]);
+            %disp(['Liveness state value: ',num2str(Live_val)]);
         end
         
         
@@ -282,7 +301,9 @@ classdef MCTSTreeSearch
         
         function SafePath_idx = findTheSafestPath(allNodes,SafestNode)
             % From the safest leaf node get the path back to the initial state
+            
             SafePath_idx = SafestNode.id;
+            
             while true
                 idx_safe = SafestNode.sourceNodeID;
                 SafestNode = allNodes(idx_safe);

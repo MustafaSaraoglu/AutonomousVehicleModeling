@@ -4,7 +4,7 @@ function prepare_simulation(options)
     %% Default values
     arguments
         options.road             (4,3) double =  [0      0   0; % Road trajectory according to 
-                                                  1000   0   0; % MOBATSim map format
+                                                  2000   0   0; % MOBATSim map format
                                                   0      0   0;
                                                   0      0   0]; 
          
