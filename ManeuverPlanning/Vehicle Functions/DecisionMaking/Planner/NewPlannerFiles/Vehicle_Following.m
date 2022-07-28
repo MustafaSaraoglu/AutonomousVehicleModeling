@@ -100,10 +100,10 @@ classdef Vehicle_Following < NewManeuver
                 futureTrajectory = Vehicle_Following.calculateFutureState(state,acc_sequence);
                 
                 % Assign <s,d,\theta,v> values
-                s_new = futureTrajectory(4); % For now hard coded for deltaT = 1 (TODO: make it flexible later)
+                s_new = futureTrajectory(5); % For now hard coded for deltaT = 1 (TODO: make it flexible later)
                 d_new = state.d;
                 orientation_new = state.orientation;
-                speed_new = futureTrajectory(5); % For now hard coded for deltaT = 1
+                speed_new = futureTrajectory(6); % For now hard coded for deltaT = 1
             end
 
 

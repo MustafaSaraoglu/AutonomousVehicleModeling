@@ -89,9 +89,10 @@ classdef MCTSTreeSearch
                                 pdf_other = NewManeuver.calculatePDFofOtherVehicles(states_Other0(otherVehicle),obj.deltaT,depth);
                                 
                                 % UnsafetyValue = Ego vehicle's area under the normal distribution curve of other vehicles
-                                if abs(newleafNode.state.d - states_Other0(otherVehicle).d) < 0.03 % Tolerance value for "d"
+                                if abs(newleafNode.state.d - states_Other0(otherVehicle).d) < 0.1 % Tolerance value for "d"
                                     % If on the same lane
-                                    UnSafetyValue_new = abs(pdf_other.cdf(newleafNode.state.s+2)-pdf_other.cdf(newleafNode.state.s-2)); % Size +-2 meters from the center
+                                    width = (4*2)+4; % 4 variance * 2 meters + 4 meters safety distance
+                                    UnSafetyValue_new = abs(pdf_other.cdf(newleafNode.state.s+width)-pdf_other.cdf(newleafNode.state.s-width)); % Size +-2 meters from the center
                                     UnSafetyValue = [UnSafetyValue UnSafetyValue_new]; % Add unsafety value for each other vehicle to array
                                 else
                                     % If not on the same lane
@@ -112,6 +113,8 @@ classdef MCTSTreeSearch
                         disp(strcat(num2str(leafNode.sourceNodeID),'-', leafNode.sourceEdgeName{1}.name,'-','pruned'));
                     end
                     
+
+                    
                     % Make the leafNode a rootNode and add to the array
                     rootNodes = [rootNodes leafNode];
                     
@@ -121,6 +124,9 @@ classdef MCTSTreeSearch
                     leafNodes = [leafNodes newleafNodes];
                     
                 end
+                
+                % Iterate other vehicles at the end of each depth
+                states_Other0 = NewManeuver.moveOtherVehicles(states_Other0,obj.deltaT);
             end
             
             count = count - 1; % Undo the last increment

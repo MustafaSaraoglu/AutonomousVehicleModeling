@@ -43,11 +43,14 @@ classdef FreeDrive < NewManeuver
     
     methods (Static)
         function nextState = apply(state,deltaT,~)
-            %Apply some acceleration            
-            speed_new = state.speed +1;
-            s_new = state.s + speed_new*deltaT;
+            %Apply some acceleration -> acc = +2, +1 or +0 depending on the
+            %current speed and the speed limit (TODO: Rework later)
+            acc = 2;
+
+            s_new = state.s + state.speed*deltaT + (0.5)*acc*deltaT^2;
             d_new = state.d;
             orientation_new = state.orientation;
+            speed_new = state.speed +deltaT*acc;
             
             nextState = State(s_new,d_new,orientation_new,speed_new);
         end

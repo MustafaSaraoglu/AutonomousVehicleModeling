@@ -75,12 +75,23 @@ classdef NewManeuver
         
         function pd = calculatePDFofOtherVehicles(states,deltaT,k)
             % Calculate the other vehicles' motion as a normal distribution centered around x1 = x0 + v*t
-            mean = states.s + states.speed*deltaT*k;
-            variance = deltaT*k;
+            mean = states.s + states.speed*deltaT;
+            variance = deltaT*k; % The deeper we try to predict, more variance it should have
             pd = makedist('Normal','mu',mean,'sigma',variance);
             
             %range = [mean-(4*variance):0.1:mean+(4*variance)];
             %plot(range,pdf(pd,range));
+            
+        end
+        
+        function statesOthers = moveOtherVehicles(statesOthers, deltaT)
+            % Constant speed movement assumption
+            
+            for idx =1:length(statesOthers)
+            
+                statesOthers(idx).s = statesOthers(idx).s + statesOthers(idx).speed*deltaT;
+            
+            end
             
         end
         
