@@ -12,7 +12,10 @@ classdef FreeDrive < NewManeuver
 
             decisions = [];
             
-            for acc = acc_lower:1:acc_upper
+            %Just to equalize with POMDP the other lane change options are
+            %disabled only 2 seconds for now instead of
+            % for acc = acc_lower:1:acc_upper            
+            for acc = acc_upper:1:acc_upper % TODO: re-enable more options
                 description = [name_DrivingMode, '_{acc', num2str(acc), '}'];
                 
                 % Trajectory prediction

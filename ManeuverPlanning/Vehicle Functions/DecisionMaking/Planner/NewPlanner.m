@@ -86,6 +86,9 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             % Necessary to return some output even if there is no command
             changeLaneCmd = 0;
             nextState = [];
+            % Make visualize false to avoid stopping for plotting the
+            % decision tree
+            visualize = true;
             
             % Return lane change command and the current driving mode
             
@@ -130,12 +133,17 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                     obj.d_destination);
                 
                 %% Plot the tree:
-                %                 figure(2);
-                %                 dG_iteration = dG{2};
-                %                 plot(dG_iteration, 'EdgeLabel',...
-                %                 dG_iteration.Edges.Power, 'EdgeColor',...
-                %                 cell2mat(dG_iteration.Edges.Color), 'NodeColor',...
-                %                 cell2mat(dG_iteration.Nodes.Color), 'Layout', 'layered');
+                if visualize
+                    f2 = figure(2);
+                    dG_iteration = dG{2};
+                    plot(dG_iteration, 'EdgeLabel',...
+                        dG_iteration.Edges.Power, 'EdgeColor',...
+                        cell2mat(dG_iteration.Edges.Color), 'NodeColor',...
+                        cell2mat(dG_iteration.Nodes.Color), 'Layout', 'layered');
+                    input("Click enter to continue!");
+                    close(f2);
+                end
+
                 %%
                 nextDecision = bestDecision_Ego(1); % only apply the current best decision for depth = 1
                 

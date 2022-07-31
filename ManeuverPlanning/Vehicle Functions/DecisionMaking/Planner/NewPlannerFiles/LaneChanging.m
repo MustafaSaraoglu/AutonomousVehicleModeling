@@ -12,6 +12,10 @@ classdef LaneChanging < NewManeuver
             decisions = [];
             
             acc = ManeuverPlanner.maximumAcceleration; % Free Drive
+            
+            %To make the options same with POMDP disable LC options other than 2 seconds using
+            % for durManeuver =dur_lower:1:dur_lower
+            
             for durManeuver = dur_lower:1:ManeuverPlanner.Th
                 description = [name_DrivingMode, '_{T', num2str(durManeuver), '}'];
                 
