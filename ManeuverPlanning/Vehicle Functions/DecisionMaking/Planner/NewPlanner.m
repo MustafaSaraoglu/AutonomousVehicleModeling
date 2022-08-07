@@ -38,6 +38,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
         
         d_destination % Reference lateral destination (right or left lane)
         isChangingLane % Return if currently executing lane changing maneuver
+        LC_endingTime % When a LC is expected to end
         t_ref % Variable to store a specific simulation time of interest
         toleranceReachLane % Accepted tolerance to reach destination lane
         
@@ -47,11 +48,15 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
         previousState % Previous driving state
         
         SearchTree % Search tree to find best decision
+        
+        visualizeTree % Visualize the decision tree
     end
     
     methods (Access = protected)
         function setupImpl(obj)
             % Perform one-time calculations, such as computing constants
+            obj.visualizeTree = evalin('base','visualizeTree'); % Make visualize false to avoid stopping for plotting the decision tree
+            % Ego, Others, Road Info Objects
             obj.Ego     = EgoInfo(obj.Ts,obj.timeHorizon,obj.partsTimeHorizon,obj.minimumAcceleration,obj.maximumAcceleration,obj.emergencyAcceleration,obj.maximumVelocity,obj.wheelBase,obj.steerAngle_max,obj.vEgo_ref);
             obj.Others  = OthersInfo(obj.vOtherVehicles_ref, obj.sigmaS, obj.sigmaV);
             obj.Road    = RoadInfo(obj.RoadTrajectory, obj.LaneWidth, obj.spaceDiscretisation);
@@ -86,9 +91,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             % Necessary to return some output even if there is no command
             changeLaneCmd = 0;
             nextState = [];
-            % Make visualize false to avoid stopping for plotting the
-            % decision tree
-            visualize = true;
+
             
             % Return lane change command and the current driving mode
             
@@ -100,13 +103,14 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
 
             % Check if the vehicle is in the middle of changing lanes
             % or has just finished now
-            if obj.isChangingLane && (abs(dEgo - obj.d_destination) < 0.05)
+            currentTime = get_param('ManeuverPlanning','SimulationTime');
+            if obj.isChangingLane && (abs(dEgo - obj.d_destination) < 0.1) && currentTime > obj.LC_endingTime-1
                 obj.isChangingLane = false;
             end
             
             % Only check everey timeHorizon/partsTimeHorizon seconds because expensive operation
             % and if not changing lane
-            if get_param('ManeuverPlanning', 'SimulationTime') >= obj.t_ref && ~obj.isChangingLane
+            if currentTime >= obj.t_ref && ~obj.isChangingLane
                 obj.t_ref = get_param('ManeuverPlanning', 'SimulationTime') + ...
                     obj.Ego.timeHorizon/obj.Ego.partsTimeHorizon;
                 
@@ -133,7 +137,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                     obj.d_destination);
                 
                 %% Plot the tree:
-                if visualize
+                if obj.visualizeTree
                     f2 = figure(2);
                     dG_iteration = dG{2};
                     plot(dG_iteration, 'EdgeLabel',...
@@ -157,11 +161,19 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                 if strcmp(nextState, 'LaneChanging')
                     obj.isChangingLane = true;
                     
+                    
                     % Round: avoid very small value differences
                     % Use either 0 or 3.7
-                    obj.d_destination = round(nextDecision.futureState.d, 1);
+                    if (abs(dEgo - 3.7))<0.1 % TODO: Later fix this issue on the planning level
+                        %obj.d_destination = round(nextDecision.futureState.d, 1);
+                        obj.d_destination = 0;
+                    else
+                        obj.d_destination = 3.7;
+                    end
+                    
                     
                     T_LC = extractBetween(description_nextDecision{2}, '{T', '}');
+                    obj.LC_endingTime = currentTime+str2double(T_LC);
                     changeLaneCmd = str2double(T_LC{1});
                 end
             end

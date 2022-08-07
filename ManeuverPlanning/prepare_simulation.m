@@ -31,6 +31,7 @@ function prepare_simulation(options)
         options.sigmaV          (1,1) double = 0.2;          % Standard deviation for 
                                                              % measuring other vehicles' 
                                                              % speeds [m/s]
+        options.visualizeTree       (1,1) logical = false;       % By default dont visualize the decision trees
     end
     
     %% Road
@@ -122,6 +123,7 @@ function prepare_simulation(options)
                                                     discreteCells.laneCell_width); 
     
     %% Assign Variables in Base-Workspace
+    assignin('base', 'visualizeTree', options.visualizeTree); 
     assignin('base', 'road', road); 
     assignin('base', 'ego', ego); 
     assignin('base', 'other', other); 

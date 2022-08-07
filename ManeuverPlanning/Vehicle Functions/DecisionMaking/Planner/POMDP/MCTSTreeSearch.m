@@ -23,6 +23,7 @@ classdef MCTSTreeSearch
         tree
         digraph
         visualization
+        visualizeTree
         
         % The decision output
         chosenManeuver
@@ -32,6 +33,7 @@ classdef MCTSTreeSearch
     methods
         function obj = MCTSTreeSearch(EgoInfo, NewManeuverPlanner)
             %TREESEARCH Construct an instance of this class
+            obj.visualizeTree = evalin('base','visualizeTree'); % Make visualize false to avoid stopping for plotting the decision tree
             obj.Ts = EgoInfo.Ts;
             obj.Th = EgoInfo.timeHorizon;
             
@@ -150,8 +152,6 @@ classdef MCTSTreeSearch
             % Make an array of all nodes
             allNodes = [rootNodes leafNodes];
             
-            % make it "true" for visualizing tree at every loop
-            visualize = false;
             
             % Plot the tree using all the calculated nodes and edges
             % creating a digraph: source node -> edge -> target node
@@ -194,7 +194,7 @@ classdef MCTSTreeSearch
             obj.tree = allNodes;
             obj.digraph = G;
             
-            if visualize
+            if obj.visualizeTree
                 f2 = figure(2);
                 f2.WindowState = 'maximized';
                 % Plot the tree from top down using 'Layout','layered'

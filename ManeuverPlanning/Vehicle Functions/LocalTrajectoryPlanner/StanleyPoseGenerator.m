@@ -12,6 +12,10 @@ classdef StanleyPoseGenerator < LocalTrajectoryPlanner
             
             [s, d] = Cartesian2Frenet(obj.RoadTrajectory, [pose(1) pose(2)]); 
             
+            if velocity < 2
+                velocity = 5;
+            end
+            
             obj.planReferenceTrajectory(changeLaneCmd, s, d, velocity);
             
             referencePose = obj.getReferencePoseStanley(pose); 
