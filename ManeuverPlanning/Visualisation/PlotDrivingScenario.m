@@ -118,7 +118,8 @@ classdef PlotDrivingScenario< matlab.System
             %% Adjust Axis
             xEgo = poseEgo(1);
             yEgo = poseEgo(2);
-            axis([xEgo-80, xEgo+80, yEgo-40, yEgo+40]); % Camera following ego vehicle
+            %axis([xEgo-80, xEgo+80, yEgo-40, yEgo+40]); % Camera following ego vehicle
+            axis([xEgo-80, xEgo+80, -5, +10]) % For Video Editing
         end
         
         function deletePreviousPlots(obj)
