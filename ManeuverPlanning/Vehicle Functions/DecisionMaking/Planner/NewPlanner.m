@@ -104,7 +104,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
             % Check if the vehicle is in the middle of changing lanes
             % or has just finished now
             currentTime = get_param('ManeuverPlanning','SimulationTime');
-            if obj.isChangingLane && (abs(dEgo - obj.d_destination) < 0.1) && currentTime > obj.LC_endingTime-1
+            if obj.isChangingLane && (abs(dEgo - obj.d_destination) < 0.05) && currentTime > obj.LC_endingTime-1
                 obj.isChangingLane = false;
             end
             
