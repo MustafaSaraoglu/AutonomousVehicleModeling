@@ -281,8 +281,9 @@ classdef MCTSTreeSearch
                 % Previous version (keeping for assurance purposes because it was working fine for ==3 maneuvers)
                 %[~,AllChildrenPruned_idx] = find(histcounts([allNodes(Pruned_idx).sourceNodeID])==4); % 4 must be equal to the number of maneuvers
                 
-                C = histogram([allNodes(Pruned_idx).sourceNodeID],1:max([allNodes(Pruned_idx).sourceNodeID]),"Visible","off");
-                AllChildrenPruned_idx = [allNodes(C.Values==4).id];
+                %C = histogram([allNodes(Pruned_idx).sourceNodeID],1:max([allNodes(Pruned_idx).sourceNodeID]),"Visible","off");
+                C = histcounts([allNodes(Pruned_idx).sourceNodeID],1:max([allNodes(Pruned_idx).sourceNodeID]));
+                AllChildrenPruned_idx = [allNodes(C==4).id];
                 
                 
                 if all(ismember(AllChildrenPruned_idx,Pruned_idx))
