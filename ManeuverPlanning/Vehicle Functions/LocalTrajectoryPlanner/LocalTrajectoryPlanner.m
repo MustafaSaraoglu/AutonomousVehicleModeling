@@ -69,9 +69,9 @@ classdef LocalTrajectoryPlanner < matlab.System
                 x_trajectory = obj.laneChangingTrajectoryCartesian.x;
                 y_trajectory = obj.laneChangingTrajectoryCartesian.y;
 
-                plot(x_trajectory, y_trajectory, 'Color', 'green');
+                %plot(x_trajectory, y_trajectory, 'Color', 'green');
 
-                t = get_param('ManeuverPlanning', 'SimulationTime');
+                %t = get_param('ManeuverPlanning', 'SimulationTime');
 
                 %fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
             end
