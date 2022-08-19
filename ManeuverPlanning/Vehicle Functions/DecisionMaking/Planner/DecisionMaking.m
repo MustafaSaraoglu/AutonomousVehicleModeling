@@ -64,7 +64,7 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
                 
                 t = get_param('ManeuverPlanning', 'SimulationTime');
                 
-                fprintf('@t=%fs: Switched to State: ''%s''.\n', t, name_newState);
+                %fprintf('@t=%fs: Switched to State: ''%s''.\n', t, name_newState);
             end
         end
     end

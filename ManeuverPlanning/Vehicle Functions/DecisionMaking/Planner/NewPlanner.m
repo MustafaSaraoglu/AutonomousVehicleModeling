@@ -81,7 +81,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                        
             % Initial state: Free Drive and on the right lane
             obj.currentState = 1;
-            disp('@t=0s: Initial state is: ''FreeDrive''.');
+            %disp('@t=0s: Initial state is: ''FreeDrive''.');
         end
         
         
@@ -203,7 +203,7 @@ classdef NewPlanner < matlab.System & handle & matlab.system.mixin.Propagates & 
                 
                 t = get_param('ManeuverPlanning', 'SimulationTime');
                 
-                fprintf('@t=%fs: Switched to State: ''%s''.\n', t, name_newState);
+                %fprintf('@t=%fs: Switched to State: ''%s''.\n', t, name_newState);
             end
         end
         

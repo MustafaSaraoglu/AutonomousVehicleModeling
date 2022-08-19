@@ -34,7 +34,7 @@ classdef DiscretePlannerManual < DecisionMaking
             
             % Initial state: Free Drive and on the right lane 
             obj.currentState = obj.states('RightLane_FreeDrive');
-            disp('@t=0s: Initial state is: ''RightLane_FreeDrive''.');
+            %disp('@t=0s: Initial state is: ''RightLane_FreeDrive''.');
         end
         
         function [changeLaneCmd, drivingMode] = stepImpl(obj, poseEgo, ids_surroundingVehicles, ...

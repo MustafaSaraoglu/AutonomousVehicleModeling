@@ -73,8 +73,7 @@ classdef LocalTrajectoryPlanner < matlab.System
 
                 t = get_param('ManeuverPlanning', 'SimulationTime');
 
-                fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, ...
-                        durationManeuver);
+                %fprintf('@t=%fs: Start trajectory to %s, duration=%fs.\n', t, destinationLane, durationManeuver);
             end
         end
         

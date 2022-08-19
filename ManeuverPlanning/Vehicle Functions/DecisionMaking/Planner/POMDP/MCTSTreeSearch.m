@@ -112,7 +112,7 @@ classdef MCTSTreeSearch
                         end
                     else
                         % Report pruned states because it is over the unsafety value threshold (for debugging purposes)
-                        disp(strcat(num2str(leafNode.sourceNodeID),'-', leafNode.sourceEdgeName{1}.name,'-','pruned'));
+                        %disp(strcat(num2str(leafNode.sourceNodeID),'-', leafNode.sourceEdgeName{1}.name,'-','pruned'));
                     end
                     
                     
