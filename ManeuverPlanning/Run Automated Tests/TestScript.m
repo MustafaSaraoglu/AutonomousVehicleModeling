@@ -1,6 +1,6 @@
 %% Run automated tests with varying initial conditions
 % number of other vehicles 
-num_other_vehicles = 3;
+num_other_vehicles = 4;
 % simulation time
 t_sim = 30;
 % number of iteration
@@ -119,6 +119,8 @@ T1 = table;
 %% simulation
 if num_other_vehicles == 4
     for k =1:num_iter % For 4 vehicles
+        
+        disp(['Experiment no: ',num2str(k),' out of ', num2str(num_iter)]);
         
         disp(['Simulation for -> Ego_s0: ',num2str(ego_s0), '/ Ego_v0: ', num2str(ego_v0),...
             '/ Ego_vref: ', num2str(ego_vref)]);
@@ -295,6 +297,8 @@ if num_other_vehicles == 4
 elseif num_other_vehicles == 3
     for k =1:num_iter % For three other vehicles
 
+        disp(['Experiment no: ',num2str(k),' out of ', num2str(num_iter)]);
+        
         disp(['Simulation for -> Ego_s0: ',num2str(ego_s0), '/ Ego_v0: ', num2str(ego_v0),...
             '/ Ego_vref: ', num2str(ego_vref)]);
 
@@ -462,6 +466,8 @@ elseif num_other_vehicles == 3
 elseif num_other_vehicles == 2
     for k =1:num_iter % For two other vehicles
 
+        disp(['Experiment no: ',num2str(k),' out of ', num2str(num_iter)]);
+        
         disp(['Simulation for -> Ego_s0: ',num2str(ego_s0), '/ Ego_v0: ', num2str(ego_v0),...
             '/ Ego_vref: ', num2str(ego_vref)]);
 
@@ -606,6 +612,8 @@ elseif num_other_vehicles == 2
 elseif num_other_vehicles == 1
     for k = 1:num_iter % For one other vehicle
 
+        disp(['Experiment no: ',num2str(k),' out of ', num2str(num_iter)]);
+        
         disp(['Simulation for -> Ego_s0: ',num2str(ego_s0), '/ Ego_v0: ', num2str(ego_v0),...
             '/ Ego_vref: ', num2str(ego_vref)]);
 
