@@ -4,7 +4,7 @@ num_other_vehicles = 4;
 % simulation time
 t_sim = 30;
 % number of iteration
-num_iter = 50;
+num_iter = 100;
 if num_other_vehicles == 4
     % 4 other vehicles
     ego_s0 = 140;
