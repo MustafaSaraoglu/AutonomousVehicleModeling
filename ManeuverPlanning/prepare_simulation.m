@@ -4,7 +4,7 @@ function prepare_simulation(options)
     %% Default values
     arguments
         options.road             (4,3) double =  [0      0   0; % Road trajectory according to 
-                                                  1000   0   0; % MOBATSim map format
+                                                  2000   0   0; % MOBATSim map format
                                                   0      0   0;
                                                   0      0   0]; 
          
@@ -31,6 +31,7 @@ function prepare_simulation(options)
         options.sigmaV          (1,1) double = 0.2;          % Standard deviation for 
                                                              % measuring other vehicles' 
                                                              % speeds [m/s]
+        options.visualizeTree       (1,1) logical = false;       % By default dont visualize the decision trees
     end
     
     %% Road
@@ -122,6 +123,7 @@ function prepare_simulation(options)
                                                     discreteCells.laneCell_width); 
     
     %% Assign Variables in Base-Workspace
+    assignin('base', 'visualizeTree', options.visualizeTree); 
     assignin('base', 'road', road); 
     assignin('base', 'ego', ego); 
     assignin('base', 'other', other); 
