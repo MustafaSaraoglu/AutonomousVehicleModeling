@@ -44,7 +44,7 @@ classdef DecisionMaking < matlab.System & handle & matlab.system.mixin.Propagate
                 containers.Map({'CmdIdle'}, 0);
             
             obj.plannerModes = ...
-                containers.Map({'MANUAL', 'FORMAL'}, [1, 2]);
+                containers.Map({'RuleBased', 'Minimax-Dev', 'POMDP'}, [1, 2, 3]);
             
             obj.toleranceReachLane = 0.05;
         end
