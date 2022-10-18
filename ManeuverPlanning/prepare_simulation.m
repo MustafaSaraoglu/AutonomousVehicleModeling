@@ -17,8 +17,10 @@ function prepare_simulation(options)
         options.v_0             (1,:) double = [20, 10, 13]; % Initial longitudinal velocity [m/s]
         options.v_ref           (1,:) double = [20, 10, 13]; % Reference longitudinal velocity [m/s]       
         
-        options.planner         (1,1) string = 'FORMAL';     % Mode of discrete planner
-                               % Alternative = 'MANUAL'
+        options.planner         (1,1) string = 'Minimax-Dev';     % Mode of discrete planner
+                                % Alternative = 'RuleBased'
+                                % Alternative = 'POMDP'
+                                % Alternative = 'Minimax-Fast'
         
         options.lateral         (1,1) string = 'STANLEY';    % Mode of lateral control
                                % Alternative = 'PURE_PURSUIT'
