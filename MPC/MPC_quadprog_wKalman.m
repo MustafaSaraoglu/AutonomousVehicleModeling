@@ -1,4 +1,4 @@
-function [sys, x0, str, ts] = MPC_fmincon_wKalman(t, x, u, flag)
+function [sys, x0, str, ts] = MPC_quadprog_wKalman(t, x, u, flag)
 %% default 
 switch flag
     case 0
