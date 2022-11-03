@@ -10,6 +10,7 @@ end
 %% load and open system
 close all;
 load_system('VehicleFollowing');
+% after the Simulink model is opened, open_system can be commented out
 open_system('VehicleFollowing');
 %% parameter setting
 leader.position = num2str(options.position(1));
@@ -47,8 +48,7 @@ Simulink.sdi.markSignalForStreaming('VehicleFollowing/Sum2', 1, 'on');
 sim('VehicleFollowing');
 %% plot
 all_data = Simulink.sdi.Run.getLatest;
-% get the data ID from Simulation data inspector to plot, the index should
-% be changed according to the corresponding index in Simulation data inspector 
+% get the data ID from Simulation data inspector to plot
 relative_distance_ID = getSignalIDByIndex(all_data, 1);
 leader_speed_ID = getSignalIDByIndex(all_data, 2);
 ego_speed_ID = getSignalIDByIndex(all_data, 3);
@@ -67,7 +67,7 @@ plot(relative_distance.Values.Time, relative_distance.Values.Data);
 hold off;
 ylabel(' ');
 legend('desired relative distance', 'actual relative distance', 'FontSize', 20);
-title('relative distance', 'fontname', 'Times New Roman', 'Color', 'k', 'FontSize', 20);
+title('relative distance MathWorks', 'fontname', 'Times New Roman', 'Color', 'k', 'FontSize', 20);
 % plot speed and acceleration
 figure;
 % speed
@@ -88,3 +88,4 @@ legend('ego vehicle acceleration', 'FontSize', 20);
 ylim([-6, 3]);
 title('acceleration', 'fontname', 'Times New Roman', 'Color', 'k', 'FontSize', 20);
 end
+
