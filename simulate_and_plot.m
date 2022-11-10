@@ -4,8 +4,10 @@ arguments
     options.position                       (1, :) double = [40, 20];  % e.g. vehicle 1 starts at 40 m, vehicle 2 at 20 m 
     options.speed                          (1, :) double = [20, 25];  % e.g. vehicle 1 starts at 20 m/s, vehicle 2 at 25 m/s 
     options.leader_config                  (1, :) double = [10, 0];   % vehicle 1's reference speed is 10 m/s, it has a extra 0 amplitude sine-wave acceleration by default 
-    options.controller                     (1, 1) string = 'MathWorksMPC'; % default controller is MathWorks MPC
-    options.controller_behavior_MathWorks  (1, 1) double = 0.5;  % default controller behavior for MathWorks MPC is 0.5
+    options.controller                     (1, 1) string = 'MathWorksMPC'; % default controller is MathWorks MPC, the other options are:
+                                                                           % MPC: 'MPC_quadprog', 'MPC_quadprog_wKalman', 'MPC_fmincon', 'MPC_fmincon_wKalman';
+                                                                           % PID: 'PID'   
+    options.controller_behavior_MathWorks  (1, 1) double = 0.5;  % default controller behavior for MathWorks MPC is 0.5, range: [0, 1]
 end
 %% load and open system
 close all;
@@ -15,15 +17,15 @@ open_system('VehicleFollowing');
 leader.position = num2str(options.position(1));
 leader.speed = num2str(options.speed(1));
 leader.speed_reference = num2str(options.leader_config(1));
-leader.acceleration_disturbance = num2str(options.leader_config(2));
+leader.speed_disturbance = num2str(options.leader_config(2));
 ego.position = num2str(options.position(2));
 ego.speed = num2str(options.speed(2));
 ego.controller = options.controller;
-% set the parameters of Vehicle Model 1; acceleration disturbance is sine
-% wave and is set to 0 by default
+% set the parameters of Vehicle Model 1; speed disturbance is sine wave and
+% its amplitude is set to 0 by default
 set_param('VehicleFollowing/Vehicle Model 1 - Leader','Speed', leader.speed);
 set_param('VehicleFollowing/Vehicle Model 1 - Leader','Pos', leader.position);
-set_param('VehicleFollowing/Vehicle Model 1 - Leader','Disturbance', leader.acceleration_disturbance);
+set_param('VehicleFollowing/Vehicle Model 1 - Leader','Disturbance', leader.speed_disturbance);
 set_param('VehicleFollowing/Speed Reference','Value', leader.speed_reference)
 % set the controller for Vehicle Model 2
 blockname = 'VehicleFollowing/Vehicle Model 2 - Following/Variant Vehicle Following Mode';
@@ -43,6 +45,22 @@ Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 1 - Leader',
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 2 - Following', 3, 'on');
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 2 - Following/Multiport Switch', 1, 'on');
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Sum2', 1, 'on');
+%% unreal engine
+% unreal engine can not be used in mac, comment out the 4 blocks related to
+% 3D visulization and uncomment the 2D visulization block 
+if ismac
+    set_param('VehicleFollowing/Simulation 3D Scene Configuration', 'commented', 'on');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following1', 'commented', 'on');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following2', 'commented', 'on');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following', 'commented', 'on');
+    set_param('VehicleFollowing/2D Animation', 'commented', 'off');
+else
+    set_param('VehicleFollowing/Simulation 3D Scene Configuration','commented','off');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following1','commented','off');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following2','commented','off');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following','commented','off');
+    set_param('VehicleFollowing/2D Animation', 'commented', 'on');
+end    
 %% run the simulation
 sim('VehicleFollowing');
 %% plot
@@ -58,6 +76,12 @@ relative_distance = Simulink.sdi.getSignal(relative_distance_ID);
 leader_speed = Simulink.sdi.getSignal(leader_speed_ID);
 ego_speed = Simulink.sdi.getSignal(ego_speed_ID);
 acceleration = Simulink.sdi.getSignal(acceleration_ID);
+% uncomment to get min TTC
+% relative_speed = leader_speed.Values.Data - ego_speed.Values.Data;
+% idx = relative_speed < 0;
+% TTC = -relative_distance.Values.Data(idx)./relative_speed(idx);
+% min_TTC = min(TTC);
+% disp("min TTC is " + num2str(min_TTC) + 's');
 % plot relative distance MathWorks
 figure;
 plot(relative_distance.Values.Time, 10 + ego_speed.Values.Data * 1.4);
