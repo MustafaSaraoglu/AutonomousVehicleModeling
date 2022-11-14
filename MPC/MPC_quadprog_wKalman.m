@@ -222,17 +222,18 @@ x_r = u(1);
 v_r = u(2);
 v_h = u(3);
 x_mess = [x_r; v_r; v_h];
-% leader vehicle acceleration as disturbance and is assumed to be constant
-% in the next Np time step. p11, (4.30), (4.31)
 vr_last_k = x_k(2); 
-d = (v_r - vr_last_k) / Ts + U;
-D = d * ones(Np, 1);
 %% Kalman Filter
 % State estimation, Kalman filter 
-[x_k, P_k] = Kalman(A, B, S, d, P_k, x_k, x_mess, U);
+[x_k, P_k] = Kalman(A, B, P_k, x_k, x_mess, U);
 %% cost: f^T, H, f_bar^T, H_bar
 % J = f_T * U + U' * H * U + p * ep^2, p17, (5.40) 
 % U = [u(k|k); ...; u(k + Np - 1|k)], p9, (4.13); ep: slack variable
+% leader vehicle acceleration as disturbance and is assumed to be constant
+% in the next Np time step. p11, (4.30), (4.31)
+vr_k = x_k(2);
+d = (vr_k - vr_last_k) / Ts + U;
+D = d * ones(Np, 1);
 % f^T, p12, (4.46)
 f_T = 2 * (x_k' * A_bar' * Q_bar * B_bar - Z_bar' * Q_bar * B_bar + D' * S_bar' * Q_bar * B_bar);
 % f_bar^T, p17, (5.43)
@@ -398,7 +399,7 @@ end
 sys = U;
 end
 
-function [x_k, P_k] = Kalman(A, B, S, d, P_k, x_k, x_mess, U)
+function [x_k, P_k] = Kalman(A, B, P_k, x_k, x_mess, U)
 % Variance of messurement noise v, P(v) ~ N(0, R_k)
 % if the values of R_k is big, we trust prediction more, if the values of
 % R_k is small, we trust measurement more
@@ -417,7 +418,7 @@ Q_k = [0.1 0     0;
        0   0     0.1];
 % Prediction
 % Priori estimation, p13, (3.49) 
-x = A * x_k + B * U + S * d;
+x = A * x_k + B * U;
 % Priori error covariance matrix, p13, (3.50)
 P_k = A * P_k * A' + Q_k;
 % Correction
