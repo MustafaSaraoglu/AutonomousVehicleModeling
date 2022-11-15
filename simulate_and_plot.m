@@ -45,6 +45,22 @@ Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 1 - Leader',
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 2 - Following', 3, 'on'); % ego vehicle speed
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 2 - Following/Multiport Switch', 1, 'on'); % ego vehicle acceleration
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Sum2', 1, 'on'); % relative distance
+%% unreal engine
+% unreal engine can not be used in mac, comment out the 4 blocks related to
+% 3D visulization and uncomment the 2D visulization block 
+if ispc
+    set_param('VehicleFollowing/Simulation 3D Scene Configuration', 'commented', 'off');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following1', 'commented', 'off');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following2', 'commented', 'off');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following', 'commented', 'off');
+    set_param('VehicleFollowing/2D Animation', 'commented', 'on');
+else
+    set_param('VehicleFollowing/Simulation 3D Scene Configuration','commented','on');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following1','commented','on');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following2','commented','on');
+    set_param('VehicleFollowing/Simulation 3D Vehicle with Ground Following','commented','on');
+    set_param('VehicleFollowing/2D Animation', 'commented', 'off');
+end    
 %% run the simulation
 sim('VehicleFollowing');
 %% plot
