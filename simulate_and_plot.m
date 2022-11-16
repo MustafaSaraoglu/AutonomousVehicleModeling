@@ -8,6 +8,9 @@ arguments
                                                                            % MPC: 'MPC_quadprog', 'MPC_quadprog_wKalman', 'MPC_fmincon', 'MPC_fmincon_wKalman';
                                                                            % PID: 'PID'   
     options.controller_behavior_MathWorks  (1, 1) double = 0.5;  % default controller behavior for MathWorks MPC is 0.5, the range is [0, 1]
+    options.prediction_horizon             (1, 1) double = 10;   % default prediction horizon is 10
+    options.time_headway                   (1, 1) double = 1.4;  % default time headway is 1.4
+    options.acceleration_boundary          (1, :) double = [2, -3]; %default maximum and minimum longitudinal acceleration are 2 m/s^2 and -3 m/s^2
 end
 %% load and open system
 close all;
@@ -37,6 +40,17 @@ controller_set.set('Value', ego.controller);
 % set the controller behavior for MathWorks MPC
 control_behavior = p.Parameters(3);
 control_behavior.set('Value', controller_behavior_MathWorksMPC);
+% set the prediction horizon
+predict_horizon = p.Parameters(4);
+predict_horizon.set('Value', num2str(options.prediction_horizon));
+% set the time headway
+t_headway = p.Parameters(5);
+t_headway.set('Value', num2str(options.time_headway));
+% set the maximum and minimum acceleration
+max_acc = p.Parameters(6);
+max_acc.set('Value', num2str(options.acceleration_boundary(1)));
+min_acc = p.Parameters(7);
+min_acc.set('Value', num2str(options.acceleration_boundary(2)));
 % set the initial speed and position for Vehicle Model 2
 set_param('VehicleFollowing/Vehicle Model 2 - Following', 'Speed', ego.speed);
 set_param('VehicleFollowing/Vehicle Model 2 - Following', 'Pos', ego.position);
