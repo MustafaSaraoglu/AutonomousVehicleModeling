@@ -1,14 +1,14 @@
-function [sys, x0, str, ts] = MPC_fmincon_wKalman(t, x, u, flag)
+function [sys, x0, str, ts] = MPC_fmincon_wKalman(t, x, u, flag, Np, t_hw, acc_bound)
 %% default 
 switch flag
     case 0
-        [sys, x0, str, ts] = mdlInitializeSizes;
+        [sys, x0, str, ts] = mdlInitializeSizes(Np);
     
     case 2
         sys = mdlUpdates(t, x, u);
     
     case 3
-        sys = mdlOutputs(t, x, u);
+        sys = mdlOutputs(t, x, u, Np, t_hw, acc_bound);
     
     case {1,4,9}
         sys = [];
@@ -18,7 +18,7 @@ switch flag
 end
 end
 
-function [sys, x0, str, ts] = mdlInitializeSizes
+function [sys, x0, str, ts] = mdlInitializeSizes(Np)
 %% S-Function initialization
 % initial the system by a struct "size"
 sizes = simsizes;
@@ -39,13 +39,12 @@ sys = simsizes(sizes);
 % the following
 x0 = [0; 0; 0];
 % Control input of system: U
-global U acc Np;
+global U acc;
 % Error convariance matrix P_k, initial state x_k
 global P_k x_k;
 P_k = [1 0 0; 0 1 0; 0 0 1];
 x_k = [0; 0; 0];
 U = 0;
-Np = 10;
 acc = zeros(Np + 1, 1);
 str = [];
 ts = [0.5 0];
@@ -56,11 +55,11 @@ function sys = mdlUpdates(t, x, u)
 sys = x;
 end
 
-function sys = mdlOutputs(t, x, u)
+function sys = mdlOutputs(t, x, u, Np, t_hw, acc_bound)
 %% output of S-Function 
 % here define the system matrices, estimate the state and optimize the
 % quadratic programming.
-global U acc Np;
+global U acc;
 % global Kalmanflag;
 global x_k P_k;
 % sample time
@@ -81,11 +80,10 @@ S = [0.5 * Ts^2; Ts; 0];
 % spacing error: e(k) = xr(k) - xr,des(k), p5, (3.12)
 % desired following distance:xr,des(k) = xr0 + vh(k)*t_hw, p4, (3.11)
 % xr0:fixed safety distance
-% desired headway time
-t_hw = 1.4;
 fixed_safety_distance = 10;
 % y(k) = C * x(k) - Z
 % observation matrix, p5, (3.21)  
+% t_hw: desired headway time
 C = [1 0  -t_hw;
      0 1   0   ];
 % p6, (3.22)
@@ -266,8 +264,8 @@ N = [10000; v_max];
 % GU <= Jmax, p16, (5.28)
 % GU >= Jmin, p16, (5.29)
 % maximal and minimal of control input acceleration
-a_max =  2;
-a_min = -3;
+a_max = acc_bound(1);
+a_min = acc_bound(2);
 %% Constraints: L_bar, Ae_bar, Be_bar, Se_bar
 % L_bar = diag(L), p15, (5.19), size: (Np * dim_L_1) x (dim_L_2 * Np)
 n_L1 = size(L, 1);
