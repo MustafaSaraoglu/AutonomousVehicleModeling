@@ -1,4 +1,4 @@
-function [sys, x0, str, ts] = MPC_fmincon(t, x, u, flag, Np, t_hw, acc_bound)
+function [sys, x0, str, ts] = MPC_fmincon(t, x, u, flag, Np, t_hw, a_max, a_min)
 %% default 
 switch flag
     case 0
@@ -8,7 +8,7 @@ switch flag
         sys = mdlUpdates(t, x, u);
     
     case 3
-        sys = mdlOutputs(t, x, u, Np, t_hw, acc_bound);
+        sys = mdlOutputs(t, x, u, Np, t_hw, a_max, a_min);
     
     case {1,4,9}
         sys = [];
@@ -55,7 +55,7 @@ function sys = mdlUpdates(t, x, u)
 sys = x;
 end
 
-function sys = mdlOutputs(t, x, u, Np, t_hw, acc_bound)
+function sys = mdlOutputs(t, x, u, Np, t_hw, a_max, a_min)
 %% output of S-Function 
 % here define the system matrices, estimate the state and optimize the
 % quadratic programming.
@@ -259,9 +259,6 @@ N = [10000; v_max];
 % delta_U = [u(k + 1) - u(k); ...; u(k + Np - 1) - u(k + Np - 2)] = GU, p10, (4.18),(4.21)
 % GU <= Jmax, p16, (5.28)
 % GU >= Jmin, p16, (5.29)
-% maximal and minimal of control input acceleration
-a_max = acc_bound(1);
-a_min = acc_bound(2);
 %% Constraints: L_bar, Ae_bar, Be_bar, Se_bar
 % L_bar = diag(L), p15, (5.19), size: (Np * dim_L_1) x (dim_L_2 * Np)
 n_L1 = size(L, 1);
