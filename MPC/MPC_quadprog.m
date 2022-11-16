@@ -8,7 +8,7 @@ switch flag
         sys = mdlUpdates(t, x, u);
     
     case 3
-        sys = mdlOutputs(t, x, u, Np, t_hw, a_max, a_min);
+        sys = mdlOutputs(t, x, u, Np, t_hw, a_max, a_min, fixed_safety_distance);
     
     case {1,4,9}
         sys = [];

@@ -10,7 +10,8 @@ arguments
     options.controller_behavior_MathWorks  (1, 1) double = 0.5;  % default controller behavior for MathWorks MPC is 0.5, the range is [0, 1]
     options.prediction_horizon             (1, 1) double = 10;   % default prediction horizon is 10
     options.time_headway                   (1, 1) double = 1.4;  % default time headway is 1.4
-    options.acceleration_boundary          (1, :) double = [2, -3]; %default maximum and minimum longitudinal acceleration are 2 m/s^2 and -3 m/s^2
+    options.acceleration_boundary          (1, :) double = [2, -3]; % default maximum and minimum longitudinal acceleration are 2 m/s^2 and -3 m/s^2
+    options.default_spacing                (1, :) double = 10       % default safety distance between leader and ego vehicle is 10 m
 end
 %% load and open system
 close all;
@@ -51,6 +52,9 @@ max_acc = p.Parameters(6);
 max_acc.set('Value', num2str(options.acceleration_boundary(1)));
 min_acc = p.Parameters(7);
 min_acc.set('Value', num2str(options.acceleration_boundary(2)));
+% set the fixed safety distance
+fixed_safety_distance = p.Parameters(8);
+fixed_safety_distance.set('Value', num2str(options.default_spacing));
 % set the initial speed and position for Vehicle Model 2
 set_param('VehicleFollowing/Vehicle Model 2 - Following', 'Speed', ego.speed);
 set_param('VehicleFollowing/Vehicle Model 2 - Following', 'Pos', ego.position);
@@ -98,7 +102,7 @@ min_TTC = min(TTC);
 disp("min TTC is " + num2str(min_TTC) + 's');
 % plot relative distance MathWorks
 figure;
-plot(relative_distance.Values.Time, 10 + ego_speed.Values.Data * 1.4);
+plot(relative_distance.Values.Time, options.default_spacing + ego_speed.Values.Data * 1.4);
 hold on;
 ylim([0, 80]);
 plot(relative_distance.Values.Time, relative_distance.Values.Data);
