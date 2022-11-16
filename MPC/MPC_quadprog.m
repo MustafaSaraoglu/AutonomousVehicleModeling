@@ -1,4 +1,4 @@
-function [sys, x0, str, ts] = MPC_quadprog(t, x, u, flag, Np, t_hw, a_max, a_min)
+function [sys, x0, str, ts] = MPC_quadprog(t, x, u, flag, Np, t_hw, a_max, a_min, fixed_safety_distance)
 %% default 
 switch flag
     case 0
@@ -54,7 +54,7 @@ function sys = mdlUpdates(t, x, u)
 sys = x;
 end
 
-function sys = mdlOutputs(t, x, u, Np, t_hw, a_max, a_min)
+function sys = mdlOutputs(t, x, u, Np, t_hw, a_max, a_min, fixed_safety_distance)
 %% output of S-Function 
 % here define the system matrices, estimate the state and optimize the
 % quadratic programming.
@@ -79,7 +79,6 @@ S = [0.5 * Ts^2; Ts; 0];
 % spacing error: e(k) = xr(k) - xr,des(k), p5, (3.12)
 % desired following distance:xr,des(k) = xr0 + vh(k)*t_hw, p4, (3.11)
 % xr0:fixed safety distance
-fixed_safety_distance = 10;
 % y(k) = C * x(k) - Z
 % observation matrix, p5, (3.21)  
 % t_hw: desired headway time
