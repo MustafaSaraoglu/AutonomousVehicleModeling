@@ -9,9 +9,10 @@ arguments
                                                                            % PID: 'PID'   
     options.controller_behavior_MathWorks  (1, 1) double = 0.5;  % default controller behavior for MathWorks MPC is 0.5, the range is [0, 1]
     options.prediction_horizon             (1, 1) double = 10;   % default prediction horizon is 10
-    options.time_headway                   (1, 1) double = 1.4;  % default time headway is 1.4
+    options.time_headway                   (1, 1) double = 1.4;  % default time headway is 1.4 in seconds
     options.acceleration_boundary          (1, :) double = [2, -3]; % default maximum and minimum longitudinal acceleration are 2 m/s^2 and -3 m/s^2
     options.default_spacing                (1, :) double = 10       % default safety distance between leader and ego vehicle is 10 m
+    options.simTime                        (1, :) double = 50    % default simulation time in seconds
 end
 %% load and open system
 close all;
@@ -80,7 +81,7 @@ else
     set_param('VehicleFollowing/2D Animation', 'commented', 'off');
 end    
 %% run the simulation
-sim('VehicleFollowing');
+sim('VehicleFollowing','StopTime',num2str(options.simTime));
 %% plot
 all_data = Simulink.sdi.Run.getLatest;
 % get the data ID from Simulation data inspector to plot, the index should
