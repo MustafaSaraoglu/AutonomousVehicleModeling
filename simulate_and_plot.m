@@ -114,9 +114,10 @@ hold on;
 ylim([0, 80]);
 plot(relative_distance.Values.Time, relative_distance.Values.Data);
 hold off;
-ylabel(' ');
-legend('desired relative distance', 'actual relative distance', 'FontSize', 20);
-title('relative distance', 'fontname', 'Times New Roman', 'Color', 'k', 'FontSize', 20);
+ylabel('m');
+xlabel('s');
+legend('Desired relative distance', 'Actual relative distance', 'FontSize', 20);
+title('Relative distance', 'Color', 'k', 'FontSize', 20);
 
 % Plot Speed/Time
 figure;
@@ -126,19 +127,21 @@ grid on;
 hold on;
 plot(ego_speed.Values.Time, ego_speed.Values.Data);
 hold off;
-ylabel(' ');
-legend('lead vehicle speed', 'ego vehicle speed', 'FontSize', 20);
-title('speed', 'fontname', 'Times New Roman', 'Color', 'k', 'FontSize', 20);
+ylabel('m/s');
+xlabel('s');
+legend('Lead vehicle speed', 'Ego vehicle speed', 'FontSize', 20);
+title('Speed', 'Color', 'k', 'FontSize', 20);
 
 % Plot Acceleration/Time
 subplot(1, 2, 2);
 plot(acceleration.Values.Time, acceleration.Values.Data);
 grid on;
 hold off;
-ylabel(' ');
+ylabel('m/s^2');
+xlabel('s');
 legend('ego vehicle acceleration', 'FontSize', 20);
 ylim([-6, 3]);
-title('acceleration', 'fontname', 'Times New Roman', 'Color', 'k', 'FontSize', 20);
+title('Acceleration', 'Color', 'k', 'FontSize', 20);
 
 %% Calculate min TTC metric
 relative_speed = leader_speed.Values.Data - ego_speed.Values.Data;
