@@ -15,60 +15,62 @@ arguments
     options.default_spacing                (1, :) double = 10       % default safety distance between leader and ego vehicle is 10 m
     options.simTime                        (1, :) double = 50       % default simulation time in seconds
 end
+
 %% Load the Simulink model
 close all;
 load_system('VehicleFollowing');
 open_system('VehicleFollowing');
 
 %% Set Initial Parameters for the Vehicle Models
-% The leading Vehicle - Vehicle Model 1
+% The leading Vehicle - Vehicle Model 1 - Leader
 leader.position = num2str(options.position(1));
 leader.speed = num2str(options.speed(1));
 leader.speed_reference = num2str(options.leader_config(1));
-leader.speed_disturbance = num2str(options.leader_config(2));
-% speed disturbance is sine wave and its amplitude is set to 0 by default
-set_param('VehicleFollowing/Vehicle Model 1 - Leader','Speed', leader.speed);
-set_param('VehicleFollowing/Vehicle Model 1 - Leader','Pos', leader.position);
-set_param('VehicleFollowing/Vehicle Model 1 - Leader','Disturbance', leader.speed_disturbance);
-set_param('VehicleFollowing/Speed Reference','Value', leader.speed_reference)
-
-% Ego Vehicle - Vehicle Model 2
+leader.speed_disturbance = num2str(options.leader_config(2)); % speed disturbance is sine wave and its amplitude is set to 0 by default
+% set the initial speed and position for Vehicle Model 1
+set_param('VehicleFollowing/Vehicle Model 1 - Leader','Speed', leader.speed); % set leader speed
+set_param('VehicleFollowing/Vehicle Model 1 - Leader','Pos', leader.position); % set leader position
+set_param('VehicleFollowing/Vehicle Model 1 - Leader','Disturbance', leader.speed_disturbance); % set leader speed disturbance
+set_param('VehicleFollowing/Speed Reference','Value', leader.speed_reference) % set leader speed reference
+% Ego Vehicle - Vehicle Model 2 - Following
 ego.position = num2str(options.position(2));
 ego.speed = num2str(options.speed(2));
 ego.controller = options.controller;
-% Set the vehicle following controller
-blockname = 'VehicleFollowing/Vehicle Model 2 - Following/Variant Vehicle Following Mode';
-p = Simulink.Mask.get(blockname);
-set_param(blockname,'LabelModeActiveChoice', ego.controller);
-controller_behavior_MathWorksMPC = num2str(options.controller_behavior_MathWorks);
-controller_set = p.Parameters(1);
-controller_set.set('Value', ego.controller);
-% set the controller behavior for MathWorks MPC
-control_behavior = p.Parameters(3);
-control_behavior.set('Value', controller_behavior_MathWorksMPC);
-% set the prediction horizon
-predict_horizon = p.Parameters(4);
-predict_horizon.set('Value', num2str(options.prediction_horizon));
-% set the time headway
-t_headway = p.Parameters(5);
-t_headway.set('Value', num2str(options.time_headway));
-% set the maximum and minimum acceleration
-max_acc = p.Parameters(6);
-max_acc.set('Value', num2str(options.acceleration_boundary(1)));
-min_acc = p.Parameters(7);
-min_acc.set('Value', num2str(options.acceleration_boundary(2)));
-% set the fixed safety distance
-fixed_safety_distance = p.Parameters(8);
-fixed_safety_distance.set('Value', num2str(options.default_spacing));
 % set the initial speed and position for Vehicle Model 2
 set_param('VehicleFollowing/Vehicle Model 2 - Following', 'Speed', ego.speed);
 set_param('VehicleFollowing/Vehicle Model 2 - Following', 'Pos', ego.position);
+% set the vehicle following controller
+blockname = 'VehicleFollowing/Vehicle Model 2 - Following/Variant Vehicle Following Mode';
+mask_vehicle_2 = Simulink.Mask.get(blockname);
+set_param(blockname,'LabelModeActiveChoice', ego.controller);
+controller_behavior_MathWorksMPC = num2str(options.controller_behavior_MathWorks);
+% set the vehicle following controller
+controller_set = mask_vehicle_2.Parameters(1); % MaskParameter: Controller
+controller_set.set('Value', ego.controller);
+% set the controller behavior for MathWorks MPC
+control_behavior = mask_vehicle_2.Parameters(3); % MaskParameter: Controller Behaviour MathWorks MPC
+control_behavior.set('Value', controller_behavior_MathWorksMPC);
+% set the prediction horizon
+predict_horizon = mask_vehicle_2.Parameters(4); % MaskParamter: Prediction Horizon
+predict_horizon.set('Value', num2str(options.prediction_horizon));
+% set the time headway
+t_headway = mask_vehicle_2.Parameters(5); % MaskParameter: Time Headway
+t_headway.set('Value', num2str(options.time_headway));
+% set the maximum and minimum acceleration
+max_acc = mask_vehicle_2.Parameters(6); % MaskParameter: Maximum Longitudinal Acceleration (m/s^2)
+max_acc.set('Value', num2str(options.acceleration_boundary(1))); 
+min_acc = mask_vehicle_2.Parameters(7); % MaskParameter: Minimum Longitudinal Acceleration (m/s^2)
+min_acc.set('Value', num2str(options.acceleration_boundary(2)));
+% set the fixed safety distance
+fixed_safety_distance = mask_vehicle_2.Parameters(8); % MaskParameter: Default Spacing (m)
+fixed_safety_distance.set('Value', num2str(options.default_spacing));
 
 %% Data logging from Simulink signals
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 1 - Leader', 2, 'on');  % leader speed
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 2 - Following', 3, 'on'); % ego vehicle speed
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Vehicle Model 2 - Following/Multiport Switch', 1, 'on'); % ego vehicle acceleration
 Simulink.sdi.markSignalForStreaming('VehicleFollowing/Sum2', 1, 'on'); % relative distance
+
 %% Visualization using Unreal Engine
 % This part of the script can be changed according to preference
 
@@ -97,18 +99,21 @@ all_data = Simulink.sdi.Run.getLatest;
 relative_distance_ID = getSignalIDByIndex(all_data, 1);
 leader_speed_ID = getSignalIDByIndex(all_data, 2);
 ego_speed_ID = getSignalIDByIndex(all_data, 3);
-acceleration_ID = getSignalIDByIndex(all_data, 4);
+driving_mode_ID = getSignalIDByIndex(all_data, 4);
+acceleration_ID = getSignalIDByIndex(all_data, 5);
 
 % Get the data according to ID
 relative_distance = Simulink.sdi.getSignal(relative_distance_ID);
 leader_speed = Simulink.sdi.getSignal(leader_speed_ID);
 ego_speed = Simulink.sdi.getSignal(ego_speed_ID);
+driving_mode = Simulink.sdi.getSignal(driving_mode_ID);
 acceleration = Simulink.sdi.getSignal(acceleration_ID);
 
 %% Plot the Results and Calculate metrics
 % Plot the Relative Distance
 figure;
-plot(relative_distance.Values.Time, options.default_spacing + ego_speed.Values.Data * 1.4);
+subplot(1, 2, 1);
+plot(relative_distance.Values.Time, options.default_spacing + ego_speed.Values.Data * options.time_headway);
 grid on;
 hold on;
 ylim([0, 80]);
@@ -120,8 +125,7 @@ legend('Desired relative distance', 'Actual relative distance', 'FontSize', 20);
 title('Relative distance', 'Color', 'k', 'FontSize', 20);
 
 % Plot Speed/Time
-figure;
-subplot(1, 2, 1);
+subplot(1, 2, 2);
 plot(leader_speed.Values.Time, leader_speed.Values.Data);
 grid on;
 hold on;
@@ -133,15 +137,25 @@ legend('Lead vehicle speed', 'Ego vehicle speed', 'FontSize', 20);
 title('Speed', 'Color', 'k', 'FontSize', 20);
 
 % Plot Acceleration/Time
-subplot(1, 2, 2);
+figure;
+subplot(1, 2, 1);
 plot(acceleration.Values.Time, acceleration.Values.Data);
 grid on;
-hold off;
 ylabel('m/s^2');
 xlabel('s');
 legend('ego vehicle acceleration', 'FontSize', 20);
 ylim([-6, 3]);
 title('Acceleration', 'Color', 'k', 'FontSize', 20);
+
+% Plot Driving Mode/Time
+subplot(1, 2, 2);
+plot(driving_mode.Values.Time, driving_mode.Values.Data);
+grid on;
+ylabel('driving mode');
+xlabel('s');
+legend(['Value -> Driving Mode', newline, '1 -> Free Drive', newline, '2 -> Vehicle Following', newline, '3 -> Emergency Brake'], 'FontSize', 20);
+ylim([0, 4]);
+title('Driving Mode', 'Color', 'k', 'FontSize', 20);
 
 %% Calculate min TTC metric
 relative_speed = leader_speed.Values.Data - ego_speed.Values.Data;
