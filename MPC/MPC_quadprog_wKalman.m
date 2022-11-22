@@ -38,10 +38,11 @@ sys = simsizes(sizes);
 % intial value of x, instead of using x here, I use x_k which is defined in 
 % the following
 x0 = [0; 0; 0];
-% Control input of system: U
-global U acc x_k;
+% Control input of system: U_1, it is the 1st component of control input
+% sequence U
+global U_1 acc x_k;
 x_k = [0; 0; 0];
-U = 0;
+U_1 = 0;
 acc = zeros(Np + 1, 1);
 str = [];
 ts = [0.5 0];
@@ -54,9 +55,8 @@ end
 
 function sys = mdlOutputs(t, x, u, Np, t_hw, a_max, a_min, fixed_safety_distance)
 %% output of S-Function 
-% here define the system matrices, estimate the state and optimize the
-% quadratic programming.
-global U x_k acc;
+% here define the system matrices and optimize the quadratic programming.
+global U_1 x_k acc;
 % sample time
 Ts = 0.5;
 %% discrete state-space model: A, B, C, S, Z
@@ -206,9 +206,9 @@ for i = 1 : Np - 1
     end
 end
 Ru_bar = cell2mat(Ru_bar);
-%% current estimated state and relative speed at last time step  
+%% current estimated states and relative speed at last time step  
 vr_last_k = x_k(2); 
-% Current estimated state
+% Current estimated states
 x_r = u(1);
 v_r = u(2);
 v_h = u(3);
@@ -219,7 +219,7 @@ x_k = [x_r; v_r; v_h];
 % leader vehicle acceleration as disturbance and is assumed to be constant
 % in the next Np time step
 vr_k = x_k(2);
-d = (vr_k - vr_last_k) / Ts + U;
+d = (vr_k - vr_last_k) / Ts + U_1;
 D = d * ones(Np, 1);
 % f^T
 f_T = 2 * (x_k' * A_bar' * Q_bar * B_bar - Z_bar' * Q_bar * B_bar + D' * S_bar' * Q_bar * B_bar);
@@ -315,7 +315,7 @@ Se_bar = cell2mat(Se_bar);
 %% Constraints: Omega_bar, T
 % Omega * U <= T
 % Omega = [L_bar * Be_bar; -L_bar * Be_bar; G; -G]
-% with slack variable, Omega_bar * U_bar <= T
+% with slack variable ep, Omega_bar * U_bar <= T, and U_bar = [U; ep]
 % Omega_bar
 n_N = size(N, 1);
 Omega_bar = cell(4, 1);
@@ -370,15 +370,15 @@ ini = acc;
 options = optimset('Algorithm','active-set');
 [acc, ~] = quadprog(H_bar, f_bar_T', A_ine, b_ine, A_ep, B_ep, lower_bound, upper_bound, ini, options);
 % only apply the first control command to the vehicle model
-U = acc(1);
+U_1 = acc(1);
 % The quadprog still outputs when the programming is infeasible, so U
 % should be limited so that it won't be out of the boundary
-if U > a_max
-    U = a_max;
-elseif U < a_min
-    U = a_min;
+if U_1 > a_max
+    U_1 = a_max;
+elseif U_1 < a_min
+    U_1 = a_min;
 end
 % outputs of S-Function, it must be consistent with the "size.NumOutputs" 
 % in the "mdlInitializeSizes" function
-sys = U;
+sys = U_1;
 end

@@ -38,10 +38,11 @@ sys = simsizes(sizes);
 % intial value of x, instead of using x here, I use x_k which is defined in 
 % the following
 x0 = [0; 0; 0];
-% Control input of system: U
-global U acc x_k;
+% Control input of system: U_1, it is the 1st component of control input
+% sequence U
+global U_1 acc x_k;
 x_k = [0; 0; 0];
-U = 0;
+U_1 = 0;
 acc = zeros(Np + 1, 1);
 str = [];
 ts = [0.5 0];
@@ -54,9 +55,8 @@ end
 
 function sys = mdlOutputs(t, x, u, Np, t_hw, a_max, a_min, fixed_safety_distance)
 %% output of S-Function 
-% here define the system matrices, estimate the state and optimize the
-% quadratic programming.
-global U acc x_k;
+% here define the system matrices and optimize the quadratic programming.
+global U_1 acc x_k;
 % sample time
 Ts = 0.5;
 %% discrete state-space model: A, B, C, S, Z
@@ -206,9 +206,9 @@ for i = 1 : Np - 1
     end
 end
 Ru_bar = cell2mat(Ru_bar);
-%% measure and relative speed at last time step 
+%% Current measured states and relative speed at last time step 
 vr_last_k = x_k(2); 
-% Current measured state
+% Current measured states
 x_r = u(1);
 v_r = u(2);
 v_h = u(3);
@@ -218,7 +218,7 @@ x_k = [x_r; v_r; v_h];
 % U = [u(k|k); ...; u(k + Np - 1|k)]; ep: slack variable
 % leader vehicle acceleration as disturbance and is assumed to be constant
 % in the next Np time step
-d = (v_r - vr_last_k) / Ts + U;
+d = (v_r - vr_last_k) / Ts + U_1;
 D = d * ones(Np, 1);
 % f^T
 f_T = 2 * (x_k' * A_bar' * Q_bar * B_bar - Z_bar' * Q_bar * B_bar + D' * S_bar' * Q_bar * B_bar);
@@ -314,7 +314,7 @@ Se_bar = cell2mat(Se_bar);
 %% Constraints: Omega_bar, T
 % Omega * U <= T
 % Omega = [L_bar * Be_bar; -L_bar * Be_bar; G; -G]
-% with slack variable, Omega_bar * U_bar <= T
+% with slack variable ep, Omega_bar * U_bar <= T, and U_bar = [U; ep]
 % Omega_bar
 n_N = size(N, 1);
 Omega_bar = cell(4, 1);
@@ -369,8 +369,8 @@ ini = acc;
 fun = @(U)U' * H_bar * U + f_bar_T * U;
 [acc, ~] = fmincon(fun, ini, A_ine, b_ine, A_ep, B_ep, lower_bound, upper_bound);
 % only apply the first control command to the vehicle model
-U = acc(1);
+U_1 = acc(1);
 % outputs of S-Function, it must be consistent with the "size.NumOutputs" 
 % in the "mdlInitializeSizes" function
-sys = U;
+sys = U_1;
 end
